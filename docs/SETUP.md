@@ -134,6 +134,10 @@ YAML and vertex-segmentation JSON, fabric JSON/YAML, simulation JSON/YAML, and c
 coordinates follow GarmentCode's body-asset convention and are metres; pattern coordinates and
 camera locations remain public millimetres. A minimal camera file is:
 
+`GarmentSDK.configure_simulation` and the `simulation_configure` MCP tool accept either existing
+project-relative files or absolute source files. Absolute sources are frozen inside the preview and
+installed into `simulation/` only on commit, so a reverse revision removes them cleanly.
+
 ```json
 {
   "schema_version": "1.0",

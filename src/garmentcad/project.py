@@ -29,6 +29,7 @@ from garmentcad.models import (
     utc_now,
 )
 from garmentcad.storage import (
+    atomic_write_bytes,
     atomic_write_json,
     canonical_json,
     read_json,
@@ -230,7 +231,7 @@ class Project:
                 from garmentcad.simulation_inputs import preview_simulation_configuration
 
                 staged_manifest, summary = preview_simulation_configuration(
-                    self.root, domain_operations
+                    self.root, preview_directory, domain_operations
                 )
                 atomic_write_json(
                     preview_directory / "garment.json",
@@ -332,6 +333,17 @@ class Project:
                                 f"Missing staged manifest for {change_set.id}"
                             )
                         configured = ProjectManifest.model_validate(read_json(staged))
+                        staged_simulation = (
+                            self.root / f".garmentcad/changesets/{change_set.id}/simulation"
+                        )
+                        if staged_simulation.is_dir():
+                            candidate_root = (
+                                self.root / f".garmentcad/changesets/{change_set.id}"
+                            )
+                            for source in sorted(staged_simulation.rglob("*")):
+                                if source.is_file():
+                                    destination = self.root / source.relative_to(candidate_root)
+                                    atomic_write_bytes(destination, source.read_bytes())
                         for field_name in (
                             "active_body",
                             "active_body_measurements",
@@ -460,6 +472,8 @@ class Project:
             source = snapshot / relative
             if source.exists() and destination.exists():
                 shutil.rmtree(destination)
+        for source in sorted(path for path in snapshot.rglob("*") if path.is_dir()):
+            (self.root / source.relative_to(snapshot)).mkdir(parents=True, exist_ok=True)
         for source in snapshot.rglob("*"):
             if source.is_file():
                 destination = self.root / source.relative_to(snapshot)

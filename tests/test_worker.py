@@ -169,6 +169,46 @@ def test_simulation_configuration_rejects_missing_input_as_preview_issue(tmp_pat
     assert {issue.code for issue in result.summary.issues} == {"invalid_simulation_input"}
 
 
+def test_external_simulation_inputs_are_previewed_committed_and_reverted(tmp_path):
+    project = Project.create(tmp_path / "external-input-project")
+    sources = tmp_path / "external-assets"
+    sources.mkdir()
+    files = {
+        "body.obj": "o body\nv 0 0 0\n",
+        "body.yaml": "body: {}\n",
+        "segmentation.json": "{}\n",
+        "fabric.json": "{}\n",
+        "simulation.json": "{}\n",
+        "camera.json": (
+            '{"schema_version":"1.0","resolution":[64,64],'
+            '"views":[{"name":"front","side":"front"}]}\n'
+        ),
+    }
+    for name, contents in files.items():
+        (sources / name).write_text(contents, encoding="utf-8")
+    result = GarmentSDK(project.root).configure_simulation(
+        body_mesh=str(sources / "body.obj"),
+        body_measurements=str(sources / "body.yaml"),
+        body_segmentation=str(sources / "segmentation.json"),
+        fabric=str(sources / "fabric.json"),
+        simulation_config=str(sources / "simulation.json"),
+        camera_config=str(sources / "camera.json"),
+    )
+    assert result.ok
+    assert not (project.root / "simulation/bodies/body.obj").exists()
+    assert (
+        project.root
+        / f".garmentcad/changesets/{result.token}/simulation/bodies/body.obj"
+    ).exists()
+    project.commit(result.token)
+    assert (project.root / "simulation/bodies/body.obj").exists()
+    assert project.manifest.active_body == "simulation/bodies/body.obj"
+    project.revert(1)
+    assert not (project.root / "simulation/bodies/body.obj").exists()
+    assert (project.root / "simulation/bodies").is_dir()
+    assert project.manifest.active_body is None
+
+
 def test_worker_records_failure_timeout_and_missing_views(tmp_path, monkeypatch):
     project = configured_project(tmp_path)
     payload, content_hash = build_simulation_bundle(project)
