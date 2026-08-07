@@ -317,7 +317,9 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.flipping_by_line"),
                             QStringLiteral("pattern.flipping_by_axis"), QStringLiteral("pattern.piece"),
                             QStringLiteral("pattern.piece_path"), QStringLiteral("pattern.pin"),
-                            QStringLiteral("pattern.place_label")}}};
+                            QStringLiteral("pattern.place_label"), QStringLiteral("pattern.insert_node"),
+                            QStringLiteral("pattern.duplicate_detail"),
+                            QStringLiteral("pattern.object_duplicate")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -1289,6 +1291,124 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         }
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("PlaceLabel"), tool->getId(),
                        aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.insert_node"))
+    {
+        const quint32 pieceId = ResolveObject(arguments.value(QStringLiteral("piece")).toObject(), aliases);
+        const QJsonArray nodeValues = arguments.value(QStringLiteral("nodes")).toArray();
+        if (nodeValues.isEmpty())
+        {
+            throw std::invalid_argument("insert_node requires at least one node");
+        }
+        QVector<VPieceNode> nodes;
+        nodes.reserve(nodeValues.size());
+        for (const QJsonValue value : nodeValues)
+        {
+            const QJsonObject item = value.toObject();
+            VPieceNode node(ResolveObject(item.value(QStringLiteral("object")).toObject(), aliases),
+                            PieceNodeTool(item.value(QStringLiteral("type")).toString(QStringLiteral("point"))),
+                            item.value(QStringLiteral("reverse")).toBool());
+            node.SetExcluded(item.value(QStringLiteral("excluded")).toBool());
+            node.SetPassmark(item.value(QStringLiteral("passmark")).toBool());
+            nodes.append(node);
+        }
+        VToolSeamAllowance::InsertNodes(nodes, pieceId, m_window->m_sceneDetails, m_window->pattern, m_window->doc);
+        // InsertNodes updates the shared container and piece XML through undo, while duplicate-detail deliberately
+        // reads the source tool's snapshot. Refresh that snapshot so subsequent operations in this same change-set
+        // see newly created calculation objects and the updated path.
+        m_window->doc->UpdateToolData(pieceId, m_window->pattern);
+
+        const QJsonObject objects = aliases.value(QStringLiteral("objects")).toObject();
+        QJsonArray changed = summary.value(QStringLiteral("changed")).toArray();
+        for (auto iterator = objects.constBegin(); iterator != objects.constEnd(); ++iterator)
+        {
+            const QJsonObject record = iterator.value().toObject();
+            if (!record.value(QStringLiteral("deleted")).toBool() &&
+                static_cast<quint32>(record.value(QStringLiteral("native_id")).toInteger()) == pieceId)
+            {
+                changed.append(QJsonObject{{QStringLiteral("uuid"), iterator.key()},
+                                           {QStringLiteral("alias"), record.value(QStringLiteral("alias"))}});
+                break;
+            }
+        }
+        summary.insert(QStringLiteral("changed"), changed);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.duplicate_detail"))
+    {
+        const quint32 sourceId = ResolveObject(arguments.value(QStringLiteral("piece")).toObject(), aliases);
+        VToolSeamAllowanceInitData initData;
+        initData.scene = m_window->m_sceneDetails;
+        initData.doc = m_window->doc;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.drawName = m_window->doc->PieceDrawName(sourceId);
+
+        VContainer toolData = VAbstractPattern::getTool(sourceId)->GetDataCopy();
+        initData.data = &toolData;
+        VPiece detail = initData.data->GetPiece(sourceId);
+        if (arguments.contains(QStringLiteral("name")))
+        {
+            detail.SetName(RequiredString(arguments, QStringLiteral("name")));
+        }
+        if (arguments.contains(QStringLiteral("short_name")))
+        {
+            detail.SetShortName(RequiredString(arguments, QStringLiteral("short_name")));
+        }
+        detail.SetMx(detail.GetMx() + VAbstractValApplication::VApp()->toPixel(
+                                          arguments.value(QStringLiteral("offset_x_mm")).toDouble()));
+        detail.SetMy(detail.GetMy() + VAbstractValApplication::VApp()->toPixel(
+                                          arguments.value(QStringLiteral("offset_y_mm")).toDouble()));
+        initData.detail = detail;
+        initData.width = detail.GetFormulaSAWidth();
+        auto *tool = VToolSeamAllowance::Duplicate(initData);
+        if (tool == nullptr)
+        {
+            throw std::runtime_error("Valentina did not duplicate the piece");
+        }
+        tool->RefreshGeometry(true);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Piece"), tool->getId(), aliases,
+                       summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.object_duplicate"))
+    {
+        const QJsonObject source = arguments.value(QStringLiteral("source")).toObject();
+        QJsonObject item{{QStringLiteral("source"), source},
+                         {QStringLiteral("alias"), RequiredString(arguments, QStringLiteral("alias"))}};
+        if (arguments.contains(QStringLiteral("name")))
+        {
+            item.insert(QStringLiteral("name"), RequiredString(arguments, QStringLiteral("name")));
+        }
+        const QJsonArray items{item};
+        VToolMoveInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        QJsonObject rotationOrigin = arguments.value(QStringLiteral("rotation_origin")).toObject();
+        if (rotationOrigin.isEmpty())
+        {
+            rotationOrigin = source;
+        }
+        initData.rotationOrigin = ResolveObject(rotationOrigin, aliases);
+        initData.formulaLength = arguments.contains(QStringLiteral("formula_length"))
+                                     ? RequiredString(arguments, QStringLiteral("formula_length"))
+                                     : NativeFormulaForMillimetres(
+                                           arguments.value(QStringLiteral("length_mm")).toDouble());
+        initData.formulaAngle = arguments.contains(QStringLiteral("formula_angle"))
+                                    ? RequiredString(arguments, QStringLiteral("formula_angle"))
+                                    : QString::number(
+                                          arguments.value(QStringLiteral("angle_deg")).toDouble(), 'g', 15);
+        initData.formulaRotationAngle = QStringLiteral("0");
+        initData.source = operationSources(items);
+        VToolMove::Create(initData);
+        registerDestinations(items, initData.destination, QStringLiteral("DuplicatedObject"));
         return;
     }
 

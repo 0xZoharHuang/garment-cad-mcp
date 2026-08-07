@@ -1129,6 +1129,63 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
     assert 'type="pin"' in annotated_pattern
     assert 'type="placeLabel"' in annotated_pattern
 
+    edited = reopened.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.midpoint",
+                arguments={
+                    "alias": "E",
+                    "first_point": {"alias": "A"},
+                    "second_point": {"alias": "D"},
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.insert_node",
+                arguments={
+                    "piece": {"alias": "front.panel"},
+                    "nodes": [
+                        {
+                            "object": {"alias": "E"},
+                            "type": "point",
+                            "passmark": True,
+                        }
+                    ],
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.duplicate_detail",
+                arguments={
+                    "alias": "back.panel",
+                    "piece": {"alias": "front.panel"},
+                    "name": "Back panel",
+                    "short_name": "Back",
+                    "offset_x_mm": 200,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.object_duplicate",
+                arguments={
+                    "alias": "B.copy",
+                    "source": {"alias": "B"},
+                    "rotation_origin": {"alias": "A"},
+                    "length_mm": 20,
+                    "angle_deg": 0,
+                },
+            ),
+        ]
+    )
+    assert edited.ok
+    assert [item.alias for item in edited.summary.created] == ["E", "back.panel", "B.copy"]
+    assert [item.alias for item in edited.summary.changed] == ["front.panel"]
+    reopened.commit(edited.token)
+    edited_pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'name="Back panel"' in edited_pattern
+    assert edited_pattern.count("<detail ") == 2
+
     annotated = Project.open(project.root)
     reread = annotated.preview(
         operations=[
@@ -1137,7 +1194,13 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
                 action="pattern.object_get",
                 target={"alias": alias},
             )
-            for alias in ("front.fold-guide", "front.label-anchor", "front.button-mark")
+            for alias in (
+                "front.fold-guide",
+                "front.label-anchor",
+                "front.button-mark",
+                "back.panel",
+                "B.copy",
+            )
         ]
     )
     assert reread.ok
@@ -1145,6 +1208,8 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
         "front.fold-guide",
         "front.label-anchor",
         "front.button-mark",
+        "back.panel",
+        "B.copy",
     ]
 
 
