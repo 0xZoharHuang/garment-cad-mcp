@@ -24,6 +24,7 @@ class JobStore:
         self.root.mkdir(parents=True, exist_ok=True)
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="garment-sim")
         self.futures: dict[str, Future[None]] = {}
+        self.processes: dict[str, subprocess.Popen[str]] = {}
         self.lock = threading.Lock()
 
     def path(self, job_id: str) -> Path:
@@ -97,13 +98,27 @@ class JobStore:
                 part.format(input=str(inputs), output=str(outputs))
                 for part in shlex.split(command_text)
             ]
-            process = subprocess.run(command, text=True, capture_output=True, check=False)
-            (directory / "stdout.log").write_text(process.stdout, encoding="utf-8")
-            (directory / "stderr.log").write_text(process.stderr, encoding="utf-8")
+            process = subprocess.Popen(
+                command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            with self.lock:
+                self.processes[job_id] = process
+            timeout = float(os.environ.get("GARMENTCAD_JOB_TIMEOUT_SECONDS", "3600"))
+            try:
+                stdout, stderr = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired as error:
+                process.kill()
+                stdout, stderr = process.communicate()
+                raise RuntimeError(f"Simulation exceeded {timeout:.0f}s timeout") from error
+            finally:
+                with self.lock:
+                    self.processes.pop(job_id, None)
+            (directory / "stdout.log").write_text(stdout, encoding="utf-8")
+            (directory / "stderr.log").write_text(stderr, encoding="utf-8")
+            if self.load(job_id).status == SimulationStatus.CANCELLED:
+                return
             if process.returncode != 0:
-                raise RuntimeError(
-                    process.stderr[-2000:] or f"Simulator exited {process.returncode}"
-                )
+                raise RuntimeError(stderr[-2000:] or f"Simulator exited {process.returncode}")
             artifacts = [
                 str(path.relative_to(directory)) for path in outputs.rglob("*") if path.is_file()
             ]
@@ -119,6 +134,11 @@ class JobStore:
         except Exception as error:  # worker boundary records failures for polling clients
             job.status = SimulationStatus.FAILED
             job.message = str(error)
+            job.diagnostics = {
+                "type": type(error).__name__,
+                "stdout": "stdout.log",
+                "stderr": "stderr.log",
+            }
         self.save(job)
 
     def cancel(self, job_id: str) -> SimulationJob:
@@ -129,9 +149,13 @@ class JobStore:
             job.message = "Cancelled before execution"
             self.save(job)
         elif job.status == SimulationStatus.RUNNING:
-            raise RuntimeError(
-                "The configured subprocess runner does not support safe in-flight cancellation"
-            )
+            process = self.processes.get(job_id)
+            if process is None:
+                raise RuntimeError("Runner process is changing state; retry cancellation")
+            job.status = SimulationStatus.CANCELLED
+            job.message = "Cancellation requested"
+            self.save(job)
+            process.terminate()
         return job
 
 

@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "ObjectRef": {
+      "properties": {
+        "alias": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uuid"
+        }
+      },
+      "title": "ObjectRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/validation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "code": {
+      "title": "Code",
+      "type": "string"
+    },
+    "details": {
+      "additionalProperties": true,
+      "title": "Details",
+      "type": "object"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "objects": {
+      "items": {
+        "$ref": "#/$defs/ObjectRef"
+      },
+      "title": "Objects",
+      "type": "array"
+    },
+    "severity": {
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "required": [
+    "severity",
+    "code",
+    "message"
+  ],
+  "title": "ValidationIssue",
+  "type": "object"
+}

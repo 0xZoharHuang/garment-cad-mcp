@@ -59,6 +59,7 @@ class ChangeSet(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     project_id: str
     base_revision: int
+    base_content_hash: str
     created_at: datetime = Field(default_factory=utc_now)
     author: str = "agent"
     message: str = ""
@@ -93,6 +94,8 @@ class ProjectManifest(BaseModel):
     measurement_files: list[str] = Field(default_factory=list)
     active_body: str | None = None
     active_fabric: str | None = None
+    active_simulation_config: str | None = None
+    active_camera_config: str | None = None
 
 
 class ToolResult(BaseModel):
@@ -102,7 +105,13 @@ class ToolResult(BaseModel):
     preview_token: str | None = None
     summary: ChangeSummary = Field(default_factory=ChangeSummary)
     resources: list[str] = Field(default_factory=list)
+    thumbnails: list[str] = Field(default_factory=list)
     message: str = ""
+
+    @property
+    def token(self) -> str | None:
+        """Recipe-friendly alias used by ``g.commit(preview.token)``."""
+        return self.preview_token
 
 
 class SimulationStatus(StrEnum):
@@ -124,3 +133,52 @@ class SimulationJob(BaseModel):
     progress: float = 0.0
     message: str = ""
     artifacts: list[str] = Field(default_factory=list)
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
+
+
+class AssemblyEdge(BaseModel):
+    id: str
+    start: int
+    end: int
+    curve: dict[str, Any] | None = None
+    alias: str | None = None
+    label: str | None = None
+
+
+class AssemblyPanel(BaseModel):
+    id: str
+    alias: str
+    vertices_mm: list[tuple[float, float]]
+    edges: list[AssemblyEdge]
+    translation_mm: tuple[float, float, float] = (0, 0, 0)
+    rotation_deg: tuple[float, float, float] = (0, 0, 0)
+    grainline_deg: float | None = None
+    seam_allowance_mm: float | None = None
+    component: str | None = None
+
+
+class AssemblyInterface(BaseModel):
+    id: str
+    alias: str
+    panel_id: str
+    edge_indices: list[int]
+    edge_ids: list[str] = Field(default_factory=list)
+    reverse: bool = False
+
+
+class AssemblyStitch(BaseModel):
+    id: str
+    alias: str
+    interface_a: str
+    interface_b: str
+    direction: Literal["same", "opposed", "auto"] = "auto"
+
+
+class AssemblyDocument(BaseModel):
+    schema_version: str = "1.0"
+    units: Literal["mm"] = "mm"
+    source_revision: int | None = None
+    panels: dict[str, AssemblyPanel] = Field(default_factory=dict)
+    interfaces: dict[str, AssemblyInterface] = Field(default_factory=dict)
+    stitches: dict[str, AssemblyStitch] = Field(default_factory=dict)
+    components: dict[str, list[str]] = Field(default_factory=dict)

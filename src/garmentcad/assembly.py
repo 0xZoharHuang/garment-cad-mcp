@@ -47,6 +47,20 @@ def _panel_edges(vertices: list[list[float]]) -> list[dict[str, Any]]:
     ]
 
 
+def _panel_ref(value: Any) -> ObjectRef:
+    if isinstance(value, str):
+        return ObjectRef(uuid=value) if len(value) == 36 else ObjectRef(alias=value)
+    return ObjectRef.model_validate(value)
+
+
+def _distance(first: list[float], second: list[float]) -> float:
+    return math.hypot(second[0] - first[0], second[1] - first[1])
+
+
+def _lerp(first: list[float], second: list[float], fraction: float) -> list[float]:
+    return [first[index] + (second[index] - first[index]) * fraction for index in range(2)]
+
+
 def apply_operations(
     source: dict[str, Any], operations: list[Operation]
 ) -> tuple[dict[str, Any], ChangeSummary]:
@@ -59,6 +73,7 @@ def apply_operations(
             item.get("id", str(uuid4())): item for item in state.get("stitches", [])
         }
     state.setdefault("stitches", {})
+    state.setdefault("components", {})
     summary = ChangeSummary()
 
     for operation in operations:
@@ -83,6 +98,7 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
     panels = state["panels"]
     interfaces = state["interfaces"]
     stitches = state["stitches"]
+    components = state["components"]
 
     if action == "panel.create":
         vertices = [_point(point) for point in args["vertices_mm"]]
@@ -124,6 +140,133 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
         if "rotation_deg" in args:
             panel["rotation_deg"] = _point(args["rotation_deg"], 3)
         summary.changed.append(ObjectRef(uuid=object_id, alias=panel.get("alias")))
+    elif action == "panel.mirror":
+        source_id = _resolve(panels, operation.target)
+        source = panels[source_id]
+        axis = str(args.get("axis", "x"))
+        if axis not in {"x", "y"}:
+            raise ValueError("axis must be x or y")
+        origin = float(args.get("origin_mm", 0))
+        coordinate = 0 if axis == "x" else 1
+        vertices = copy.deepcopy(source["vertices_mm"])
+        for point in vertices:
+            point[coordinate] = 2 * origin - point[coordinate]
+        vertices.reverse()
+        object_id = str(args.get("uuid") or uuid4())
+        alias = str(args["alias"])
+        panels[object_id] = {
+            **{
+                key: copy.deepcopy(value)
+                for key, value in source.items()
+                if key not in {"id", "alias", "edges", "vertices_mm"}
+            },
+            "id": object_id,
+            "alias": alias,
+            "vertices_mm": vertices,
+            "edges": _panel_edges(vertices),
+        }
+        summary.created.append(ObjectRef(uuid=object_id, alias=alias))
+    elif action == "edge.split":
+        panel_id = _resolve(panels, _panel_ref(args["panel"]))
+        panel = panels[panel_id]
+        edge_index = int(args["edge_index"])
+        fractions = sorted({float(value) for value in args["fractions"]})
+        if not fractions or fractions[0] <= 0 or fractions[-1] >= 1:
+            raise ValueError("fractions must contain values strictly between 0 and 1")
+        edges = panel["edges"]
+        if edge_index < 0 or edge_index >= len(edges):
+            raise ValueError("edge_index is out of range")
+        original = edges[edge_index]
+        vertices = panel["vertices_mm"]
+        start = vertices[original["start"]]
+        end = vertices[original["end"]]
+        inserted = [_lerp(start, end, fraction) for fraction in fractions]
+        insertion_index = edge_index + 1
+        vertices[insertion_index:insertion_index] = inserted
+        new_edges = _panel_edges(vertices)
+        replacement = new_edges[edge_index : edge_index + len(fractions) + 1]
+        replacement[0]["id"] = original["id"]
+        replacement[0]["alias"] = original.get("alias")
+        panel["edges"] = new_edges
+        split_ids = [edge["id"] for edge in replacement]
+        for interface in interfaces.values():
+            ids = interface.get("edge_ids", [])
+            if original["id"] in ids:
+                position = ids.index(original["id"])
+                ids[position : position + 1] = split_ids
+        summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
+    elif action == "edge.extend":
+        panel_id = _resolve(panels, _panel_ref(args["panel"]))
+        panel = panels[panel_id]
+        edge = panel["edges"][int(args["edge_index"])]
+        start = panel["vertices_mm"][edge["start"]]
+        end = panel["vertices_mm"][edge["end"]]
+        length = _distance(start, end)
+        if math.isclose(length, 0):
+            raise ValueError("Cannot extend a zero-length edge")
+        unit = [(end[index] - start[index]) / length for index in range(2)]
+        start_delta = float(args.get("start_delta_mm", 0))
+        end_delta = float(args.get("end_delta_mm", 0))
+        panel["vertices_mm"][edge["start"]] = [
+            start[index] - unit[index] * start_delta for index in range(2)
+        ]
+        panel["vertices_mm"][edge["end"]] = [
+            end[index] + unit[index] * end_delta for index in range(2)
+        ]
+        summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
+    elif action == "edge.chamfer":
+        panel_id = _resolve(panels, _panel_ref(args["panel"]))
+        panel = panels[panel_id]
+        vertices = panel["vertices_mm"]
+        vertex_index = int(args["vertex_index"])
+        current = vertices[vertex_index]
+        previous = vertices[(vertex_index - 1) % len(vertices)]
+        following = vertices[(vertex_index + 1) % len(vertices)]
+        before = float(args["distance_before_mm"])
+        after = float(args.get("distance_after_mm", before))
+        first = _lerp(current, previous, before / _distance(current, previous))
+        second = _lerp(current, following, after / _distance(current, following))
+        vertices[vertex_index : vertex_index + 1] = [first, second]
+        panel["edges"] = _panel_edges(vertices)
+        summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
+    elif action == "dart.insert":
+        panel_id = _resolve(panels, _panel_ref(args["panel"]))
+        panel = panels[panel_id]
+        edge_index = int(args["edge_index"])
+        edge = panel["edges"][edge_index]
+        start = panel["vertices_mm"][edge["start"]]
+        end = panel["vertices_mm"][edge["end"]]
+        position = float(args.get("position", 0.5))
+        intake = float(args["intake_mm"])
+        depth = float(args["depth_mm"])
+        length = _distance(start, end)
+        center = _lerp(start, end, position)
+        unit = [(end[index] - start[index]) / length for index in range(2)]
+        normal = [-unit[1], unit[0]]
+        leg_a = [center[index] - unit[index] * intake / 2 for index in range(2)]
+        apex = [center[index] + normal[index] * depth for index in range(2)]
+        leg_b = [center[index] + unit[index] * intake / 2 for index in range(2)]
+        insertion_index = edge_index + 1
+        panel["vertices_mm"][insertion_index:insertion_index] = [leg_a, apex, leg_b]
+        panel["edges"] = _panel_edges(panel["vertices_mm"])
+        summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
+    elif action == "component.define":
+        alias = str(args["alias"])
+        components[alias] = [_resolve(panels, _panel_ref(value)) for value in args["panels"]]
+        summary.changed.extend(
+            ObjectRef(uuid=panel_id, alias=panels[panel_id].get("alias"))
+            for panel_id in components[alias]
+        )
+    elif action == "valentina.import":
+        from garmentcad.valentina_bridge import snapshot_to_assembly
+
+        imported = snapshot_to_assembly(args["snapshot"], args.get("sidecar"))
+        state.clear()
+        state.update(imported)
+        summary.created.extend(
+            ObjectRef(uuid=panel_id, alias=panel.get("alias"))
+            for panel_id, panel in state["panels"].items()
+        )
     elif action == "interface.define":
         panel_ref = ObjectRef.model_validate(args["panel"])
         panel_id = _resolve(panels, panel_ref)
@@ -135,6 +278,7 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
             "alias": alias,
             "panel_id": panel_id,
             "edge_indices": edge_indices,
+            "edge_ids": [panels[panel_id]["edges"][index]["id"] for index in edge_indices],
             "reverse": bool(args.get("reverse", False)),
         }
         summary.created.append(ObjectRef(uuid=object_id, alias=alias))
@@ -187,6 +331,17 @@ def validate_assembly(state: dict[str, Any]) -> list[ValidationIssue]:
                     objects=[ObjectRef(uuid=panel_id, alias=panel.get("alias"))],
                 )
             )
+        intersections = _self_intersections(vertices)
+        if intersections:
+            issues.append(
+                ValidationIssue(
+                    severity="error",
+                    code="panel_self_intersection",
+                    message=f"Panel {panel.get('alias', panel_id)} self-intersects",
+                    objects=[ObjectRef(uuid=panel_id, alias=panel.get("alias"))],
+                    details={"edge_pairs": intersections},
+                )
+            )
     for interface_id, interface in interfaces.items():
         panel = panels.get(interface.get("panel_id"))
         if panel is None:
@@ -199,6 +354,23 @@ def validate_assembly(state: dict[str, Any]) -> list[ValidationIssue]:
             )
             continue
         edge_count = len(panel.get("edges", []))
+        if interface.get("edge_ids"):
+            by_id = {edge["id"]: index for index, edge in enumerate(panel["edges"])}
+            missing = [edge_id for edge_id in interface["edge_ids"] if edge_id not in by_id]
+            if missing:
+                issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        code="missing_edge",
+                        message=(
+                            f"Interface {interface.get('alias', interface_id)} "
+                            "references deleted edges"
+                        ),
+                        details={"edge_ids": missing},
+                    )
+                )
+            else:
+                interface["edge_indices"] = [by_id[edge_id] for edge_id in interface["edge_ids"]]
         if any(index < 0 or index >= edge_count for index in interface.get("edge_indices", [])):
             issues.append(
                 ValidationIssue(
@@ -235,7 +407,59 @@ def validate_assembly(state: dict[str, Any]) -> list[ValidationIssue]:
                     ),
                 )
             )
+            continue
+        lengths = []
+        for interface_key in ("interface_a", "interface_b"):
+            interface = interfaces[stitch[interface_key]]
+            panel = panels[interface["panel_id"]]
+            edge_ids = interface.get("edge_ids", [])
+            selected = (
+                [edge for edge in panel["edges"] if edge["id"] in edge_ids]
+                if edge_ids
+                else [panel["edges"][index] for index in interface["edge_indices"]]
+            )
+            lengths.append(
+                sum(
+                    _distance(
+                        panel["vertices_mm"][edge["start"]],
+                        panel["vertices_mm"][edge["end"]],
+                    )
+                    for edge in selected
+                )
+            )
+        difference = abs(lengths[0] - lengths[1])
+        if difference > 3.0:
+            issues.append(
+                ValidationIssue(
+                    severity="warning",
+                    code="seam_length_mismatch",
+                    message=(
+                        f"Stitch {stitch.get('alias', stitch_id)} differs by {difference:.2f} mm"
+                    ),
+                    details={"side_lengths_mm": lengths, "difference_mm": difference},
+                )
+            )
     return issues
+
+
+def _self_intersections(vertices: list[list[float]]) -> list[list[int]]:
+    def orientation(a: list[float], b: list[float], c: list[float]) -> float:
+        return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+
+    count = len(vertices)
+    intersections = []
+    for first in range(count):
+        a, b = vertices[first], vertices[(first + 1) % count]
+        for second in range(first + 1, count):
+            if second in {first, (first + 1) % count, (first - 1) % count}:
+                continue
+            c, d = vertices[second], vertices[(second + 1) % count]
+            if (
+                orientation(a, b, c) * orientation(a, b, d) < 0
+                and orientation(c, d, a) * orientation(c, d, b) < 0
+            ):
+                intersections.append([first, second])
+    return intersections
 
 
 def preview_assembly(
@@ -278,3 +502,31 @@ def to_garmentcode(state: dict[str, Any]) -> dict[str, Any]:
         "pattern": {"panels": pattern_panels, "stitches": stitches},
         "properties": {"units_in_meter": 100, "curvature_coords": "relative"},
     }
+
+
+def thumbnail_svg(state: dict[str, Any], width: int = 640, height: int = 480) -> str:
+    polygons = [panel.get("vertices_mm", []) for panel in state.get("panels", {}).values()]
+    points = [point for polygon in polygons for point in polygon]
+    if not points:
+        return (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">'
+            '<rect width="100%" height="100%" fill="#f7f7f5"/></svg>'
+        )
+    min_x = min(point[0] for point in points)
+    max_x = max(point[0] for point in points)
+    min_y = min(point[1] for point in points)
+    max_y = max(point[1] for point in points)
+    scale = min((width - 40) / max(max_x - min_x, 1), (height - 40) / max(max_y - min_y, 1))
+    shapes = []
+    for panel in state.get("panels", {}).values():
+        coordinates = " ".join(
+            f"{20 + (point[0] - min_x) * scale:.2f},{height - 20 - (point[1] - min_y) * scale:.2f}"
+            for point in panel["vertices_mm"]
+        )
+        shapes.append(
+            f'<polygon points="{coordinates}" fill="#dce9f7" stroke="#183153" stroke-width="2"/>'
+        )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">'
+        '<rect width="100%" height="100%" fill="#f7f7f5"/>' + "".join(shapes) + "</svg>"
+    )

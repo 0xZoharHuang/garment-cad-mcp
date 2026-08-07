@@ -1,0 +1,15 @@
+{
+  "valentina": {
+    "path": "upstream/valentina",
+    "revision": "b75c9bff3be3f2f8e07d95778f953538799f4cd5",
+    "tag": "v1.1.0"
+  },
+  "garmentcode": {
+    "path": "upstream/garmentcode",
+    "revision": "d449629979028123a5c4dc9e732a2ec19b7fce31"
+  },
+  "nvidia-warp-garmentcode": {
+    "path": "upstream/nvidia-warp-garmentcode",
+    "revision": "63baf6855efdd89b2834b74640f84b3bb0d86b50"
+  }
+}

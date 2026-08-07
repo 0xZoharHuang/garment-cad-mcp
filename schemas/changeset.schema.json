@@ -1,0 +1,240 @@
+{
+  "$defs": {
+    "ChangeSummary": {
+      "properties": {
+        "changed": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Changed",
+          "type": "array"
+        },
+        "created": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Created",
+          "type": "array"
+        },
+        "deleted": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Deleted",
+          "type": "array"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/ValidationIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "measurements": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Measurements",
+          "type": "object"
+        }
+      },
+      "title": "ChangeSummary",
+      "type": "object"
+    },
+    "ObjectRef": {
+      "properties": {
+        "alias": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uuid"
+        }
+      },
+      "title": "ObjectRef",
+      "type": "object"
+    },
+    "Operation": {
+      "properties": {
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "domain": {
+          "$ref": "#/$defs/OperationDomain"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "domain",
+        "action"
+      ],
+      "title": "Operation",
+      "type": "object"
+    },
+    "OperationDomain": {
+      "enum": [
+        "project",
+        "pattern",
+        "measurements",
+        "layout",
+        "assembly",
+        "simulation",
+        "export"
+      ],
+      "title": "OperationDomain",
+      "type": "string"
+    },
+    "ValidationIssue": {
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "objects": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Objects",
+          "type": "array"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "code",
+        "message"
+      ],
+      "title": "ValidationIssue",
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/changeset.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "author": {
+      "default": "agent",
+      "title": "Author",
+      "type": "string"
+    },
+    "base_content_hash": {
+      "title": "Base Content Hash",
+      "type": "string"
+    },
+    "base_revision": {
+      "title": "Base Revision",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "message": {
+      "default": "",
+      "title": "Message",
+      "type": "string"
+    },
+    "operations": {
+      "items": {
+        "$ref": "#/$defs/Operation"
+      },
+      "title": "Operations",
+      "type": "array"
+    },
+    "preview_resources": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Preview Resources",
+      "type": "array"
+    },
+    "project_id": {
+      "title": "Project Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "default": "preview",
+      "enum": [
+        "preview",
+        "committed",
+        "discarded"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "summary": {
+      "$ref": "#/$defs/ChangeSummary"
+    }
+  },
+  "required": [
+    "project_id",
+    "base_revision",
+    "base_content_hash",
+    "operations"
+  ],
+  "title": "ChangeSet",
+  "type": "object"
+}

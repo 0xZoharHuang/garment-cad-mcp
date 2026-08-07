@@ -1,0 +1,42 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "macos-arm64-debug",
+      "displayName": "macOS arm64 development",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cmake-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "python-check",
+      "configurePreset": "macos-arm64-debug",
+      "targets": ["python-check"]
+    },
+    {
+      "name": "valentina-guis",
+      "configurePreset": "macos-arm64-debug",
+      "targets": ["valentina-guis"],
+      "jobs": 8
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "verify",
+      "steps": [
+        {"type": "configure", "name": "macos-arm64-debug"},
+        {"type": "build", "name": "python-check"}
+      ]
+    }
+  ]
+}

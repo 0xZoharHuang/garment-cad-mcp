@@ -1,6 +1,8 @@
 .DS_Store
 .venv/
 .venv-*/
+.conda/
+.garment-worker/
 .pytest_cache/
 .ruff_cache/
 __pycache__/

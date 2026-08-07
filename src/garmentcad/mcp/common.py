@@ -1,71 +1,98 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from garmentcad.catalog import ToolSpec, catalog_payload
+from garmentcad.artifacts import ArtifactStore
+from garmentcad.catalog import ToolSpec
 from garmentcad.models import OperationDomain
 from garmentcad.project import Project
 from garmentcad.sdk import execute_atomic
-from garmentcad.simulation import SimulationClient
+from garmentcad.storage import read_json
 
 
 def result_payload(value: Any) -> dict[str, Any]:
     return value.model_dump(mode="json") if hasattr(value, "model_dump") else value
 
 
-def add_project_tools(server: FastMCP, kind: str) -> None:
-    @server.tool(name="project_create")
-    def project_create(path: str, name: str | None = None) -> dict[str, Any]:
-        """Create an empty transactional garment project directory."""
-        return Project.create(path, name).status()
+def add_core_tools(
+    server: FastMCP,
+    specs: tuple[ToolSpec, ...],
+    lazy_loader: Callable[[set[str]], None],
+) -> None:
+    loaded: set[str] = set()
+
+    @server.tool(name="project_open")
+    def project_open(path: str) -> dict[str, Any]:
+        """Open an existing Garment Project and return compact current state."""
+        return Project.open(path).status()
 
     @server.tool(name="project_status")
     def project_status(path: str) -> dict[str, Any]:
-        """Read project identity, revision, hash, and pending-operation count."""
+        """Refresh revision, content hash, GUI-dirty state, and project identity."""
         return Project.open(path).status()
 
-    @server.tool(name="project_commit")
-    def project_commit(path: str, preview_token: str) -> dict[str, Any]:
-        """Commit one preview if its base revision is still current."""
+    @server.tool(name="catalog_search")
+    def catalog_search(query: str, limit: int = 20, load: bool = True) -> dict[str, Any]:
+        """Search atomic tools by name/action/description and optionally load matches."""
+        terms = [term.lower() for term in query.split() if term]
+        matches = []
+        for spec in specs:
+            haystack = f"{spec.name} {spec.action} {spec.description}".lower()
+            if all(term in haystack for term in terms):
+                matches.append(spec)
+            if len(matches) >= max(1, min(limit, 100)):
+                break
+        names = {spec.name for spec in matches}
+        if load:
+            lazy_loader(names - loaded)
+            loaded.update(names)
+        return {
+            "matches": [spec.__dict__ for spec in matches],
+            "loaded": sorted(names) if load else [],
+            "message": "Refresh the MCP tool list after loading before calling an atomic tool.",
+        }
+
+    @server.tool(name="resource_read")
+    def resource_read(project_path: str, uri: str) -> dict[str, Any]:
+        """Read a project change-set, preview, thumbnail, or content-addressed artifact."""
+        project = Project.open(project_path)
+        prefix = f"garment://project/{project.manifest.project_id}/changeset/"
+        if uri.startswith(prefix):
+            suffix = uri[len(prefix) :]
+            parts = suffix.split("/")
+            token = parts[0]
+            base = project.root / ".garmentcad/changesets" / token
+            if len(parts) == 1:
+                value = read_json(base.with_suffix(".json"))
+                if value is None:
+                    raise FileNotFoundError(uri)
+                return {"media_type": "application/json", "data": value}
+            allowed = {"assembly": "assembly.json", "thumbnail": "thumbnail.svg"}
+            filename = allowed.get(parts[1])
+            if filename is None:
+                raise ValueError("Unsupported change-set resource")
+            path = base / filename
+            if filename.endswith(".json"):
+                return {"media_type": "application/json", "data": read_json(path)}
+            return {"media_type": "image/svg+xml", "text": path.read_text(encoding="utf-8")}
+        artifact_prefix = "garment://artifact/sha256/"
+        if uri.startswith(artifact_prefix):
+            digest = uri[len(artifact_prefix) :]
+            path, metadata = ArtifactStore(project.root).resolve(digest)
+            return {
+                "media_type": metadata["media_type"],
+                "metadata": metadata,
+                "local_path": str(path),
+            }
+        raise ValueError("URI does not belong to this project")
+
+    @server.tool(name="changeset_commit")
+    def changeset_commit(path: str, preview_token: str) -> dict[str, Any]:
+        """Atomically commit one valid preview at its recorded base revision/hash."""
         return result_payload(Project.open(path).commit(preview_token))
-
-    @server.tool(name="project_discard")
-    def project_discard(path: str, preview_token: str) -> dict[str, Any]:
-        """Discard one uncommitted preview."""
-        Project.open(path).discard(preview_token)
-        return {"ok": True, "preview_token": preview_token}
-
-    @server.tool(name="project_revert")
-    def project_revert(path: str, revision: int, author: str = "agent") -> dict[str, Any]:
-        """Reverse one committed revision by creating a new append-only revision."""
-        return result_payload(Project.open(path).revert(revision, author=author))
-
-    @server.tool(name="simulation_submit")
-    def simulation_submit(path: str, worker_url: str | None = None) -> dict[str, Any]:
-        """Upload the current revision to the configured GPU simulation worker."""
-        return SimulationClient(worker_url).submit(Project.open(path))
-
-    @server.tool(name="simulation_status")
-    def simulation_status(job_id: str, worker_url: str | None = None) -> dict[str, Any]:
-        """Poll a GPU simulation job and return render artifact paths when complete."""
-        return SimulationClient(worker_url).status(job_id)
-
-    @server.tool(name="tool_catalog")
-    def tool_catalog() -> list[dict[str, str]]:
-        """List stable atomic commands exposed by this server."""
-        return catalog_payload(kind)
-
-    @server.resource("garment://file/{path}")
-    def garment_file(path: str) -> str:
-        """Read a JSON project resource. Absolute paths are intentionally required."""
-        resolved = Path("/" + path.lstrip("/")).resolve()
-        if resolved.suffix not in {".json", ".val", ".vit", ".vst"}:
-            raise ValueError("Unsupported resource type")
-        return resolved.read_text(encoding="utf-8")
 
 
 def register_atomic(server: FastMCP, spec: ToolSpec, domain: OperationDomain) -> None:
@@ -95,7 +122,3 @@ def register_atomic(server: FastMCP, spec: ToolSpec, domain: OperationDomain) ->
         spec.description + " Defaults to preview-only; commit requires explicit true."
     )
     server.tool(name=spec.name)(atomic_tool)
-
-
-def json_text(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, indent=2)

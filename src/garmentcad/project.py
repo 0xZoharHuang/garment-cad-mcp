@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from garmentcad.assembly import preview_assembly
+from garmentcad.assembly import preview_assembly, thumbnail_svg
 from garmentcad.backends import JsonLineCommandBackend, ProjectMetadataBackend, merge_summaries
 from garmentcad.errors import ChangeSetNotFoundError, ProjectNotFoundError, StaleRevisionError
 from garmentcad.locking import ProjectLock
@@ -35,6 +35,8 @@ DIRECTORIES = (
     "assembly",
     "simulation/bodies",
     "simulation/fabrics",
+    "simulation/config",
+    "simulation/cameras",
     "artifacts",
     ".garmentcad/changesets",
     ".garmentcad/revisions",
@@ -65,12 +67,27 @@ class CommandNamespace:
             reference = ObjectRef(alias=target)
         operation = Operation(
             domain=self.domain,
-            action=self.prefix,
+            action=self._contract_action(),
             target=reference,
             arguments=arguments,
         )
         self.project.stage(operation)
         return operation
+
+    def _contract_action(self) -> str:
+        parts = self.prefix.split(".")
+        if self.domain == OperationDomain.PATTERN:
+            leaf = parts[-1]
+            aliases = {"create": parts[-2] if len(parts) > 1 else "create"}
+            return f"pattern.{aliases.get(leaf, leaf)}"
+        if self.domain == OperationDomain.MEASUREMENTS:
+            return f"measurement.{parts[-1]}"
+        if self.domain == OperationDomain.LAYOUT:
+            return f"layout.{parts[-1]}"
+        if self.domain == OperationDomain.ASSEMBLY:
+            assembly_aliases = {"stitch": "stitch.create", "panel": "panel.create"}
+            return assembly_aliases.get(parts[-1], self.prefix)
+        return f"{self.domain.value}.{self.prefix}"
 
 
 class Project:
@@ -130,11 +147,16 @@ class Project:
 
     @staticmethod
     def _content_hash_static(root: Path) -> str:
-        tracked = []
-        for relative in ("garment.json", "pattern/main.val", "assembly/assembly.json"):
-            path = root / relative
-            if path.exists():
-                tracked.append((relative, sha256_file(path)))
+        tracked: list[tuple[str, str]] = []
+        roots = [root / "garment.json"]
+        for directory in ("pattern", "measurements", "layout", "assembly", "simulation"):
+            base = root / directory
+            if base.exists():
+                roots.extend(path for path in base.rglob("*") if path.is_file())
+        for path in roots:
+            if path.is_file():
+                tracked.append((str(path.relative_to(root)), sha256_file(path)))
+        tracked.sort()
         return sha256_bytes(canonical_json(tracked))
 
     @property
@@ -169,6 +191,7 @@ class Project:
         change_set = ChangeSet(
             project_id=self.manifest.project_id,
             base_revision=self.current_revision,
+            base_content_hash=self._content_hash_static(self.root),
             author=author,
             message=message,
             operations=selected,
@@ -179,6 +202,9 @@ class Project:
             if domain == OperationDomain.ASSEMBLY:
                 assembly, summary = preview_assembly(self.root, domain_operations)
                 atomic_write_json(preview_directory / "assembly.json", assembly)
+                (preview_directory / "thumbnail.svg").write_text(
+                    thumbnail_svg(assembly), encoding="utf-8"
+                )
                 change_set.preview_resources.append(
                     f"garment://project/{change_set.project_id}/changeset/{change_set.id}/assembly"
                 )
@@ -208,6 +234,11 @@ class Project:
             preview_token=change_set.id,
             summary=change_set.summary,
             resources=[f"garment://project/{change_set.project_id}/changeset/{change_set.id}"],
+            thumbnails=[
+                f"garment://project/{change_set.project_id}/changeset/{change_set.id}/thumbnail"
+            ]
+            if (preview_directory / "thumbnail.svg").exists()
+            else [],
             message="Preview created",
         )
 
@@ -225,6 +256,12 @@ class Project:
                 raise StaleRevisionError(
                     f"Preview is based on revision {change_set.base_revision}; "
                     f"current revision is {manifest.current_revision}"
+                )
+            current_hash = self._content_hash_static(self.root)
+            if current_hash != change_set.base_content_hash:
+                raise StaleRevisionError(
+                    "Project files changed after preview (possibly through a GUI); "
+                    "refresh and preview again"
                 )
             next_revision = manifest.current_revision + 1
             snapshot = self._snapshot(next_revision)
@@ -364,11 +401,14 @@ class Project:
 
     def status(self) -> dict[str, Any]:
         manifest = self.manifest
+        current_hash = self._content_hash_static(self.root)
+        revision = read_json(self.root / f".garmentcad/revisions/{manifest.current_revision}.json")
         return {
             "root": str(self.root),
             "project": manifest.model_dump(mode="json"),
             "pending_operations": len(self._pending),
-            "content_hash": self._content_hash_static(self.root),
+            "content_hash": current_hash,
+            "externally_modified": bool(revision and revision.get("content_hash") != current_hash),
         }
 
     def __enter__(self) -> Project:

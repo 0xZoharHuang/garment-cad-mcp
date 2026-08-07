@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "ObjectRef": {
+      "properties": {
+        "alias": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uuid"
+        }
+      },
+      "title": "ObjectRef",
+      "type": "object"
+    },
+    "OperationDomain": {
+      "enum": [
+        "project",
+        "pattern",
+        "measurements",
+        "layout",
+        "assembly",
+        "simulation",
+        "export"
+      ],
+      "title": "OperationDomain",
+      "type": "string"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/command.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "action": {
+      "title": "Action",
+      "type": "string"
+    },
+    "arguments": {
+      "additionalProperties": true,
+      "title": "Arguments",
+      "type": "object"
+    },
+    "domain": {
+      "$ref": "#/$defs/OperationDomain"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "domain",
+    "action"
+  ],
+  "title": "Operation",
+  "type": "object"
+}

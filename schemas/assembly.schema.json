@@ -1,0 +1,329 @@
+{
+  "$defs": {
+    "AssemblyEdge": {
+      "properties": {
+        "alias": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        },
+        "curve": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Curve"
+        },
+        "end": {
+          "title": "End",
+          "type": "integer"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "start": {
+          "title": "Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "start",
+        "end"
+      ],
+      "title": "AssemblyEdge",
+      "type": "object"
+    },
+    "AssemblyInterface": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        },
+        "edge_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Edge Ids",
+          "type": "array"
+        },
+        "edge_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Edge Indices",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "panel_id": {
+          "title": "Panel Id",
+          "type": "string"
+        },
+        "reverse": {
+          "default": false,
+          "title": "Reverse",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "alias",
+        "panel_id",
+        "edge_indices"
+      ],
+      "title": "AssemblyInterface",
+      "type": "object"
+    },
+    "AssemblyPanel": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        },
+        "component": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Component"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/AssemblyEdge"
+          },
+          "title": "Edges",
+          "type": "array"
+        },
+        "grainline_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Grainline Deg"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "rotation_deg": {
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Rotation Deg",
+          "type": "array"
+        },
+        "seam_allowance_mm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seam Allowance Mm"
+        },
+        "translation_mm": {
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Translation Mm",
+          "type": "array"
+        },
+        "vertices_mm": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Vertices Mm",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "alias",
+        "vertices_mm",
+        "edges"
+      ],
+      "title": "AssemblyPanel",
+      "type": "object"
+    },
+    "AssemblyStitch": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        },
+        "direction": {
+          "default": "auto",
+          "enum": [
+            "same",
+            "opposed",
+            "auto"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "interface_a": {
+          "title": "Interface A",
+          "type": "string"
+        },
+        "interface_b": {
+          "title": "Interface B",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "alias",
+        "interface_a",
+        "interface_b"
+      ],
+      "title": "AssemblyStitch",
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/assembly.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "components": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Components",
+      "type": "object"
+    },
+    "interfaces": {
+      "additionalProperties": {
+        "$ref": "#/$defs/AssemblyInterface"
+      },
+      "title": "Interfaces",
+      "type": "object"
+    },
+    "panels": {
+      "additionalProperties": {
+        "$ref": "#/$defs/AssemblyPanel"
+      },
+      "title": "Panels",
+      "type": "object"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_revision": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Revision"
+    },
+    "stitches": {
+      "additionalProperties": {
+        "$ref": "#/$defs/AssemblyStitch"
+      },
+      "title": "Stitches",
+      "type": "object"
+    },
+    "units": {
+      "const": "mm",
+      "default": "mm",
+      "title": "Units",
+      "type": "string"
+    }
+  },
+  "title": "AssemblyDocument",
+  "type": "object"
+}

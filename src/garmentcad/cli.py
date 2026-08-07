@@ -51,6 +51,15 @@ def simulation_status(job_id: str, worker_url: str | None = None) -> None:
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
 
+@app.command("simulation-download")
+def simulation_download(
+    job_id: str, path: Path | None = None, worker_url: str | None = None
+) -> None:
+    project = Project.open(path or Path.cwd())
+    result = SimulationClient(worker_url).download(project, job_id)
+    typer.echo(json.dumps({"resources": result}, ensure_ascii=False, indent=2))
+
+
 @app.command("revert")
 def revert_revision(revision: int, path: Path | None = None) -> None:
     result = Project.open(path or Path.cwd()).revert(revision)

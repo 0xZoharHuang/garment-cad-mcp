@@ -1,0 +1,186 @@
+{
+  "$defs": {
+    "ChangeSummary": {
+      "properties": {
+        "changed": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Changed",
+          "type": "array"
+        },
+        "created": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Created",
+          "type": "array"
+        },
+        "deleted": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Deleted",
+          "type": "array"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/ValidationIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "measurements": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Measurements",
+          "type": "object"
+        }
+      },
+      "title": "ChangeSummary",
+      "type": "object"
+    },
+    "ObjectRef": {
+      "properties": {
+        "alias": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uuid"
+        }
+      },
+      "title": "ObjectRef",
+      "type": "object"
+    },
+    "ValidationIssue": {
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "objects": {
+          "items": {
+            "$ref": "#/$defs/ObjectRef"
+          },
+          "title": "Objects",
+          "type": "array"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "code",
+        "message"
+      ],
+      "title": "ValidationIssue",
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/tool-result.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "message": {
+      "default": "",
+      "title": "Message",
+      "type": "string"
+    },
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "preview_token": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Preview Token"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "resources": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revision"
+    },
+    "summary": {
+      "$ref": "#/$defs/ChangeSummary"
+    },
+    "thumbnails": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Thumbnails",
+      "type": "array"
+    }
+  },
+  "required": [
+    "ok"
+  ],
+  "title": "ToolResult",
+  "type": "object"
+}
