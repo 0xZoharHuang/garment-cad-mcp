@@ -62,11 +62,11 @@ class JsonLineCommandBackend:
                         message = f"{error['code']}: {message}"
                 except json.JSONDecodeError:
                     message = message or process.stdout.strip()
-            raise CommandBackendUnavailable(message or "Valentina command failed")
+            raise CommandBackendUnavailable(message or "Native CAD command failed")
         try:
             return json.loads(process.stdout)
         except json.JSONDecodeError as exc:
-            raise CommandBackendUnavailable("Valentina returned invalid JSON") from exc
+            raise CommandBackendUnavailable("Native CAD host returned invalid JSON") from exc
 
     def preview(
         self, project_root: Path, change_set_id: str, operations: list[Operation]
@@ -92,6 +92,38 @@ class JsonLineCommandBackend:
                 "change_set_id": change_set_id,
             }
         )
+
+
+class NativeCommandRouter:
+    """Route one project transaction across the native Valentina and Puzzle hosts."""
+
+    def __init__(self) -> None:
+        self.valentina = JsonLineCommandBackend("GARMENTCAD_VALENTINA_COMMAND")
+        self.puzzle = JsonLineCommandBackend("GARMENTCAD_PUZZLE_COMMAND")
+
+    @staticmethod
+    def _is_puzzle(operation: Operation) -> bool:
+        return operation.domain.value == "layout" or operation.action == "export.layout"
+
+    def preview(
+        self, project_root: Path, change_set_id: str, operations: list[Operation]
+    ) -> ChangeSummary:
+        valentina = [operation for operation in operations if not self._is_puzzle(operation)]
+        puzzle = [operation for operation in operations if self._is_puzzle(operation)]
+        summaries: list[ChangeSummary] = []
+        if valentina:
+            summaries.append(self.valentina.preview(project_root, change_set_id, valentina))
+        if puzzle:
+            summaries.append(self.puzzle.preview(project_root, change_set_id, puzzle))
+        return merge_summaries(summaries)
+
+    def commit(
+        self, project_root: Path, change_set_id: str, operations: list[Operation]
+    ) -> None:
+        if any(not self._is_puzzle(operation) for operation in operations):
+            self.valentina.commit(project_root, change_set_id)
+        if any(self._is_puzzle(operation) for operation in operations):
+            self.puzzle.commit(project_root, change_set_id)
 
 
 class ProjectMetadataBackend:

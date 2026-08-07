@@ -2430,6 +2430,84 @@ void VPMainWindow::ExportData(const VPExportData &data)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+auto VPMainWindow::ExportForCommand(const QString &format, const QString &outputPath, const QJsonObject &options,
+                                    QString &error) -> bool
+{
+    const QMap<QString, LayoutExportFormats> formats{
+        {QStringLiteral("svg"), LayoutExportFormats::SVG},
+        {QStringLiteral("pdf"), LayoutExportFormats::PDF},
+        {QStringLiteral("pdf_tiled"), LayoutExportFormats::PDFTiled},
+        {QStringLiteral("png"), LayoutExportFormats::PNG},
+        {QStringLiteral("tif"), LayoutExportFormats::TIF},
+        {QStringLiteral("dxf"), LayoutExportFormats::DXF_AC1009_Flat},
+        {QStringLiteral("dxf_aama"), LayoutExportFormats::DXF_AAMA},
+        {QStringLiteral("aama"), LayoutExportFormats::DXF_AAMA},
+        {QStringLiteral("dxf_astm"), LayoutExportFormats::DXF_ASTM},
+        {QStringLiteral("astm"), LayoutExportFormats::DXF_ASTM},
+        {QStringLiteral("hpgl"), LayoutExportFormats::HPGL},
+        {QStringLiteral("hpgl2"), LayoutExportFormats::HPGL2},
+        {QStringLiteral("plt"), LayoutExportFormats::HPGL_PLT},
+        {QStringLiteral("hpgl2_plt"), LayoutExportFormats::HPGL2_PLT},
+        {QStringLiteral("rld"), LayoutExportFormats::RLD},
+    };
+    const QString normalized = format.toLower();
+    if (!formats.contains(normalized))
+    {
+        error = tr("Unsupported Puzzle export format: %1").arg(format);
+        return false;
+    }
+
+    const LayoutExportFormats nativeFormat = formats.value(normalized);
+    QFileInfo destination(outputPath);
+    QString fileName = destination.fileName();
+    const QString suffix = VLayoutExporter::ExportFormatSuffix(nativeFormat);
+    if (fileName.endsWith(suffix, Qt::CaseInsensitive))
+    {
+        fileName.chop(suffix.size());
+    }
+    if (fileName.isEmpty())
+    {
+        fileName = QStringLiteral("layout");
+    }
+    const QString directory = destination.absolutePath();
+    if (!QDir().mkpath(directory))
+    {
+        error = tr("Unable to create export directory: %1").arg(directory);
+        return false;
+    }
+
+    VPExportData data{.format = nativeFormat,
+                      .sheets = m_layout->GetSheets(),
+                      .path = directory,
+                      .fileName = fileName,
+                      .xScale = options.value(QStringLiteral("x_scale")).toDouble(1.0),
+                      .yScale = options.value(QStringLiteral("y_scale")).toDouble(1.0),
+                      .isBinaryDXF = options.value(QStringLiteral("binary_dxf")).toBool(false),
+                      .textAsPaths = options.value(QStringLiteral("text_as_paths")).toBool(false),
+                      .exportUnified = options.value(QStringLiteral("unified")).toBool(true),
+                      .showTilesScheme = options.value(QStringLiteral("tiles_scheme")).toBool(false),
+                      .showGrainline = options.value(QStringLiteral("show_grainline")).toBool(true),
+                      .hideRuler = options.value(QStringLiteral("hide_ruler")).toBool(false)};
+    if (data.sheets.isEmpty())
+    {
+        error = tr("The layout has no visible sheets.");
+        return false;
+    }
+    ExportData(data);
+
+    const bool unifiedPdf = data.exportUnified &&
+                            (data.format == LayoutExportFormats::PDF || data.format == LayoutExportFormats::PDFTiled ||
+                             data.format == LayoutExportFormats::PS || data.format == LayoutExportFormats::EPS);
+    const QString expected = unifiedPdf ? QDir(data.path).filePath(data.fileName + suffix) : data.ExportPath(0);
+    if (!QFileInfo::exists(expected) || QFileInfo(expected).size() == 0)
+    {
+        error = tr("Puzzle did not produce the expected file: %1").arg(expected);
+        return false;
+    }
+    return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void VPMainWindow::ExportApparelLayout(const VPExportData &data, const QVector<VLayoutPiece> &details,
                                        const QString &name, const QSize &size)
 {

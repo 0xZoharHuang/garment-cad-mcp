@@ -6,8 +6,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from garmentcad.artifacts import ArtifactStore
 from garmentcad.assembly import preview_assembly, thumbnail_svg
-from garmentcad.backends import JsonLineCommandBackend, ProjectMetadataBackend, merge_summaries
+from garmentcad.backends import NativeCommandRouter, ProjectMetadataBackend, merge_summaries
 from garmentcad.errors import ChangeSetNotFoundError, ProjectNotFoundError, StaleRevisionError
 from garmentcad.locking import ProjectLock
 from garmentcad.models import (
@@ -229,7 +230,7 @@ class Project:
         ]
         if validate_backends and native_operations:
             summaries.append(
-                JsonLineCommandBackend().preview(self.root, change_set.id, native_operations)
+                NativeCommandRouter().preview(self.root, change_set.id, native_operations)
             )
         change_set.summary = merge_summaries(summaries)
         atomic_write_json(
@@ -274,6 +275,7 @@ class Project:
                 )
             next_revision = manifest.current_revision + 1
             snapshot = self._snapshot(next_revision)
+            artifact_resources: list[str] = []
             try:
                 domains = {operation.domain for operation in change_set.operations}
                 for domain in domains:
@@ -288,7 +290,36 @@ class Project:
                             read_json(staged),
                         )
                 if domains & NATIVE_VALENTINA_DOMAINS:
-                    JsonLineCommandBackend().commit(self.root, change_set.id)
+                    native_operations = [
+                        operation
+                        for operation in change_set.operations
+                        if operation.domain in NATIVE_VALENTINA_DOMAINS
+                    ]
+                    NativeCommandRouter().commit(
+                        self.root, change_set.id, native_operations
+                    )
+                staged_exports = (
+                    self.root
+                    / f".garmentcad/changesets/{change_set.id}/artifacts/exports"
+                )
+                if staged_exports.is_dir():
+                    store = ArtifactStore(self.root)
+                    for exported in sorted(staged_exports.rglob("*")):
+                        if exported.is_file():
+                            artifact_resources.append(
+                                store.put(
+                                    exported.read_bytes(),
+                                    filename=exported.name,
+                                    kind="cad_export",
+                                    revision=next_revision,
+                                    metadata={
+                                        "change_set_id": change_set.id,
+                                        "relative_path": str(
+                                            exported.relative_to(staged_exports)
+                                        ),
+                                    },
+                                )
+                            )
             except Exception:
                 self._restore_snapshot(snapshot)
                 shutil.rmtree(snapshot)
@@ -320,6 +351,7 @@ class Project:
             project_id=manifest.project_id,
             revision=next_revision,
             summary=change_set.summary,
+            resources=artifact_resources,
             message="Change-set committed",
         )
 

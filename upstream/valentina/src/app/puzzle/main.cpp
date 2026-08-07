@@ -27,6 +27,8 @@
  *************************************************************************/
 
 #include "vpapplication.h"
+#include "vpcommandservice.h"
+#include "vpmainwindow.h"
 
 #include <QMessageBox> // For QT_REQUIRE_VERSION
 #include <QTimer>
@@ -57,6 +59,7 @@ using namespace Qt::Literals::StringLiterals;
 
 auto main(int argc, char *argv[]) -> int
 {
+    const bool garmentCadCommandMode = qEnvironmentVariableIntValue("GARMENTCAD_COMMAND_MODE") == 1;
 #ifdef Q_OS_WIN
     std::setlocale(LC_ALL, ".UTF8");
 #endif
@@ -118,6 +121,13 @@ auto main(int argc, char *argv[]) -> int
     QT_REQUIRE_VERSION(argc, argv, "5.15.0") // clazy:exclude=qstring-arg,qstring-allocations NOLINT
 
     VPApplication::setDesktopFileName(QStringLiteral("ua.com.smart-pattern.puzzle"));
+
+    if (garmentCadCommandMode)
+    {
+        VPMainWindow *window = app.NewMainWindow(VPApplication::CommandLine());
+        VPCommandService service(window);
+        return service.RunOnce();
+    }
 
     QTimer::singleShot(0, &app, &VPApplication::ProcessCMD);
 

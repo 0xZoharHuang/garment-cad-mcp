@@ -93,6 +93,7 @@ void VPCommandLine::ProcessInstance(VPCommandLinePtr &instance, const QStringLis
         instance.reset(new VPCommandLine);
     }
     instance->parser.process(arguments);
+    instance->isGuiEnabled = qEnvironmentVariableIntValue("GARMENTCAD_COMMAND_MODE") != 1;
 }
 
 //-------------------------------------------------------------------------------------------

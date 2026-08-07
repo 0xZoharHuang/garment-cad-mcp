@@ -68,11 +68,14 @@
 
 #include <QDir>
 #include <QCryptographicHash>
+#include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QTextStream>
 #include <QUuid>
 
@@ -340,7 +343,7 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("measurement.file_save"), QStringLiteral("measurement.set"),
                             QStringLiteral("measurement.rename"), QStringLiteral("measurement.remove"),
                             QStringLiteral("measurement.dimension_set"),
-                            QStringLiteral("measurement.export_csv"),
+                            QStringLiteral("measurement.export_csv"), QStringLiteral("export.pattern"),
                             QStringLiteral("pattern.shoulder_point"), QStringLiteral("pattern.normal"),
                             QStringLiteral("pattern.bisector"), QStringLiteral("pattern.height"),
                             QStringLiteral("pattern.triangle"), QStringLiteral("pattern.point_of_intersection"),
@@ -392,7 +395,8 @@ auto VCommandService::Preview(const QJsonObject &request) -> QJsonObject
     const QString candidateRoot = CandidateRoot(projectRoot, changeSetId);
     const QString candidatePattern = QDir(candidateRoot).filePath(QStringLiteral("pattern/main.val"));
     QDir().mkpath(QFileInfo(candidatePattern).absolutePath());
-    AtomicCopy(sourcePattern, candidatePattern);
+    CopyDirectoryFiles(QDir(projectRoot).filePath(QStringLiteral("pattern")),
+                       QDir(candidateRoot).filePath(QStringLiteral("pattern")));
     CopyDirectoryFiles(QDir(projectRoot).filePath(QStringLiteral("measurements")),
                        QDir(candidateRoot).filePath(QStringLiteral("measurements")));
     m_candidateRoot = candidateRoot;
@@ -567,6 +571,128 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                                   {QStringLiteral("objects"), QJsonArray{}},
                                   {QStringLiteral("details"), dependencies}});
         summary.insert(QStringLiteral("issues"), issues);
+        return;
+    }
+
+    if (action == QStringLiteral("export.pattern"))
+    {
+        const QString format = arguments.value(QStringLiteral("format")).toString(QStringLiteral("pdf")).toLower();
+        const QMap<QString, QPair<int, QString>> formats{
+            {QStringLiteral("svg"), {0, QStringLiteral(".svg")}},
+            {QStringLiteral("pdf"), {1, QStringLiteral(".pdf")}},
+            {QStringLiteral("png"), {2, QStringLiteral(".png")}},
+            {QStringLiteral("obj"), {3, QStringLiteral(".obj")}},
+            {QStringLiteral("dxf"), {7, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_aama"), {16, QStringLiteral(".dxf")}},
+            {QStringLiteral("aama"), {16, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_astm"), {25, QStringLiteral(".dxf")}},
+            {QStringLiteral("astm"), {25, QStringLiteral(".dxf")}},
+            {QStringLiteral("pdf_tiled"), {33, QStringLiteral(".pdf")}},
+            {QStringLiteral("rld"), {35, QStringLiteral(".rld")}},
+            {QStringLiteral("tif"), {36, QStringLiteral(".tif")}},
+            {QStringLiteral("hpgl"), {37, QStringLiteral(".hpgl")}},
+            {QStringLiteral("hpgl2"), {38, QStringLiteral(".hpgl")}},
+            {QStringLiteral("plt"), {39, QStringLiteral(".plt")}},
+            {QStringLiteral("hpgl2_plt"), {40, QStringLiteral(".plt")}},
+        };
+        if (!formats.contains(format))
+        {
+            throw std::invalid_argument("Unsupported pattern export format");
+        }
+        const QPair<int, QString> nativeFormat = formats.value(format);
+        const QString relative = arguments.value(QStringLiteral("output_path")).toString(
+            QStringLiteral("artifacts/exports/pattern%1").arg(nativeFormat.second));
+        const QString output = QFileInfo(QDir(m_candidateRoot).filePath(relative)).absoluteFilePath();
+        const QString allowed = QFileInfo(m_candidateRoot).absoluteFilePath() + QLatin1Char('/');
+        if (!output.startsWith(allowed))
+        {
+            throw std::invalid_argument("Pattern export path must stay inside the preview project");
+        }
+        QString baseName = QFileInfo(output).fileName();
+        if (baseName.endsWith(nativeFormat.second, Qt::CaseInsensitive))
+        {
+            baseName.chop(nativeFormat.second.size());
+        }
+        if (baseName.isEmpty())
+        {
+            throw std::invalid_argument("Pattern export filename is empty");
+        }
+        const QString destination = QFileInfo(output).absolutePath();
+        QDir().mkpath(destination);
+
+        QStringList commandArguments{QStringLiteral("--basename"), baseName,
+                                     QStringLiteral("--destination"), destination,
+                                     QStringLiteral("--format"), QString::number(nativeFormat.first)};
+        if (arguments.value(QStringLiteral("details_only")).toBool(true))
+        {
+            commandArguments.append(QStringLiteral("--exportOnlyDetails"));
+        }
+        if (arguments.value(QStringLiteral("binary_dxf")).toBool(false))
+        {
+            commandArguments.append(QStringLiteral("--bdxf"));
+        }
+        if (!arguments.value(QStringLiteral("show_grainline")).toBool(true))
+        {
+            commandArguments.append(QStringLiteral("--noGrainline"));
+        }
+        if (arguments.value(QStringLiteral("text_as_paths")).toBool(false))
+        {
+            commandArguments.append(QStringLiteral("--text2paths"));
+        }
+        QString saveError;
+        if (!m_window->SavePattern(m_candidatePattern, saveError))
+        {
+            throw std::runtime_error(
+                QStringLiteral("Unable to save pattern before export: %1").arg(saveError).toStdString());
+        }
+        const QString exportSourceRoot =
+            QDir(m_candidateRoot).filePath(QStringLiteral(".export-source/%1").arg(QUuid::createUuid().toString(
+                QUuid::WithoutBraces)));
+        const QString exportPattern = QDir(exportSourceRoot).filePath(QStringLiteral("pattern/main.val"));
+        AtomicCopy(m_candidatePattern, exportPattern);
+        const QString measurement = m_window->doc->MPath();
+        if (!measurement.isEmpty())
+        {
+            const QString sourceMeasurement =
+                QFileInfo(QDir(QFileInfo(m_candidatePattern).absolutePath()).filePath(measurement)).absoluteFilePath();
+            const QString allowedRoot = QFileInfo(m_candidateRoot).absoluteFilePath() + QLatin1Char('/');
+            if (!sourceMeasurement.startsWith(allowedRoot) || !QFileInfo::exists(sourceMeasurement))
+            {
+                throw std::runtime_error("Pattern measurement file is missing from the preview project");
+            }
+            AtomicCopy(sourceMeasurement,
+                       QDir(QFileInfo(exportPattern).absolutePath()).filePath(measurement));
+        }
+        commandArguments.append(exportPattern);
+
+        QProcess process;
+        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+        environment.remove(QStringLiteral("GARMENTCAD_COMMAND_MODE"));
+        environment.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("offscreen"));
+        process.setProcessEnvironment(environment);
+        process.setProcessChannelMode(QProcess::MergedChannels);
+        process.start(QCoreApplication::applicationFilePath(), commandArguments);
+        const int timeout = qBound(5000, arguments.value(QStringLiteral("timeout_ms")).toInt(60000), 3600000);
+        if (!process.waitForFinished(timeout))
+        {
+            process.kill();
+            process.waitForFinished();
+            throw std::runtime_error("Pattern export timed out");
+        }
+        if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0)
+        {
+            throw std::runtime_error(
+                QStringLiteral("Pattern export failed: %1").arg(QString::fromUtf8(process.readAll())).toStdString());
+        }
+        const QString expected = QDir(destination).filePath(baseName + nativeFormat.second);
+        if (!QFileInfo::exists(expected) || QFileInfo(expected).size() == 0)
+        {
+            throw std::runtime_error("Valentina did not produce the expected pattern export");
+        }
+        QDir(exportSourceRoot).removeRecursively();
+        QJsonArray created = summary.value(QStringLiteral("created")).toArray();
+        created.append(QJsonObject{{QStringLiteral("alias"), relative}});
+        summary.insert(QStringLiteral("created"), created);
         return;
     }
 

@@ -9,4 +9,4 @@ if [ -z "$app" ]; then
   exit 1
 fi
 
-exec "$app/Contents/MacOS/Valentina"
+exec "$app/Contents/MacOS/Valentina" "$@"

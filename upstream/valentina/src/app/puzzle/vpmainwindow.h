@@ -51,6 +51,8 @@ class VPMainWindow;
 }
 
 class QFileSystemWatcher;
+class QJsonObject;
+class VPCommandService;
 template <typename T> class QSharedPointer;
 class DialogPuzzlePreferences;
 struct VPExportData;
@@ -98,6 +100,9 @@ public:
     void UpdateWindowTitle();
 
     auto IsUntitled() const -> bool;
+
+    auto ExportForCommand(const QString &format, const QString &outputPath, const QJsonObject &options,
+                          QString &error) -> bool;
 
     auto GetUntitledIndex() const -> int;
     void SetUntitledIndex(int newUntitledIndex);
@@ -314,6 +319,7 @@ private slots:
     void CurrentPieceHorizontallyFlippedToggled(bool checked);
 
 private:
+    friend class VPCommandService;
     Q_DISABLE_COPY_MOVE(VPMainWindow) // NOLINT
     std::unique_ptr<Ui::VPMainWindow> ui;
 

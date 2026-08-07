@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from garmentcad.artifacts import ArtifactStore
 from garmentcad.models import Operation, OperationDomain
 from garmentcad.project import Project
 from garmentcad.storage import read_json
@@ -1547,3 +1548,48 @@ def test_native_tape_multisize_dimensions_and_csv(tmp_path):
         ]
     )
     assert reopened.ok
+
+
+def test_native_pattern_exports_are_content_addressed(tmp_path):
+    project = Project.create(tmp_path / "pattern-exports")
+    collection = (
+        Path(__file__).parents[1]
+        / "upstream/valentina/src/app/share/collection/MaleShirt"
+    )
+    shutil.copy2(collection / "MaleShirt.val", project.root / "pattern/main.val")
+    shutil.copy2(collection / "MaleShirt.vit", project.root / "pattern/MaleShirt.vit")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.EXPORT,
+                action="export.pattern",
+                arguments={
+                    "format": format_name,
+                    "output_path": f"artifacts/exports/{filename}",
+                    "details_only": True,
+                },
+            )
+            for format_name, filename in (
+                ("svg", "shirt.svg"),
+                ("pdf", "shirt.pdf"),
+                ("dxf_aama", "shirt-aama.dxf"),
+                ("dxf_astm", "shirt-astm.dxf"),
+                ("rld", "shirt.rld"),
+                ("plt", "shirt.plt"),
+            )
+        ]
+    )
+    assert preview.ok
+    committed = project.commit(preview.token)
+    assert len(committed.resources) == 6
+    payloads = {}
+    store = ArtifactStore(project.root)
+    for uri in committed.resources:
+        blob, metadata = store.resolve(uri.rsplit("/", 1)[-1])
+        payloads[metadata["filenames"][0]] = blob.read_bytes()
+    assert payloads["shirt.svg"].lstrip().startswith(b"<?xml")
+    assert payloads["shirt.pdf"].startswith(b"%PDF")
+    assert b"SECTION" in payloads["shirt-aama.dxf"]
+    assert b"SECTION" in payloads["shirt-astm.dxf"]
+    assert len(payloads["shirt.rld"]) > 10_000
+    assert len(payloads["shirt.plt"]) > 100

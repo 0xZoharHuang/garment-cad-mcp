@@ -449,7 +449,10 @@ void VPApplication::InitOptions()
 {
     OpenSettings();
 
-    StartLogging();
+    if (qEnvironmentVariableIntValue("GARMENTCAD_COMMAND_MODE") != 1)
+    {
+        StartLogging();
+    }
 
     qCDebug(pApp, "Version: %s", qUtf8Printable(AppVersionStr()));
     qCDebug(pApp, "Build revision: %s", VCS_REPO_STATE_REVISION);
