@@ -396,8 +396,16 @@ def test_native_circle_arc_intersection_and_tangent_handlers(tmp_path):
     ]
     project.commit(preview.token)
     pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
-    for name in ("circle-cross", "arc-cross", "circle-tangent", "arc-tangent"):
-        assert f'name="{name}"' in pattern
+    for tool_type in (
+        "pointOfIntersectionCircles",
+        "pointOfIntersectionArcs",
+        "pointFromCircleAndTangent",
+        "pointFromArcAndTangent",
+    ):
+        assert f'type="{tool_type}"' in pattern
+    records = read_json(project.root / ".garmentcad/aliases.json")["objects"]
+    aliases = {record["alias"] for record in records.values()}
+    assert {"circle-cross", "arc-cross", "circle-tangent", "arc-tangent"} <= aliases
 
 
 def test_native_axis_intersection_handlers(tmp_path):
@@ -647,7 +655,7 @@ def test_native_cubic_bezier_and_curve_intersection(tmp_path):
     pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
     assert pattern.count('type="cubicBezier"') == 2
     assert 'type="cubicBezierPath"' in pattern
-    assert 'name="bezier-cross"' in pattern
+    assert 'type="pointOfIntersectionCurves"' in pattern
 
 
 def test_native_spline_path_and_cut_handlers(tmp_path):
@@ -827,6 +835,70 @@ def test_native_parallel_and_graduated_curve_handlers(tmp_path):
     assert 'type="graduatedCurve"' in pattern
     assert 'name="start_offset"' in pattern
     assert 'name="end_offset"' in pattern
+
+
+def test_native_true_darts_registers_both_output_points(tmp_path):
+    project = Project.create(tmp_path / "true-darts")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": alias,
+                "base_point": {"alias": "A"},
+                "length_mm": length,
+                "angle_deg": angle,
+            },
+        )
+        for alias, length, angle in (
+            ("B", 100, 0),
+            ("dart-left", 40, 0),
+            ("dart-apex", 58.3095189, 30.9637565),
+            ("dart-right", 60, 0),
+        )
+    ]
+    operations.append(
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.true_darts",
+            arguments={
+                "first_alias": "true-dart-left",
+                "second_alias": "true-dart-right",
+                "base_line_p1": {"alias": "A"},
+                "base_line_p2": {"alias": "B"},
+                "dart_p1": {"alias": "dart-left"},
+                "dart_p2": {"alias": "dart-apex"},
+                "dart_p3": {"alias": "dart-right"},
+            },
+        )
+    )
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created[-2:]] == [
+        "true-dart-left",
+        "true-dart-right",
+    ]
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'type="trueDarts"' in pattern
+    assert 'name1="true_dart_left_' in pattern
+    assert 'name2="true_dart_right_' in pattern
+
+    reopened = Project.open(project.root)
+    followup = reopened.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.line",
+                arguments={
+                    "alias": "dart-result-line",
+                    "first_point": {"alias": "true-dart-left"},
+                    "second_point": {"alias": "true-dart-right"},
+                },
+            )
+        ]
+    )
+    assert followup.ok
 
 
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):

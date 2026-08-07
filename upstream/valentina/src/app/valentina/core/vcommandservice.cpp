@@ -46,12 +46,14 @@
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toolcut/vtoolcutsplinepath.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolbasepoint.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolsinglepoint.h"
+#include "../vtools/tools/drawTools/toolpoint/tooldoublepoint/vtooltruedarts.h"
 #include "../vtools/tools/drawTools/vtoolline.h"
 #include "../vtools/tools/vinteractivetool.h"
 #include "../vgeometry/vcubicbezier.h"
 #include "../vgeometry/vcubicbezierpath.h"
 
 #include <QDir>
+#include <QCryptographicHash>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -118,6 +120,27 @@ auto HorizontalCrossPoint(const QJsonObject &arguments) -> HCrossCurvesPoint
         throw std::invalid_argument("horizontal_solution must be 1 or 2");
     }
     return static_cast<HCrossCurvesPoint>(solution);
+}
+
+auto NativeObjectName(const QJsonObject &arguments, const QString &aliasField = QStringLiteral("alias"),
+                      const QString &nativeField = QStringLiteral("native_name")) -> QString
+{
+    const QString alias = RequiredString(arguments, aliasField);
+    const QString requested = arguments.value(nativeField).toString(alias);
+    if (QRegularExpression(NameRegExp()).match(requested).hasMatch())
+    {
+        return requested;
+    }
+
+    QString sanitized = requested;
+    sanitized.replace(QRegularExpression(QStringLiteral("[^\\p{L}\\p{N}_]")), QStringLiteral("_"));
+    if (sanitized.isEmpty() || sanitized.at(0).isDigit())
+    {
+        sanitized.prepend(QStringLiteral("GC_"));
+    }
+    const QString digest = QString::fromLatin1(
+        QCryptographicHash::hash(requested.toUtf8(), QCryptographicHash::Sha256).toHex().left(8));
+    return sanitized + QLatin1Char('_') + digest;
 }
 } // namespace
 
@@ -213,7 +236,7 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.arc_intersect_axis"), QStringLiteral("pattern.cut_arc"),
                             QStringLiteral("pattern.cut_spline"), QStringLiteral("pattern.cut_spline_path"),
                             QStringLiteral("pattern.parallel_curve"),
-                            QStringLiteral("pattern.graduated_curve")}}};
+                            QStringLiteral("pattern.graduated_curve"), QStringLiteral("pattern.true_darts")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -531,7 +554,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = alias;
+        initData.name = NativeObjectName(arguments);
         initData.x = UnitConvertor(arguments.value(QStringLiteral("x_mm")).toDouble(), Unit::Mm, Unit::Px);
         initData.y = UnitConvertor(arguments.value(QStringLiteral("y_mm")).toDouble(), Unit::Mm, Unit::Px);
         auto *tool = VToolBasePoint::Create(initData);
@@ -565,7 +588,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
         initData.formula = arguments.contains(QStringLiteral("formula"))
@@ -574,7 +597,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolAlongLine::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("AlongLine"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("AlongLine"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
@@ -586,12 +610,13 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
         initData.formula = currentLength + QStringLiteral("/2");
         auto *tool = VToolAlongLine::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("AlongLine"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("AlongLine"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
@@ -603,7 +628,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.basePointId = ResolveObject(arguments.value(QStringLiteral("base_point")).toObject(), aliases);
         initData.formulaLength = arguments.contains(QStringLiteral("formula_length"))
                                      ? RequiredString(arguments, QStringLiteral("formula_length"))
@@ -616,7 +641,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolEndLine::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("EndLine"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("EndLine"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
@@ -628,13 +654,14 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.p1Line1Id = ResolveObject(arguments.value(QStringLiteral("line1_p1")).toObject(), aliases);
         initData.p2Line1Id = ResolveObject(arguments.value(QStringLiteral("line1_p2")).toObject(), aliases);
         initData.p1Line2Id = ResolveObject(arguments.value(QStringLiteral("line2_p1")).toObject(), aliases);
         initData.p2Line2Id = ResolveObject(arguments.value(QStringLiteral("line2_p2")).toObject(), aliases);
         auto *tool = VToolLineIntersect::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("LineIntersect"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("LineIntersect"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -907,12 +934,13 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                                     ? RequiredString(arguments, QStringLiteral("formula_width"))
                                     : NativeFormulaForMillimetres(
                                           arguments.value(QStringLiteral("width_mm")).toDouble());
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
         auto *tool = VToolParallelCurve::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("ParallelCurve"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("ParallelCurve"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -931,7 +959,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
         initData.originCurveId = ResolveObject(arguments.value(QStringLiteral("curve")).toObject(), aliases);
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
@@ -949,7 +977,35 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
             initData.offsets.append(raw);
         }
         auto *tool = VToolGraduatedCurve::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("GraduatedCurve"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("GraduatedCurve"),
+                       tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.true_darts"))
+    {
+        VToolTrueDartsInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name1 = NativeObjectName(arguments, QStringLiteral("first_alias"),
+                                         QStringLiteral("first_native_name"));
+        initData.name2 = NativeObjectName(arguments, QStringLiteral("second_alias"),
+                                         QStringLiteral("second_native_name"));
+        initData.baseLineP1Id =
+            ResolveObject(arguments.value(QStringLiteral("base_line_p1")).toObject(), aliases);
+        initData.baseLineP2Id =
+            ResolveObject(arguments.value(QStringLiteral("base_line_p2")).toObject(), aliases);
+        initData.dartP1Id = ResolveObject(arguments.value(QStringLiteral("dart_p1")).toObject(), aliases);
+        initData.dartP2Id = ResolveObject(arguments.value(QStringLiteral("dart_p2")).toObject(), aliases);
+        initData.dartP3Id = ResolveObject(arguments.value(QStringLiteral("dart_p3")).toObject(), aliases);
+        VToolTrueDarts::Create(initData);
+        RegisterObject(RequiredString(arguments, QStringLiteral("first_alias")), QStringLiteral("TrueDartPoint"),
+                       FindNativeObjectByName(initData.name1), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("second_alias")), QStringLiteral("TrueDartPoint"),
+                       FindNativeObjectByName(initData.name2), aliases, summary);
         return;
     }
 
@@ -961,7 +1017,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.p1Line = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
         initData.p2Line = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
         initData.pShoulder = ResolveObject(arguments.value(QStringLiteral("shoulder_point")).toObject(), aliases);
@@ -972,7 +1028,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolShoulderPoint::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("ShoulderPoint"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("ShoulderPoint"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -984,7 +1041,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
         initData.formula = arguments.contains(QStringLiteral("formula"))
@@ -995,7 +1052,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolNormal::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("Normal"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Normal"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
@@ -1007,7 +1065,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("vertex")).toObject(), aliases);
         initData.thirdPointId = ResolveObject(arguments.value(QStringLiteral("third_point")).toObject(), aliases);
@@ -1018,7 +1076,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolBisector::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("Bisector"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Bisector"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
@@ -1030,14 +1089,15 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.basePointId = ResolveObject(arguments.value(QStringLiteral("base_point")).toObject(), aliases);
         initData.p1LineId = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
         initData.p2LineId = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolHeight::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("Height"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Height"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
@@ -1049,13 +1109,14 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.axisP1Id = ResolveObject(arguments.value(QStringLiteral("axis_p1")).toObject(), aliases);
         initData.axisP2Id = ResolveObject(arguments.value(QStringLiteral("axis_p2")).toObject(), aliases);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
         auto *tool = VToolTriangle::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("Triangle"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Triangle"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
@@ -1067,11 +1128,12 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
         auto *tool = VToolPointOfIntersection::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("PointOfIntersection"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("PointOfIntersection"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -1083,7 +1145,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.center = ResolveObject(arguments.value(QStringLiteral("center")).toObject(), aliases);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
@@ -1091,7 +1153,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                               ? RequiredString(arguments, QStringLiteral("formula_radius"))
                               : NativeFormulaForMillimetres(arguments.value(QStringLiteral("radius_mm")).toDouble());
         auto *tool = VToolPointOfContact::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("PointOfContact"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("PointOfContact"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -1103,7 +1166,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstCircleCenterId =
             ResolveObject(arguments.value(QStringLiteral("first_center")).toObject(), aliases);
         initData.secondCircleCenterId =
@@ -1118,7 +1181,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                                                 arguments.value(QStringLiteral("second_radius_mm")).toDouble());
         initData.crossPoint = CrossPoint(arguments);
         auto *tool = VToolPointOfIntersectionCircles::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("PointOfIntersectionCircles"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")),
+                       QStringLiteral("PointOfIntersectionCircles"), tool->getId(), aliases, summary);
         return;
     }
 
@@ -1130,12 +1194,13 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstArcId = ResolveObject(arguments.value(QStringLiteral("first_arc")).toObject(), aliases);
         initData.secondArcId = ResolveObject(arguments.value(QStringLiteral("second_arc")).toObject(), aliases);
         initData.pType = CrossPoint(arguments);
         auto *tool = VToolPointOfIntersectionArcs::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("PointOfIntersectionArcs"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("PointOfIntersectionArcs"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -1147,14 +1212,15 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.firstCurveId = ResolveObject(arguments.value(QStringLiteral("first_curve")).toObject(), aliases);
         initData.secondCurveId =
             ResolveObject(arguments.value(QStringLiteral("second_curve")).toObject(), aliases);
         initData.vCrossPoint = VerticalCrossPoint(arguments);
         initData.hCrossPoint = HorizontalCrossPoint(arguments);
         auto *tool = VToolPointOfIntersectionCurves::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("PointOfIntersectionCurves"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")),
+                       QStringLiteral("PointOfIntersectionCurves"), tool->getId(), aliases, summary);
         return;
     }
 
@@ -1166,7 +1232,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.circleCenterId = ResolveObject(arguments.value(QStringLiteral("center")).toObject(), aliases);
         initData.tangentPointId =
             ResolveObject(arguments.value(QStringLiteral("tangent_point")).toObject(), aliases);
@@ -1176,7 +1242,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                                           arguments.value(QStringLiteral("radius_mm")).toDouble());
         initData.crossPoint = CrossPoint(arguments);
         auto *tool = VToolPointFromCircleAndTangent::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("PointFromCircleAndTangent"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")),
+                       QStringLiteral("PointFromCircleAndTangent"), tool->getId(), aliases, summary);
         return;
     }
 
@@ -1188,13 +1255,14 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.arcId = ResolveObject(arguments.value(QStringLiteral("arc")).toObject(), aliases);
         initData.tangentPointId =
             ResolveObject(arguments.value(QStringLiteral("tangent_point")).toObject(), aliases);
         initData.crossPoint = CrossPoint(arguments);
         auto *tool = VToolPointFromArcAndTangent::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("PointFromArcAndTangent"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("PointFromArcAndTangent"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -1206,7 +1274,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.basePointId = ResolveObject(arguments.value(QStringLiteral("base_point")).toObject(), aliases);
         initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
         initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
@@ -1216,7 +1284,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolLineIntersectAxis::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("LineIntersectAxis"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("LineIntersectAxis"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -1229,7 +1298,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.basePointId = ResolveObject(arguments.value(QStringLiteral("base_point")).toObject(), aliases);
         initData.curveId = ResolveObject(arguments.value(QStringLiteral("curve")).toObject(), aliases);
         initData.formulaAngle = arguments.contains(QStringLiteral("formula_angle"))
@@ -1238,7 +1307,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolCurveIntersectAxis::Create(initData);
-        RegisterObject(initData.name, QStringLiteral("CurveIntersectAxis"), tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("CurveIntersectAxis"),
+                       tool->getId(), aliases, summary);
         return;
     }
 
@@ -1251,7 +1321,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.data = m_window->pattern;
         initData.parse = Document::FullParse;
         initData.typeCreation = Source::FromGui;
-        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.name = NativeObjectName(arguments);
         initData.baseCurveId = ResolveObject(arguments.value(QStringLiteral("curve")).toObject(), aliases);
         initData.formula = arguments.contains(QStringLiteral("formula_length"))
                                ? RequiredString(arguments, QStringLiteral("formula_length"))
@@ -1275,7 +1345,7 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
             tool = VToolCutSplinePath::Create(initData);
             type = QStringLiteral("CutSplinePath");
         }
-        RegisterObject(initData.name, type, tool->getId(), aliases, summary);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), type, tool->getId(), aliases, summary);
         return;
     }
 
@@ -1331,6 +1401,26 @@ auto VCommandService::ResolveObject(const QJsonObject &reference, const QJsonObj
         return matches.constFirst();
     }
     throw std::invalid_argument(QStringLiteral("Unknown object reference: %1").arg(alias).toStdString());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VCommandService::FindNativeObjectByName(const QString &name) const -> quint32
+{
+    QList<quint32> matches;
+    const auto *objects = m_window->pattern->CalculationGObjects();
+    for (auto iterator = objects->constBegin(); iterator != objects->constEnd(); ++iterator)
+    {
+        if (iterator.value() && iterator.value()->name() == name)
+        {
+            matches.append(iterator.key());
+        }
+    }
+    if (matches.size() != 1)
+    {
+        throw std::invalid_argument(
+            QStringLiteral("Expected one native object named %1, found %2").arg(name).arg(matches.size()).toStdString());
+    }
+    return matches.constFirst();
 }
 
 //---------------------------------------------------------------------------------------------------------------------

@@ -32,6 +32,7 @@ private:
     auto Commit(const QJsonObject &request) -> QJsonObject;
     auto ApplyOperation(const QJsonObject &operation, QJsonObject &aliases, QJsonObject &summary) -> void;
     auto ResolveObject(const QJsonObject &reference, const QJsonObject &aliases) const -> quint32;
+    auto FindNativeObjectByName(const QString &name) const -> quint32;
     auto RegisterObject(const QString &alias, const QString &kind, quint32 nativeId, QJsonObject &aliases,
                         QJsonObject &summary) const -> void;
 
