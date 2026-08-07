@@ -1,0 +1,17 @@
+.DS_Store
+.venv/
+.venv-*/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+build/
+build-*/
+dist/
+projects/
+private-fixtures/
+*.log
+CMakeUserPresets.json
+.env
+.env.*
+!.env.example
