@@ -17,12 +17,18 @@
 #include "../vtools/tools/drawTools/toolcurve/vtoolabstractcurve.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoollineintersect.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointfromarcandtangent.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointfromcircleandtangent.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofcontact.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersection.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersectionarcs.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersectioncircles.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtooltriangle.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolbisector.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolcurveintersectaxis.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolendline.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolheight.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoollineintersectaxis.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolnormal.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolshoulderpoint.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolalongline.h"
@@ -68,6 +74,16 @@ auto NativeFormulaForMillimetres(qreal value) -> QString
 {
     const qreal converted = UnitConvertor(value, Unit::Mm, VAbstractValApplication::VApp()->patternUnits());
     return QString::number(converted, 'g', 15);
+}
+
+auto CrossPoint(const QJsonObject &arguments) -> CrossCirclesPoint
+{
+    const int solution = arguments.value(QStringLiteral("solution")).toInt(1);
+    if (solution != 1 && solution != 2)
+    {
+        throw std::invalid_argument("solution must be 1 or 2");
+    }
+    return static_cast<CrossCirclesPoint>(solution);
 }
 } // namespace
 
@@ -147,7 +163,14 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.shoulder_point"), QStringLiteral("pattern.normal"),
                             QStringLiteral("pattern.bisector"), QStringLiteral("pattern.height"),
                             QStringLiteral("pattern.triangle"), QStringLiteral("pattern.point_of_intersection"),
-                            QStringLiteral("pattern.point_of_contact")}}};
+                            QStringLiteral("pattern.point_of_contact"),
+                            QStringLiteral("pattern.point_of_intersection_circles"),
+                            QStringLiteral("pattern.point_of_intersection_arcs"),
+                            QStringLiteral("pattern.point_from_circle_and_tangent"),
+                            QStringLiteral("pattern.point_from_arc_and_tangent"),
+                            QStringLiteral("pattern.line_intersect_axis"),
+                            QStringLiteral("pattern.curve_intersect_axis"),
+                            QStringLiteral("pattern.arc_intersect_axis")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -769,6 +792,134 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                               : NativeFormulaForMillimetres(arguments.value(QStringLiteral("radius_mm")).toDouble());
         auto *tool = VToolPointOfContact::Create(initData);
         RegisterObject(initData.name, QStringLiteral("PointOfContact"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.point_of_intersection_circles"))
+    {
+        VToolPointOfIntersectionCirclesInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.firstCircleCenterId =
+            ResolveObject(arguments.value(QStringLiteral("first_center")).toObject(), aliases);
+        initData.secondCircleCenterId =
+            ResolveObject(arguments.value(QStringLiteral("second_center")).toObject(), aliases);
+        initData.firstCircleRadius = arguments.contains(QStringLiteral("first_radius_formula"))
+                                         ? RequiredString(arguments, QStringLiteral("first_radius_formula"))
+                                         : NativeFormulaForMillimetres(
+                                               arguments.value(QStringLiteral("first_radius_mm")).toDouble());
+        initData.secondCircleRadius = arguments.contains(QStringLiteral("second_radius_formula"))
+                                          ? RequiredString(arguments, QStringLiteral("second_radius_formula"))
+                                          : NativeFormulaForMillimetres(
+                                                arguments.value(QStringLiteral("second_radius_mm")).toDouble());
+        initData.crossPoint = CrossPoint(arguments);
+        auto *tool = VToolPointOfIntersectionCircles::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("PointOfIntersectionCircles"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.point_of_intersection_arcs"))
+    {
+        VToolPointOfIntersectionArcsInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.firstArcId = ResolveObject(arguments.value(QStringLiteral("first_arc")).toObject(), aliases);
+        initData.secondArcId = ResolveObject(arguments.value(QStringLiteral("second_arc")).toObject(), aliases);
+        initData.pType = CrossPoint(arguments);
+        auto *tool = VToolPointOfIntersectionArcs::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("PointOfIntersectionArcs"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.point_from_circle_and_tangent"))
+    {
+        VToolPointFromCircleAndTangentInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.circleCenterId = ResolveObject(arguments.value(QStringLiteral("center")).toObject(), aliases);
+        initData.tangentPointId =
+            ResolveObject(arguments.value(QStringLiteral("tangent_point")).toObject(), aliases);
+        initData.circleRadius = arguments.contains(QStringLiteral("radius_formula"))
+                                    ? RequiredString(arguments, QStringLiteral("radius_formula"))
+                                    : NativeFormulaForMillimetres(
+                                          arguments.value(QStringLiteral("radius_mm")).toDouble());
+        initData.crossPoint = CrossPoint(arguments);
+        auto *tool = VToolPointFromCircleAndTangent::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("PointFromCircleAndTangent"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.point_from_arc_and_tangent"))
+    {
+        VToolPointFromArcAndTangentInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.arcId = ResolveObject(arguments.value(QStringLiteral("arc")).toObject(), aliases);
+        initData.tangentPointId =
+            ResolveObject(arguments.value(QStringLiteral("tangent_point")).toObject(), aliases);
+        initData.crossPoint = CrossPoint(arguments);
+        auto *tool = VToolPointFromArcAndTangent::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("PointFromArcAndTangent"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.line_intersect_axis"))
+    {
+        VToolLineIntersectAxisInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.basePointId = ResolveObject(arguments.value(QStringLiteral("base_point")).toObject(), aliases);
+        initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
+        initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
+        initData.formulaAngle = arguments.contains(QStringLiteral("formula_angle"))
+                                    ? RequiredString(arguments, QStringLiteral("formula_angle"))
+                                    : QString::number(arguments.value(QStringLiteral("angle_deg")).toDouble(), 'g', 15);
+        initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        auto *tool = VToolLineIntersectAxis::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("LineIntersectAxis"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.curve_intersect_axis") ||
+        action == QStringLiteral("pattern.arc_intersect_axis"))
+    {
+        VToolCurveIntersectAxisInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.basePointId = ResolveObject(arguments.value(QStringLiteral("base_point")).toObject(), aliases);
+        initData.curveId = ResolveObject(arguments.value(QStringLiteral("curve")).toObject(), aliases);
+        initData.formulaAngle = arguments.contains(QStringLiteral("formula_angle"))
+                                    ? RequiredString(arguments, QStringLiteral("formula_angle"))
+                                    : QString::number(arguments.value(QStringLiteral("angle_deg")).toDouble(), 'g', 15);
+        initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        auto *tool = VToolCurveIntersectAxis::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("CurveIntersectAxis"), tool->getId(), aliases, summary);
         return;
     }
 

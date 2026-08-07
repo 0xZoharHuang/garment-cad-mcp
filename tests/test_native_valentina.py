@@ -297,6 +297,185 @@ def test_native_derived_point_handlers_replay_in_order(tmp_path):
         assert f'name="{name}"' in pattern
 
 
+def test_native_circle_arc_intersection_and_tangent_handlers(tmp_path):
+    project = Project.create(tmp_path / "circle-intersections")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "D",
+                "base_point": {"alias": "B"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.arc",
+            arguments={
+                "alias": "arc-a",
+                "center": {"alias": "A"},
+                "radius_mm": 100,
+                "start_angle_deg": 0,
+                "end_angle_deg": 180,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.arc",
+            arguments={
+                "alias": "arc-b",
+                "center": {"alias": "B"},
+                "radius_mm": 100,
+                "start_angle_deg": 0,
+                "end_angle_deg": 180,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.point_of_intersection_circles",
+            arguments={
+                "alias": "circle-cross",
+                "first_center": {"alias": "A"},
+                "second_center": {"alias": "B"},
+                "first_radius_mm": 80,
+                "second_radius_mm": 80,
+                "solution": 1,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.point_of_intersection_arcs",
+            arguments={
+                "alias": "arc-cross",
+                "first_arc": {"alias": "arc-a"},
+                "second_arc": {"alias": "arc-b"},
+                "solution": 1,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.point_from_circle_and_tangent",
+            arguments={
+                "alias": "circle-tangent",
+                "center": {"alias": "A"},
+                "tangent_point": {"alias": "B"},
+                "radius_mm": 50,
+                "solution": 2,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.point_from_arc_and_tangent",
+            arguments={
+                "alias": "arc-tangent",
+                "arc": {"alias": "arc-a"},
+                "tangent_point": {"alias": "D"},
+                "solution": 2,
+            },
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created[-4:]] == [
+        "circle-cross",
+        "arc-cross",
+        "circle-tangent",
+        "arc-tangent",
+    ]
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    for name in ("circle-cross", "arc-cross", "circle-tangent", "arc-tangent"):
+        assert f'name="{name}"' in pattern
+
+
+def test_native_axis_intersection_handlers(tmp_path):
+    project = Project.create(tmp_path / "axis-intersections")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.arc",
+            arguments={
+                "alias": "curve",
+                "center": {"alias": "A"},
+                "radius_mm": 100,
+                "start_angle_deg": 0,
+                "end_angle_deg": 180,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.line_intersect_axis",
+            arguments={
+                "alias": "line-axis",
+                "base_point": {"alias": "A"},
+                "line_p1": {"alias": "B"},
+                "line_p2": {"alias": "C"},
+                "angle_deg": 45,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.curve_intersect_axis",
+            arguments={
+                "alias": "curve-axis",
+                "base_point": {"alias": "A"},
+                "curve": {"alias": "curve"},
+                "angle_deg": 45,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.arc_intersect_axis",
+            arguments={
+                "alias": "arc-axis",
+                "base_point": {"alias": "A"},
+                "curve": {"alias": "curve"},
+                "angle_deg": 135,
+            },
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created[-3:]] == [
+        "line-axis",
+        "curve-axis",
+        "arc-axis",
+    ]
+    project.commit(preview.token)
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(
