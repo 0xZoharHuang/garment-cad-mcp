@@ -16,6 +16,7 @@
 #include "../vtools/tools/drawTools/toolcurve/vtoolarc.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolarcwithlength.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolabstractcurve.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolcubicbezier.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarc.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarcwithlength.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
@@ -26,6 +27,7 @@
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersection.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersectionarcs.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersectioncircles.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersectioncurves.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtooltriangle.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolbisector.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolcurveintersectaxis.h"
@@ -39,6 +41,7 @@
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolsinglepoint.h"
 #include "../vtools/tools/drawTools/vtoolline.h"
 #include "../vtools/tools/vinteractivetool.h"
+#include "../vgeometry/vcubicbezier.h"
 
 #include <QDir>
 #include <QFile>
@@ -87,6 +90,26 @@ auto CrossPoint(const QJsonObject &arguments) -> CrossCirclesPoint
         throw std::invalid_argument("solution must be 1 or 2");
     }
     return static_cast<CrossCirclesPoint>(solution);
+}
+
+auto VerticalCrossPoint(const QJsonObject &arguments) -> VCrossCurvesPoint
+{
+    const int solution = arguments.value(QStringLiteral("vertical_solution")).toInt(1);
+    if (solution != 1 && solution != 2)
+    {
+        throw std::invalid_argument("vertical_solution must be 1 or 2");
+    }
+    return static_cast<VCrossCurvesPoint>(solution);
+}
+
+auto HorizontalCrossPoint(const QJsonObject &arguments) -> HCrossCurvesPoint
+{
+    const int solution = arguments.value(QStringLiteral("horizontal_solution")).toInt(1);
+    if (solution != 1 && solution != 2)
+    {
+        throw std::invalid_argument("horizontal_solution must be 1 or 2");
+    }
+    return static_cast<HCrossCurvesPoint>(solution);
 }
 } // namespace
 
@@ -162,7 +185,8 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.arc_start"), QStringLiteral("pattern.arc_end"),
                             QStringLiteral("pattern.arc_with_length"), QStringLiteral("pattern.elliptical_arc"),
                             QStringLiteral("pattern.elliptical_arc_with_length"),
-                            QStringLiteral("pattern.spline"), QStringLiteral("pattern.formula_evaluate"),
+                            QStringLiteral("pattern.spline"), QStringLiteral("pattern.cubic_bezier"),
+                            QStringLiteral("pattern.formula_evaluate"),
                             QStringLiteral("pattern.dependency_query"), QStringLiteral("measurement.increment_set"),
                             QStringLiteral("measurement.increment_remove"),
                             QStringLiteral("measurement.final_measurement_set"),
@@ -172,6 +196,7 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.point_of_contact"),
                             QStringLiteral("pattern.point_of_intersection_circles"),
                             QStringLiteral("pattern.point_of_intersection_arcs"),
+                            QStringLiteral("pattern.point_of_intersection_curves"),
                             QStringLiteral("pattern.point_from_circle_and_tangent"),
                             QStringLiteral("pattern.point_from_arc_and_tangent"),
                             QStringLiteral("pattern.line_intersect_axis"),
@@ -755,6 +780,33 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         return;
     }
 
+    if (action == QStringLiteral("pattern.cubic_bezier"))
+    {
+        const auto p1Id = ResolveObject(arguments.value(QStringLiteral("point1")).toObject(), aliases);
+        const auto p2Id = ResolveObject(arguments.value(QStringLiteral("point2")).toObject(), aliases);
+        const auto p3Id = ResolveObject(arguments.value(QStringLiteral("point3")).toObject(), aliases);
+        const auto p4Id = ResolveObject(arguments.value(QStringLiteral("point4")).toObject(), aliases);
+        auto p1 = m_window->pattern->GeometricObject<VPointF>(p1Id);
+        auto p2 = m_window->pattern->GeometricObject<VPointF>(p2Id);
+        auto p3 = m_window->pattern->GeometricObject<VPointF>(p3Id);
+        auto p4 = m_window->pattern->GeometricObject<VPointF>(p4Id);
+
+        VToolCubicBezierInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.spline = new VCubicBezier(*p1, *p2, *p3, *p4);
+        initData.spline->SetColor(arguments.value(QStringLiteral("line_color")).toString(ColorBlack));
+        initData.spline->SetPenStyle(arguments.value(QStringLiteral("line_type")).toString(TypeLineLine));
+        initData.spline->SetAliasSuffix(arguments.value(QStringLiteral("native_alias_suffix")).toString());
+        auto *tool = VToolCubicBezier::Create(initData);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("CubicBezier"),
+                       tool->getId(), aliases, summary);
+        return;
+    }
+
     if (action == QStringLiteral("pattern.shoulder_point"))
     {
         VToolShoulderPointInitData initData;
@@ -938,6 +990,25 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.pType = CrossPoint(arguments);
         auto *tool = VToolPointOfIntersectionArcs::Create(initData);
         RegisterObject(initData.name, QStringLiteral("PointOfIntersectionArcs"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.point_of_intersection_curves"))
+    {
+        VToolPointOfIntersectionCurvesInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.firstCurveId = ResolveObject(arguments.value(QStringLiteral("first_curve")).toObject(), aliases);
+        initData.secondCurveId =
+            ResolveObject(arguments.value(QStringLiteral("second_curve")).toObject(), aliases);
+        initData.vCrossPoint = VerticalCrossPoint(arguments);
+        initData.hCrossPoint = HorizontalCrossPoint(arguments);
+        auto *tool = VToolPointOfIntersectionCurves::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("PointOfIntersectionCurves"), tool->getId(), aliases, summary);
         return;
     }
 

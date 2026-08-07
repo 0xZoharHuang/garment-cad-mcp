@@ -555,6 +555,86 @@ def test_native_arc_variant_handlers(tmp_path):
     assert aliases == {"arc-start", "arc-end", "arc-length", "ellipse", "ellipse-length"}
 
 
+def test_native_cubic_bezier_and_curve_intersection(tmp_path):
+    project = Project.create(tmp_path / "bezier-intersection")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "D",
+                "base_point": {"alias": "B"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.cubic_bezier",
+            arguments={
+                "alias": "bezier-up",
+                "point1": {"alias": "A"},
+                "point2": {"alias": "B"},
+                "point3": {"alias": "C"},
+                "point4": {"alias": "D"},
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.cubic_bezier",
+            arguments={
+                "alias": "bezier-down",
+                "point1": {"alias": "C"},
+                "point2": {"alias": "D"},
+                "point3": {"alias": "A"},
+                "point4": {"alias": "B"},
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.point_of_intersection_curves",
+            arguments={
+                "alias": "bezier-cross",
+                "first_curve": {"alias": "bezier-up"},
+                "second_curve": {"alias": "bezier-down"},
+                "vertical_solution": 1,
+                "horizontal_solution": 1,
+            },
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created[-3:]] == [
+        "bezier-up",
+        "bezier-down",
+        "bezier-cross",
+    ]
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert pattern.count('type="cubicBezier"') == 2
+    assert 'name="bezier-cross"' in pattern
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(
