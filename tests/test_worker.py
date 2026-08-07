@@ -274,6 +274,7 @@ def test_http_job_api_upload_poll_cache_and_artifact(tmp_path, monkeypatch):
 
     simulation = SimulationClient("http://testserver", client=client)
     assert simulation.health()["queue"] == "serial"
+    assert simulation.health()["runner_id"] == "unidentified"
     submitted = simulation.submit(project)
     assert submitted["id"] == job_id
     resources = simulation.download(project, job_id)

@@ -9,5 +9,10 @@ if [ "$GARMENTCAD_WORKER_HOST" != "127.0.0.1" ] && [ "$GARMENTCAD_WORKER_HOST" !
   echo "Worker must bind to loopback and be reached through the SSH tunnel" >&2
   exit 64
 fi
-export GARMENTCAD_SIM_COMMAND="${GARMENTCAD_SIM_COMMAND:-$repo_dir/.conda/garmentcode/bin/python $repo_dir/scripts/autodl-runner.py --input {input} --output {output}}"
+if [ -z "${GARMENTCAD_SIM_COMMAND:-}" ]; then
+  export GARMENTCAD_SIM_COMMAND="$repo_dir/.conda/garmentcode/bin/python $repo_dir/scripts/autodl-runner.py --input {input} --output {output}"
+  export GARMENTCAD_RUNNER_ID="pinned-garmentcode-warp"
+else
+  export GARMENTCAD_RUNNER_ID="${GARMENTCAD_RUNNER_ID:-unidentified}"
+fi
 exec uv run garment-sim-worker

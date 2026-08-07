@@ -302,6 +302,7 @@ def health() -> dict:
         "ok": True,
         "queue": "serial",
         "runner_configured": bool(os.environ.get("GARMENTCAD_SIM_COMMAND")),
+        "runner_id": os.environ.get("GARMENTCAD_RUNNER_ID", "unidentified"),
     }
 
 

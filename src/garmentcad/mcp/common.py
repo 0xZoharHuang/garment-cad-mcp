@@ -91,6 +91,11 @@ def add_core_tools(
                     ),
                     None,
                 )
+            elif resource_name == "details" and len(parts) == 3:
+                detail_name = parts[2]
+                if not detail_name.startswith("issue-") or not detail_name.endswith(".json"):
+                    raise ValueError("Unsupported change-set detail resource")
+                filename = f"details/{detail_name}"
             else:
                 raise ValueError("Unsupported change-set resource")
             if filename is None:

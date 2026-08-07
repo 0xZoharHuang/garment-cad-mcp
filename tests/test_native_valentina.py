@@ -201,6 +201,17 @@ def test_native_base_point_and_dependency_query_replay(tmp_path):
         "draft.axis",
     ]
     assert any(issue.code == "dependency_query" for issue in preview.summary.issues)
+    dependency = next(
+        issue for issue in preview.summary.issues if issue.code == "dependency_query"
+    )
+    assert set(dependency.details) == {"resource_uri", "byte_length"}
+    detail = project.root / (
+        ".garmentcad/changesets/"
+        + preview.token
+        + "/details/"
+        + dependency.details["resource_uri"].rsplit("/", 1)[-1]
+    )
+    assert isinstance(read_json(detail), dict)
     project.commit(preview.token)
     aliases = read_json(project.root / ".garmentcad/aliases.json")["objects"]
     assert {record["alias"] for record in aliases.values()} >= {

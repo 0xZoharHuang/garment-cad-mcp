@@ -114,6 +114,10 @@ def main() -> int:
             raise RuntimeError(
                 "Worker is healthy but its pinned simulation runner is not configured"
             )
+        if health.json().get("runner_id") != "pinned-garmentcode-warp":
+            raise RuntimeError(
+                "Official smoke refuses an unidentified or fixture simulation runner"
+            )
         first = submit(client, url, payload, content_hash)
         deadline = time.monotonic() + options.timeout_seconds
         while True:
@@ -128,6 +132,8 @@ def main() -> int:
         print(json.dumps(job, ensure_ascii=False, indent=2))
         if job["status"] != "succeeded":
             return 1
+        if job.get("diagnostics", {}).get("runner") != "pinned-garmentcode-warp":
+            raise RuntimeError("Worker result was not produced by the pinned production runner")
         required = {f"artifacts/renders/{side}.png" for side in ("front", "back", "left", "right")}
         if not required <= set(job["artifacts"]):
             raise RuntimeError(f"Official smoke job omitted renders: {sorted(required)}")

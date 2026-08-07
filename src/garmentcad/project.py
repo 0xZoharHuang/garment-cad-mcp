@@ -259,6 +259,7 @@ class Project:
         ):
             change_set.preview_resources.append(thumbnail_uri)
         change_set.summary = merge_summaries(summaries)
+        self._externalize_summary_details(change_set, preview_directory)
         change_set.preview_content_hash = self._tree_content_hash(preview_directory)
         atomic_write_json(
             self.root / f".garmentcad/changesets/{change_set.id}.json",
@@ -435,6 +436,23 @@ class Project:
                 if path.is_file()
             ]
         return sha256_bytes(canonical_json(sorted(files)))
+
+    @staticmethod
+    def _externalize_summary_details(change_set: ChangeSet, preview_directory: Path) -> None:
+        for index, issue in enumerate(change_set.summary.issues):
+            payload = canonical_json(issue.details)
+            if not issue.details or (
+                issue.code != "dependency_query" and len(payload) <= 4096
+            ):
+                continue
+            relative = f"details/issue-{index:04d}.json"
+            atomic_write_json(preview_directory / relative, issue.details)
+            uri = (
+                f"garment://project/{change_set.project_id}/changeset/"
+                f"{change_set.id}/{relative}"
+            )
+            issue.details = {"resource_uri": uri, "byte_length": len(payload)}
+            change_set.preview_resources.append(uri)
 
     def _restore_snapshot(self, snapshot: Path) -> None:
         for relative in ("pattern", "measurements", "layout", "assembly", "simulation"):

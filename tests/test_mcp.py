@@ -127,6 +127,39 @@ async def test_content_addressed_render_resource_returns_image_content(tmp_path)
 
 
 @pytest.mark.asyncio
+async def test_change_set_detail_resource_is_on_demand_and_default_result_is_compact(tmp_path):
+    project = Project.create(tmp_path / "detail-resource")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.ASSEMBLY,
+                action="panel.create",
+                arguments={
+                    "alias": "front",
+                    "vertices_mm": [[0, 0], [100, 0], [100, 150], [0, 150]],
+                },
+            )
+        ]
+    )
+    assert len(json.dumps(preview.model_dump(mode="json"))) < 8_192
+    token = preview.token
+    detail = project.root / f".garmentcad/changesets/{token}/details/issue-0000.json"
+    detail.parent.mkdir(parents=True, exist_ok=True)
+    detail.write_text('{"dependents":[1,2,3]}\n', encoding="utf-8")
+    uri = (
+        f"garment://project/{project.manifest.project_id}/changeset/"
+        f"{token}/details/issue-0000.json"
+    )
+    resource_tool = garmentcode_mcp._tool_manager.get_tool("resource_read")
+    result = await resource_tool.run(
+        {"project_path": str(project.root), "uri": uri}, convert_result=True
+    )
+    assert isinstance(result, list)
+    assert isinstance(result[0], TextContent)
+    assert '"dependents"' in result[0].text
+
+
+@pytest.mark.asyncio
 async def test_sdk_and_mcp_generate_semantically_identical_changesets(tmp_path):
     sdk_project = Project.create(tmp_path / "sdk-project")
     mcp_project = Project.create(tmp_path / "mcp-project")
