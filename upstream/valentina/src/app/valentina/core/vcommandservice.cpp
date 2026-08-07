@@ -53,6 +53,9 @@
 #include "../vtools/tools/drawTools/toolpoint/tooldoublepoint/vtooltruedarts.h"
 #include "../vtools/tools/drawTools/vtoolline.h"
 #include "../vtools/tools/vinteractivetool.h"
+#include "../vtools/tools/nodeDetails/vtoolpiecepath.h"
+#include "../vtools/tools/nodeDetails/vtoolpin.h"
+#include "../vtools/tools/nodeDetails/vtoolplacelabel.h"
 #include "../vtools/tools/vtoolseamallowance.h"
 #include "../vgeometry/vcubicbezier.h"
 #include "../vgeometry/vcubicbezierpath.h"
@@ -174,6 +177,38 @@ auto PieceNodeTool(const QString &type) -> Tool
     }
     throw std::invalid_argument(QStringLiteral("Unsupported piece node type: %1").arg(type).toStdString());
 }
+
+auto PiecePathKind(const QString &type) -> PiecePathType
+{
+    if (type == QStringLiteral("internal"))
+    {
+        return PiecePathType::InternalPath;
+    }
+    if (type == QStringLiteral("custom_seam_allowance"))
+    {
+        return PiecePathType::CustomSeamAllowance;
+    }
+    throw std::invalid_argument(QStringLiteral("Unsupported piece path type: %1").arg(type).toStdString());
+}
+
+auto PlaceLabelKind(const QString &type) -> PlaceLabelType
+{
+    static const QHash<QString, PlaceLabelType> types{{QStringLiteral("segment"), PlaceLabelType::Segment},
+                                                      {QStringLiteral("rectangle"), PlaceLabelType::Rectangle},
+                                                      {QStringLiteral("cross"), PlaceLabelType::Cross},
+                                                      {QStringLiteral("t_shaped"), PlaceLabelType::Tshaped},
+                                                      {QStringLiteral("double_tree"), PlaceLabelType::Doubletree},
+                                                      {QStringLiteral("corner"), PlaceLabelType::Corner},
+                                                      {QStringLiteral("triangle"), PlaceLabelType::Triangle},
+                                                      {QStringLiteral("h_shaped"), PlaceLabelType::Hshaped},
+                                                      {QStringLiteral("button"), PlaceLabelType::Button},
+                                                      {QStringLiteral("circle"), PlaceLabelType::Circle}};
+    if (!types.contains(type))
+    {
+        throw std::invalid_argument(QStringLiteral("Unsupported place-label type: %1").arg(type).toStdString());
+    }
+    return types.value(type);
+}
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -280,7 +315,9 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.graduated_curve"), QStringLiteral("pattern.true_darts"),
                             QStringLiteral("pattern.move"), QStringLiteral("pattern.rotation"),
                             QStringLiteral("pattern.flipping_by_line"),
-                            QStringLiteral("pattern.flipping_by_axis"), QStringLiteral("pattern.piece")}}};
+                            QStringLiteral("pattern.flipping_by_axis"), QStringLiteral("pattern.piece"),
+                            QStringLiteral("pattern.piece_path"), QStringLiteral("pattern.pin"),
+                            QStringLiteral("pattern.place_label")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -1150,6 +1187,107 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.width = checkedWidth;
         auto *tool = VToolSeamAllowance::Create(initData);
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Piece"), tool->getId(),
+                       aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.piece_path"))
+    {
+        const QJsonArray nodeValues = arguments.value(QStringLiteral("nodes")).toArray();
+        if (nodeValues.size() < 2)
+        {
+            throw std::invalid_argument("piece path requires at least two nodes");
+        }
+
+        VPiecePath path(PiecePathKind(
+            arguments.value(QStringLiteral("type")).toString(QStringLiteral("internal"))));
+        path.SetName(arguments.value(QStringLiteral("name")).toString(
+            RequiredString(arguments, QStringLiteral("alias"))));
+        path.SetPenType(LineStyleToPenStyle(
+            arguments.value(QStringLiteral("line_type")).toString(TypeLineLine)));
+        path.SetVisibilityTrigger(
+            arguments.value(QStringLiteral("visibility_formula")).toString(QStringLiteral("1")));
+        path.SetCutPath(arguments.value(QStringLiteral("cut")).toBool(false));
+        path.SetFirstToCuttingContour(arguments.value(QStringLiteral("first_to_contour")).toBool(false));
+        path.SetLastToCuttingContour(arguments.value(QStringLiteral("last_to_contour")).toBool(false));
+        path.SetNotMirrored(arguments.value(QStringLiteral("not_mirrored")).toBool(false));
+        for (const QJsonValue value : nodeValues)
+        {
+            const QJsonObject item = value.toObject();
+            VPieceNode node(ResolveObject(item.value(QStringLiteral("object")).toObject(), aliases),
+                            PieceNodeTool(item.value(QStringLiteral("type")).toString(QStringLiteral("point"))),
+                            item.value(QStringLiteral("reverse")).toBool());
+            node.SetExcluded(item.value(QStringLiteral("excluded")).toBool());
+            path.Append(node);
+        }
+        path.SetNodes(VToolSeamAllowance::PrepareNodesForCommand(path, m_window->m_sceneDetails, m_window->doc,
+                                                                 m_window->pattern));
+
+        VToolPiecePathInitData initData;
+        initData.path = path;
+        initData.idObject = ResolveObject(arguments.value(QStringLiteral("piece")).toObject(), aliases);
+        initData.scene = m_window->m_sceneDetails;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        auto *tool = VToolPiecePath::Create(initData);
+        if (tool == nullptr)
+        {
+            throw std::runtime_error("Valentina did not create the piece path");
+        }
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("PiecePath"), tool->getId(),
+                       aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.pin"))
+    {
+        VToolPinInitData initData;
+        initData.pointId = ResolveObject(arguments.value(QStringLiteral("point")).toObject(), aliases);
+        initData.idObject = ResolveObject(arguments.value(QStringLiteral("piece")).toObject(), aliases);
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        auto *tool = VToolPin::Create(initData);
+        if (tool == nullptr)
+        {
+            throw std::runtime_error("Valentina did not create the pin");
+        }
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Pin"), tool->getId(), aliases,
+                       summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.place_label"))
+    {
+        VToolPlaceLabelInitData initData;
+        initData.centerPoint = ResolveObject(arguments.value(QStringLiteral("center_point")).toObject(), aliases);
+        initData.idObject = ResolveObject(arguments.value(QStringLiteral("piece")).toObject(), aliases);
+        initData.width = arguments.contains(QStringLiteral("width_formula"))
+                             ? RequiredString(arguments, QStringLiteral("width_formula"))
+                             : NativeFormulaForMillimetres(arguments.value(QStringLiteral("width_mm")).toDouble());
+        initData.height = arguments.contains(QStringLiteral("height_formula"))
+                              ? RequiredString(arguments, QStringLiteral("height_formula"))
+                              : NativeFormulaForMillimetres(arguments.value(QStringLiteral("height_mm")).toDouble());
+        initData.angle = arguments.value(QStringLiteral("angle_formula"))
+                             .toString(QString::number(arguments.value(QStringLiteral("angle_deg")).toDouble(), 'g', 15));
+        initData.visibilityTrigger =
+            arguments.value(QStringLiteral("visibility_formula")).toString(QStringLiteral("1"));
+        initData.notMirrored = arguments.value(QStringLiteral("not_mirrored")).toBool(false);
+        initData.type = PlaceLabelKind(
+            arguments.value(QStringLiteral("type")).toString(QStringLiteral("button")));
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        auto *tool = VToolPlaceLabel::Create(initData);
+        if (tool == nullptr)
+        {
+            throw std::runtime_error("Valentina did not create the place label");
+        }
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("PlaceLabel"), tool->getId(),
                        aliases, summary);
         return;
     }

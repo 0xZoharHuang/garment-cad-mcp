@@ -114,6 +114,7 @@ auto VToolPin::Create(VToolPinInitData initData) -> VToolPin *
             // Help to delete the node before each FullParse
             initData.doc->AddToolOnRemove(pinTool);
         }
+        return pinTool;
     }
     return nullptr;
 }

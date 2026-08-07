@@ -155,6 +155,7 @@ auto VToolPlaceLabel::Create(VToolPlaceLabelInitData &initData) -> VToolPlaceLab
             // Help to delete the node before each FullParse
             initData.doc->AddToolOnRemove(point);
         }
+        return point;
     }
     return nullptr;
 }

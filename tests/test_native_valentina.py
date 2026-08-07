@@ -1076,6 +1076,77 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
     assert followup.summary.changed[0].alias == "front.panel"
     assert followup.summary.changed[0].uuid
 
+    annotations = reopened.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.piece_path",
+                arguments={
+                    "alias": "front.fold-guide",
+                    "piece": {"alias": "front.panel"},
+                    "name": "Fold guide",
+                    "type": "internal",
+                    "line_type": "dashLine",
+                    "nodes": [
+                        {"object": {"alias": "A"}, "type": "point"},
+                        {"object": {"alias": "D"}, "type": "point"},
+                    ],
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.pin",
+                arguments={
+                    "alias": "front.label-anchor",
+                    "piece": {"alias": "front.panel"},
+                    "point": {"alias": "B"},
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.place_label",
+                arguments={
+                    "alias": "front.button-mark",
+                    "piece": {"alias": "front.panel"},
+                    "center_point": {"alias": "C"},
+                    "type": "button",
+                    "width_mm": 8,
+                    "height_mm": 8,
+                    "angle_deg": 0,
+                },
+            ),
+        ]
+    )
+    assert annotations.ok
+    assert [item.alias for item in annotations.summary.created] == [
+        "front.fold-guide",
+        "front.label-anchor",
+        "front.button-mark",
+    ]
+    reopened.commit(annotations.token)
+    annotated_pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'name="Fold guide"' in annotated_pattern
+    assert 'type="pin"' in annotated_pattern
+    assert 'type="placeLabel"' in annotated_pattern
+
+    annotated = Project.open(project.root)
+    reread = annotated.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.object_get",
+                target={"alias": alias},
+            )
+            for alias in ("front.fold-guide", "front.label-anchor", "front.button-mark")
+        ]
+    )
+    assert reread.ok
+    assert [item.alias for item in reread.summary.changed] == [
+        "front.fold-guide",
+        "front.label-anchor",
+        "front.button-mark",
+    ]
+
 
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
