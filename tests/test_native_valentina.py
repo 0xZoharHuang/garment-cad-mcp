@@ -901,6 +901,108 @@ def test_native_true_darts_registers_both_output_points(tmp_path):
     assert followup.ok
 
 
+def test_native_transformations_register_reopenable_destinations(tmp_path):
+    project = Project.create(tmp_path / "transformations")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "D",
+                "base_point": {"alias": "B"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.rotation",
+            arguments={
+                "origin": {"alias": "A"},
+                "angle_deg": 45,
+                "objects": [{"source": {"alias": "B"}, "alias": "rotated.B"}],
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.move",
+            arguments={
+                "rotation_origin": {"alias": "A"},
+                "length_mm": 20,
+                "angle_deg": 0,
+                "rotation_angle_deg": 15,
+                "objects": [{"source": {"alias": "C"}, "alias": "moved.C"}],
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.flipping_by_line",
+            arguments={
+                "line_p1": {"alias": "A"},
+                "line_p2": {"alias": "B"},
+                "objects": [{"source": {"alias": "D"}, "alias": "line-flipped.D"}],
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.flipping_by_axis",
+            arguments={
+                "origin": {"alias": "A"},
+                "axis": "vertical",
+                "objects": [{"source": {"alias": "B"}, "alias": "axis-flipped.B"}],
+            },
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created[-4:]] == [
+        "rotated.B",
+        "moved.C",
+        "line-flipped.D",
+        "axis-flipped.B",
+    ]
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    for tool_type in ("rotation", "moving", "flippingByLine", "flippingByAxis"):
+        assert f'type="{tool_type}"' in pattern
+
+    reopened = Project.open(project.root)
+    followup = reopened.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.line",
+                arguments={
+                    "alias": "transformed-result-line",
+                    "first_point": {"alias": "rotated.B"},
+                    "second_point": {"alias": "moved.C"},
+                },
+            )
+        ]
+    )
+    assert followup.ok
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(

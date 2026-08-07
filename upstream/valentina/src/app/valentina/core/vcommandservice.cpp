@@ -24,6 +24,10 @@
 #include "../vtools/tools/drawTools/toolcurve/vtoolparallelcurve.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolsplinepath.h"
+#include "../vtools/tools/drawTools/operation/flipping/vtoolflippingbyaxis.h"
+#include "../vtools/tools/drawTools/operation/flipping/vtoolflippingbyline.h"
+#include "../vtools/tools/drawTools/operation/vtoolmove.h"
+#include "../vtools/tools/drawTools/operation/vtoolrotation.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoollineintersect.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointfromarcandtangent.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointfromcircleandtangent.h"
@@ -236,7 +240,10 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.arc_intersect_axis"), QStringLiteral("pattern.cut_arc"),
                             QStringLiteral("pattern.cut_spline"), QStringLiteral("pattern.cut_spline_path"),
                             QStringLiteral("pattern.parallel_curve"),
-                            QStringLiteral("pattern.graduated_curve"), QStringLiteral("pattern.true_darts")}}};
+                            QStringLiteral("pattern.graduated_curve"), QStringLiteral("pattern.true_darts"),
+                            QStringLiteral("pattern.move"), QStringLiteral("pattern.rotation"),
+                            QStringLiteral("pattern.flipping_by_line"),
+                            QStringLiteral("pattern.flipping_by_axis")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -323,6 +330,38 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
 {
     const QString action = RequiredString(operation, QStringLiteral("action"));
     const QJsonObject arguments = operation.value(QStringLiteral("arguments")).toObject();
+    const auto operationSources = [this, &aliases](const QJsonArray &items) -> QVector<SourceItem> {
+        if (items.isEmpty())
+        {
+            throw std::invalid_argument("operation requires at least one source object");
+        }
+        QVector<SourceItem> source;
+        source.reserve(items.size());
+        for (const QJsonValue value : items)
+        {
+            const QJsonObject item = value.toObject();
+            SourceItem sourceItem;
+            sourceItem.id = ResolveObject(item.value(QStringLiteral("source")).toObject(), aliases);
+            sourceItem.name = NativeObjectName(item);
+            sourceItem.penStyle = item.value(QStringLiteral("line_type")).toString(TypeLineDefault);
+            sourceItem.color = item.value(QStringLiteral("line_color")).toString(ColorDefault);
+            source.append(sourceItem);
+        }
+        return source;
+    };
+    const auto registerDestinations = [this, &aliases, &summary](const QJsonArray &items,
+                                                                 const QVector<DestinationItem> &destinations,
+                                                                 const QString &kind) {
+        if (items.size() != destinations.size())
+        {
+            throw std::runtime_error("native operation destination count mismatch");
+        }
+        for (qsizetype index = 0; index < items.size(); ++index)
+        {
+            RegisterObject(RequiredString(items.at(index).toObject(), QStringLiteral("alias")), kind,
+                           destinations.at(index).id, aliases, summary);
+        }
+    };
 
     if (action == QStringLiteral("pattern.formula_evaluate"))
     {
@@ -1309,6 +1348,107 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         auto *tool = VToolCurveIntersectAxis::Create(initData);
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("CurveIntersectAxis"),
                        tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.rotation"))
+    {
+        const QJsonArray items = arguments.value(QStringLiteral("objects")).toArray();
+        VToolRotationInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.origin = ResolveObject(arguments.value(QStringLiteral("origin")).toObject(), aliases);
+        initData.angle = arguments.contains(QStringLiteral("formula_angle"))
+                             ? RequiredString(arguments, QStringLiteral("formula_angle"))
+                             : QString::number(arguments.value(QStringLiteral("angle_deg")).toDouble(), 'g', 15);
+        initData.source = operationSources(items);
+        VToolRotation::Create(initData);
+        registerDestinations(items, initData.destination, QStringLiteral("RotatedObject"));
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.move"))
+    {
+        const QJsonArray items = arguments.value(QStringLiteral("objects")).toArray();
+        VToolMoveInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.rotationOrigin =
+            ResolveObject(arguments.value(QStringLiteral("rotation_origin")).toObject(), aliases);
+        initData.formulaLength = arguments.contains(QStringLiteral("formula_length"))
+                                     ? RequiredString(arguments, QStringLiteral("formula_length"))
+                                     : NativeFormulaForMillimetres(
+                                           arguments.value(QStringLiteral("length_mm")).toDouble());
+        initData.formulaAngle = arguments.contains(QStringLiteral("formula_angle"))
+                                    ? RequiredString(arguments, QStringLiteral("formula_angle"))
+                                    : QString::number(
+                                          arguments.value(QStringLiteral("angle_deg")).toDouble(), 'g', 15);
+        initData.formulaRotationAngle = arguments.contains(QStringLiteral("formula_rotation_angle"))
+                                            ? RequiredString(arguments, QStringLiteral("formula_rotation_angle"))
+                                            : QString::number(
+                                                  arguments.value(QStringLiteral("rotation_angle_deg")).toDouble(),
+                                                  'g', 15);
+        initData.source = operationSources(items);
+        VToolMove::Create(initData);
+        registerDestinations(items, initData.destination, QStringLiteral("MovedObject"));
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.flipping_by_line"))
+    {
+        const QJsonArray items = arguments.value(QStringLiteral("objects")).toArray();
+        VToolFlippingByLineInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.firstLinePointId =
+            ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
+        initData.secondLinePointId =
+            ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
+        initData.source = operationSources(items);
+        VToolFlippingByLine::Create(initData);
+        for (qsizetype index = 0; index < items.size(); ++index)
+        {
+            RegisterObject(RequiredString(items.at(index).toObject(), QStringLiteral("alias")),
+                           QStringLiteral("FlippedObject"), FindNativeObjectByName(initData.source.at(index).name),
+                           aliases, summary);
+        }
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.flipping_by_axis"))
+    {
+        const QJsonArray items = arguments.value(QStringLiteral("objects")).toArray();
+        VToolFlippingByAxisInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.originPointId = ResolveObject(arguments.value(QStringLiteral("origin")).toObject(), aliases);
+        const QString axis = arguments.value(QStringLiteral("axis")).toString(QStringLiteral("vertical"));
+        if (axis != QStringLiteral("vertical") && axis != QStringLiteral("horizontal"))
+        {
+            throw std::invalid_argument("axis must be vertical or horizontal");
+        }
+        initData.axisType =
+            axis == QStringLiteral("vertical") ? AxisType::VerticalAxis : AxisType::HorizontalAxis;
+        initData.source = operationSources(items);
+        VToolFlippingByAxis::Create(initData);
+        for (qsizetype index = 0; index < items.size(); ++index)
+        {
+            RegisterObject(RequiredString(items.at(index).toObject(), QStringLiteral("alias")),
+                           QStringLiteral("FlippedObject"), FindNativeObjectByName(initData.source.at(index).name),
+                           aliases, summary);
+        }
         return;
     }
 

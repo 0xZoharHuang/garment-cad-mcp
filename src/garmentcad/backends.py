@@ -52,8 +52,21 @@ class JsonLineCommandBackend:
             env=environment,
         )
         if process.returncode != 0:
-            raise CommandBackendUnavailable(process.stderr.strip() or "Valentina command failed")
-        return json.loads(process.stdout)
+            message = process.stderr.strip()
+            if process.stdout.strip():
+                try:
+                    response = json.loads(process.stdout)
+                    error = response.get("error", {})
+                    message = error.get("message") or message
+                    if error.get("code") and message:
+                        message = f"{error['code']}: {message}"
+                except json.JSONDecodeError:
+                    message = message or process.stdout.strip()
+            raise CommandBackendUnavailable(message or "Valentina command failed")
+        try:
+            return json.loads(process.stdout)
+        except json.JSONDecodeError as exc:
+            raise CommandBackendUnavailable("Valentina returned invalid JSON") from exc
 
     def preview(
         self, project_root: Path, change_set_id: str, operations: list[Operation]
