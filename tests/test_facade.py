@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from garmentcad.assembly import apply_operations, empty_assembly, to_garmentcode
+from garmentcad.catalog import GARMENTCODE_TOOLS
 from garmentcad.models import Operation, OperationDomain
 from garmentcad.valentina_bridge import snapshot_to_assembly
 
@@ -160,3 +161,77 @@ def test_chamfer_preserves_every_existing_edge_uuid_and_interface():
     updated_ids = {edge["id"] for edge in state["panels"][panel_id]["edges"]}
     assert original_ids <= updated_ids
     assert set(next(iter(state["interfaces"].values()))["edge_ids"]) <= updated_ids
+
+
+def test_all_public_garmentcode_transformations_compose_and_validate():
+    state, summary = apply_operations(
+        empty_assembly(),
+        [
+            operation(
+                "panel.create",
+                alias="front",
+                vertices_mm=[[0, 0], [120, 0], [120, 180], [0, 180]],
+            ),
+            Operation(
+                domain=OperationDomain.ASSEMBLY,
+                action="panel.transform",
+                target={"alias": "front"},
+                arguments={"translation_mm": [10, 20, 30], "rotation_deg": [0, 15, 0]},
+            ),
+            Operation(
+                domain=OperationDomain.ASSEMBLY,
+                action="panel.mirror",
+                target={"alias": "front"},
+                arguments={"alias": "back", "axis": "x", "origin_mm": 0},
+            ),
+            operation(
+                "edge.extend",
+                panel="front",
+                edge_index=0,
+                start_delta_mm=5,
+                end_delta_mm=5,
+            ),
+            operation(
+                "edge.chamfer",
+                panel="front",
+                vertex_index=2,
+                distance_before_mm=10,
+                distance_after_mm=10,
+            ),
+            operation(
+                "dart.insert",
+                panel="back",
+                edge_index=0,
+                intake_mm=10,
+                depth_mm=20,
+                position=0.5,
+            ),
+            operation("component.define", alias="bodice", panels=["front", "back"]),
+        ],
+    )
+    assert not [issue for issue in summary.issues if issue.severity == "error"]
+    assert {panel["alias"] for panel in state["panels"].values()} == {"front", "back"}
+    assert len(state["components"]["bodice"]) == 2
+    native = to_garmentcode(state)
+    assert set(native["pattern"]["panels"]) == {"front", "back"}
+
+
+def test_garmentcode_catalog_exposes_every_mutating_facade_action():
+    expected = {
+        "panel.create",
+        "panel.delete",
+        "panel.transform",
+        "panel.mirror",
+        "edge.split",
+        "edge.extend",
+        "edge.chamfer",
+        "dart.insert",
+        "component.define",
+        "valentina.import",
+        "interface.define",
+        "interface.delete",
+        "stitch.create",
+        "stitch.delete",
+        "validate",
+    }
+    assert expected <= {tool.action for tool in GARMENTCODE_TOOLS}
