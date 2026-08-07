@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "valentina-cad": {
+      "command": "uv",
+      "args": ["--directory", ".", "run", "valentina-mcp"],
+      "env": {
+        "GARMENTCAD_VALENTINA_COMMAND": "build/valentina-command/garmentcad-valentina-command"
+      }
+    },
+    "garmentcode-cad": {
+      "command": "uv",
+      "args": ["--directory", ".", "run", "garmentcode-mcp"]
+    }
+  }
+}
