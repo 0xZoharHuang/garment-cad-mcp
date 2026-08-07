@@ -476,6 +476,85 @@ def test_native_axis_intersection_handlers(tmp_path):
     project.commit(preview.token)
 
 
+def test_native_arc_variant_handlers(tmp_path):
+    project = Project.create(tmp_path / "arc-variants")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action=action,
+            arguments={
+                "alias": alias,
+                "center": {"alias": "A"},
+                "radius_mm": 50,
+                "start_angle_deg": start,
+                "end_angle_deg": end,
+            },
+        )
+        for action, alias, start, end in (
+            ("pattern.arc_start", "arc-start", 0, 90),
+            ("pattern.arc_end", "arc-end", 90, 180),
+        )
+    ]
+    operations.extend(
+        [
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.arc_with_length",
+                arguments={
+                    "alias": "arc-length",
+                    "center": {"alias": "A"},
+                    "radius_mm": 50,
+                    "start_angle_deg": 0,
+                    "length_mm": 50,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.elliptical_arc",
+                arguments={
+                    "alias": "ellipse",
+                    "center": {"alias": "A"},
+                    "radius1_mm": 60,
+                    "radius2_mm": 30,
+                    "start_angle_deg": 0,
+                    "end_angle_deg": 180,
+                    "rotation_angle_deg": 15,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.elliptical_arc_with_length",
+                arguments={
+                    "alias": "ellipse-length",
+                    "center": {"alias": "A"},
+                    "radius1_mm": 60,
+                    "radius2_mm": 30,
+                    "start_angle_deg": 0,
+                    "length_mm": 50,
+                    "rotation_angle_deg": 15,
+                },
+            ),
+        ]
+    )
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created] == [
+        "arc-start",
+        "arc-end",
+        "arc-length",
+        "ellipse",
+        "ellipse-length",
+    ]
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert pattern.count('type="simple"') >= 3
+    assert 'type="arcWithLength"' in pattern
+    assert 'type="ellipticalArcWithLength"' in pattern
+    records = read_json(project.root / ".garmentcad/aliases.json")["objects"]
+    aliases = {record["alias"] for record in records.values()}
+    assert aliases == {"arc-start", "arc-end", "arc-length", "ellipse", "ellipse-length"}
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(

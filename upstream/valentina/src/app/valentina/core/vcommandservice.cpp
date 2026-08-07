@@ -14,7 +14,10 @@
 #include "../vmisc/def.h"
 #include "../vmisc/vabstractvalapplication.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolarc.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolarcwithlength.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolabstractcurve.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarc.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarcwithlength.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoollineintersect.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointfromarcandtangent.h"
@@ -156,6 +159,9 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.end_line"), QStringLiteral("pattern.line"),
                             QStringLiteral("pattern.along_line"), QStringLiteral("pattern.midpoint"),
                             QStringLiteral("pattern.line_intersect"), QStringLiteral("pattern.arc"),
+                            QStringLiteral("pattern.arc_start"), QStringLiteral("pattern.arc_end"),
+                            QStringLiteral("pattern.arc_with_length"), QStringLiteral("pattern.elliptical_arc"),
+                            QStringLiteral("pattern.elliptical_arc_with_length"),
                             QStringLiteral("pattern.spline"), QStringLiteral("pattern.formula_evaluate"),
                             QStringLiteral("pattern.dependency_query"), QStringLiteral("measurement.increment_set"),
                             QStringLiteral("measurement.increment_remove"),
@@ -595,7 +601,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         return;
     }
 
-    if (action == QStringLiteral("pattern.arc"))
+    if (action == QStringLiteral("pattern.arc") || action == QStringLiteral("pattern.arc_start") ||
+        action == QStringLiteral("pattern.arc_end"))
     {
         VToolArcInitData initData;
         initData.scene = m_window->m_sceneDraw;
@@ -619,6 +626,101 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         auto *tool = VToolArc::Create(initData);
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Arc"), tool->getId(),
                        aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.arc_with_length"))
+    {
+        VToolArcWithLengthInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.center = ResolveObject(arguments.value(QStringLiteral("center")).toObject(), aliases);
+        initData.radius = arguments.contains(QStringLiteral("formula_radius"))
+                              ? RequiredString(arguments, QStringLiteral("formula_radius"))
+                              : NativeFormulaForMillimetres(arguments.value(QStringLiteral("radius_mm")).toDouble());
+        initData.f1 = arguments.contains(QStringLiteral("formula_start_angle"))
+                          ? RequiredString(arguments, QStringLiteral("formula_start_angle"))
+                          : QString::number(arguments.value(QStringLiteral("start_angle_deg")).toDouble(), 'g', 15);
+        initData.length = arguments.contains(QStringLiteral("formula_length"))
+                              ? RequiredString(arguments, QStringLiteral("formula_length"))
+                              : NativeFormulaForMillimetres(arguments.value(QStringLiteral("length_mm")).toDouble());
+        initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
+        auto *tool = VToolArcWithLength::Create(initData);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("ArcWithLength"),
+                       tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.elliptical_arc") ||
+        action == QStringLiteral("pattern.elliptical_arc_with_length"))
+    {
+        const auto radius1 = arguments.contains(QStringLiteral("formula_radius1"))
+                                 ? RequiredString(arguments, QStringLiteral("formula_radius1"))
+                                 : NativeFormulaForMillimetres(
+                                       arguments.value(QStringLiteral("radius1_mm")).toDouble());
+        const auto radius2 = arguments.contains(QStringLiteral("formula_radius2"))
+                                 ? RequiredString(arguments, QStringLiteral("formula_radius2"))
+                                 : NativeFormulaForMillimetres(
+                                       arguments.value(QStringLiteral("radius2_mm")).toDouble());
+        const auto startAngle = arguments.contains(QStringLiteral("formula_start_angle"))
+                                    ? RequiredString(arguments, QStringLiteral("formula_start_angle"))
+                                    : QString::number(
+                                          arguments.value(QStringLiteral("start_angle_deg")).toDouble(), 'g', 15);
+        const auto rotation = arguments.contains(QStringLiteral("formula_rotation_angle"))
+                                  ? RequiredString(arguments, QStringLiteral("formula_rotation_angle"))
+                                  : QString::number(
+                                        arguments.value(QStringLiteral("rotation_angle_deg")).toDouble(), 'g', 15);
+        if (action == QStringLiteral("pattern.elliptical_arc"))
+        {
+            VToolEllipticalArcInitData initData;
+            initData.scene = m_window->m_sceneDraw;
+            initData.doc = m_window->doc;
+            initData.data = m_window->pattern;
+            initData.parse = Document::FullParse;
+            initData.typeCreation = Source::FromGui;
+            initData.center = ResolveObject(arguments.value(QStringLiteral("center")).toObject(), aliases);
+            initData.radius1 = radius1;
+            initData.radius2 = radius2;
+            initData.f1 = startAngle;
+            initData.f2 = arguments.contains(QStringLiteral("formula_end_angle"))
+                              ? RequiredString(arguments, QStringLiteral("formula_end_angle"))
+                              : QString::number(
+                                    arguments.value(QStringLiteral("end_angle_deg")).toDouble(), 'g', 15);
+            initData.rotationAngle = rotation;
+            initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+            initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+            initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
+            auto *tool = VToolEllipticalArc::Create(initData);
+            RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("EllipticalArc"),
+                           tool->getId(), aliases, summary);
+            return;
+        }
+
+        VToolEllipticalArcWithLengthInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.center = ResolveObject(arguments.value(QStringLiteral("center")).toObject(), aliases);
+        initData.radius1 = radius1;
+        initData.radius2 = radius2;
+        initData.f1 = startAngle;
+        initData.length = arguments.contains(QStringLiteral("formula_length"))
+                              ? RequiredString(arguments, QStringLiteral("formula_length"))
+                              : NativeFormulaForMillimetres(arguments.value(QStringLiteral("length_mm")).toDouble());
+        initData.rotationAngle = rotation;
+        initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
+        auto *tool = VToolEllipticalArcWithLength::Create(initData);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")),
+                       QStringLiteral("EllipticalArcWithLength"), tool->getId(), aliases, summary);
         return;
     }
 
