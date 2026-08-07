@@ -1,0 +1,33 @@
+# Jupyter tmp files 
+.ipynb_checkpoints
+
+# VSCode settings
+*.code-workspace
+.vscode
+__pycache__
+
+# PyCharm
+.idea
+
+# Compiled files
+*.pyc
+dist
+*egg-info*
+
+# Maya
+.mayaSwatches
+
+# custom settings -- to have customized local copy
+system.json
+
+# place to store render scenes
+**/data_generation/Scenes
+
+# file for small script tries
+tmp*
+*tmp*.mb
+Logs*
+output*
+
+# Nicegui
+.nicegui
