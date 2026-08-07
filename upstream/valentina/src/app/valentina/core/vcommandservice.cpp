@@ -57,6 +57,7 @@
 #include "../vtools/tools/nodeDetails/vtoolpin.h"
 #include "../vtools/tools/nodeDetails/vtoolplacelabel.h"
 #include "../vtools/tools/vtoolseamallowance.h"
+#include "../vtools/undocommands/undogroup.h"
 #include "../vgeometry/vcubicbezier.h"
 #include "../vgeometry/vcubicbezierpath.h"
 #include "../vpatterndb/vpiecenode.h"
@@ -319,7 +320,7 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.piece_path"), QStringLiteral("pattern.pin"),
                             QStringLiteral("pattern.place_label"), QStringLiteral("pattern.insert_node"),
                             QStringLiteral("pattern.duplicate_detail"),
-                            QStringLiteral("pattern.object_duplicate")}}};
+                            QStringLiteral("pattern.object_duplicate"), QStringLiteral("pattern.group")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -567,6 +568,13 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         else if (kind == QStringLiteral("PiecePath"))
         {
             static_cast<void>(m_window->pattern->GetPiecePath(nativeId));
+        }
+        else if (kind == QStringLiteral("Group"))
+        {
+            if (!m_window->doc->GetGroups().contains(nativeId))
+            {
+                throw std::invalid_argument("The semantic group no longer exists in the pattern");
+            }
         }
         else
         {
@@ -1409,6 +1417,51 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.source = operationSources(items);
         VToolMove::Create(initData);
         registerDestinations(items, initData.destination, QStringLiteral("DuplicatedObject"));
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.group"))
+    {
+        const QJsonArray objectValues = arguments.value(QStringLiteral("objects")).toArray();
+        if (objectValues.isEmpty())
+        {
+            throw std::invalid_argument("group requires at least one object");
+        }
+        QMap<quint32, quint32> groupData;
+        for (const QJsonValue value : objectValues)
+        {
+            const QJsonObject item = value.toObject();
+            QJsonObject objectReference = item.value(QStringLiteral("object")).toObject();
+            if (objectReference.isEmpty())
+            {
+                objectReference = item;
+            }
+            const quint32 objectId = ResolveObject(objectReference, aliases);
+            QJsonObject toolReference = item.value(QStringLiteral("tool")).toObject();
+            const quint32 toolId = toolReference.isEmpty() ? objectId : ResolveObject(toolReference, aliases);
+            groupData.insert(objectId, toolId);
+        }
+        QStringList tags;
+        for (const QJsonValue value : arguments.value(QStringLiteral("tags")).toArray())
+        {
+            if (!value.toString().isEmpty())
+            {
+                tags.append(value.toString());
+            }
+        }
+        const quint32 groupId = m_window->pattern->getNextId();
+        const QDomElement group = m_window->doc->CreateGroup(
+            groupId,
+            arguments.value(QStringLiteral("name")).toString(
+                RequiredString(arguments, QStringLiteral("alias"))),
+            tags, groupData);
+        if (group.isNull())
+        {
+            throw std::runtime_error("Valentina did not create the group element");
+        }
+        VAbstractApplication::VApp()->getUndoStack()->push(new AddGroup(group, m_window->doc));
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Group"), groupId, aliases,
+                       summary);
         return;
     }
 

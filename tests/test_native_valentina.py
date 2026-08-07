@@ -1176,15 +1176,31 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
                     "angle_deg": 0,
                 },
             ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.group",
+                arguments={
+                    "alias": "construction.copies",
+                    "name": "Construction copies",
+                    "tags": ["agent", "copy"],
+                    "objects": [{"alias": "E"}, {"alias": "B.copy"}],
+                },
+            ),
         ]
     )
     assert edited.ok
-    assert [item.alias for item in edited.summary.created] == ["E", "back.panel", "B.copy"]
+    assert [item.alias for item in edited.summary.created] == [
+        "E",
+        "back.panel",
+        "B.copy",
+        "construction.copies",
+    ]
     assert [item.alias for item in edited.summary.changed] == ["front.panel"]
     reopened.commit(edited.token)
     edited_pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
     assert 'name="Back panel"' in edited_pattern
     assert edited_pattern.count("<detail ") == 2
+    assert 'name="Construction copies"' in edited_pattern
 
     annotated = Project.open(project.root)
     reread = annotated.preview(
@@ -1200,6 +1216,7 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
                 "front.button-mark",
                 "back.panel",
                 "B.copy",
+                "construction.copies",
             )
         ]
     )
@@ -1210,6 +1227,7 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
         "front.button-mark",
         "back.panel",
         "B.copy",
+        "construction.copies",
     ]
 
 
