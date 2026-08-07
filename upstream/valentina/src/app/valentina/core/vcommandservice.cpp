@@ -17,6 +17,7 @@
 #include "../vtools/tools/drawTools/toolcurve/vtoolarcwithlength.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolabstractcurve.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolcubicbezier.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolcubicbezierpath.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarc.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarcwithlength.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
@@ -46,6 +47,7 @@
 #include "../vtools/tools/drawTools/vtoolline.h"
 #include "../vtools/tools/vinteractivetool.h"
 #include "../vgeometry/vcubicbezier.h"
+#include "../vgeometry/vcubicbezierpath.h"
 
 #include <QDir>
 #include <QFile>
@@ -190,7 +192,7 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.arc_with_length"), QStringLiteral("pattern.elliptical_arc"),
                             QStringLiteral("pattern.elliptical_arc_with_length"),
                             QStringLiteral("pattern.spline"), QStringLiteral("pattern.spline_path"),
-                            QStringLiteral("pattern.cubic_bezier"),
+                            QStringLiteral("pattern.cubic_bezier"), QStringLiteral("pattern.cubic_bezier_path"),
                             QStringLiteral("pattern.formula_evaluate"),
                             QStringLiteral("pattern.dependency_query"), QStringLiteral("measurement.increment_set"),
                             QStringLiteral("measurement.increment_remove"),
@@ -853,6 +855,37 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         }
         auto *tool = VToolSplinePath::Create(initData);
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("SplinePath"),
+                       tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.cubic_bezier_path"))
+    {
+        const QJsonArray pointReferences = arguments.value(QStringLiteral("points")).toArray();
+        if (pointReferences.size() < 4 || (pointReferences.size() - 1) % 3 != 0)
+        {
+            throw std::invalid_argument("cubic_bezier_path requires 3n+1 points");
+        }
+        QVector<VPointF> points;
+        points.reserve(pointReferences.size());
+        for (const QJsonValue value : pointReferences)
+        {
+            const auto pointId = ResolveObject(value.toObject(), aliases);
+            points.append(*m_window->pattern->GeometricObject<VPointF>(pointId));
+        }
+
+        VToolCubicBezierPathInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.path = new VCubicBezierPath(points);
+        initData.path->SetColor(arguments.value(QStringLiteral("line_color")).toString(ColorBlack));
+        initData.path->SetPenStyle(arguments.value(QStringLiteral("line_type")).toString(TypeLineLine));
+        initData.path->SetAliasSuffix(arguments.value(QStringLiteral("native_alias_suffix")).toString());
+        auto *tool = VToolCubicBezierPath::Create(initData);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("CubicBezierPath"),
                        tool->getId(), aliases, summary);
         return;
     }

@@ -612,6 +612,19 @@ def test_native_cubic_bezier_and_curve_intersection(tmp_path):
         ),
         Operation(
             domain=OperationDomain.PATTERN,
+            action="pattern.cubic_bezier_path",
+            arguments={
+                "alias": "bezier-path",
+                "points": [
+                    {"alias": "A"},
+                    {"alias": "B"},
+                    {"alias": "D"},
+                    {"alias": "C"},
+                ],
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
             action="pattern.point_of_intersection_curves",
             arguments={
                 "alias": "bezier-cross",
@@ -624,14 +637,16 @@ def test_native_cubic_bezier_and_curve_intersection(tmp_path):
     ]
     preview = project.preview(operations=operations)
     assert preview.ok
-    assert [item.alias for item in preview.summary.created[-3:]] == [
+    assert [item.alias for item in preview.summary.created[-4:]] == [
         "bezier-up",
         "bezier-down",
+        "bezier-path",
         "bezier-cross",
     ]
     project.commit(preview.token)
     pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
     assert pattern.count('type="cubicBezier"') == 2
+    assert 'type="cubicBezierPath"' in pattern
     assert 'name="bezier-cross"' in pattern
 
 
