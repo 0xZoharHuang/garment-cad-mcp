@@ -760,6 +760,75 @@ def test_native_spline_path_and_cut_handlers(tmp_path):
     assert 'type="cutSplinePath"' in pattern
 
 
+def test_native_parallel_and_graduated_curve_handlers(tmp_path):
+    project = Project.create(tmp_path / "offset-curves")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.spline",
+            arguments={
+                "alias": "origin",
+                "point1": {"alias": "B"},
+                "point4": {"alias": "C"},
+                "angle1_deg": 90,
+                "angle2_deg": 0,
+                "length1_mm": 40,
+                "length2_mm": 40,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.parallel_curve",
+            arguments={
+                "alias": "parallel",
+                "curve": {"alias": "origin"},
+                "width_mm": 10,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.graduated_curve",
+            arguments={
+                "alias": "graduated",
+                "curve": {"alias": "origin"},
+                "offsets": [
+                    {"name": "start_offset", "width_mm": 5},
+                    {"name": "end_offset", "width_mm": 15},
+                ],
+            },
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created[-2:]] == ["parallel", "graduated"]
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'type="parallelCurve"' in pattern
+    assert 'type="graduatedCurve"' in pattern
+    assert 'name="start_offset"' in pattern
+    assert 'name="end_offset"' in pattern
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(

@@ -20,6 +20,8 @@
 #include "../vtools/tools/drawTools/toolcurve/vtoolcubicbezierpath.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarc.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarcwithlength.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolgraduatedcurve.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolparallelcurve.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolsplinepath.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoollineintersect.h"
@@ -209,7 +211,9 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.line_intersect_axis"),
                             QStringLiteral("pattern.curve_intersect_axis"),
                             QStringLiteral("pattern.arc_intersect_axis"), QStringLiteral("pattern.cut_arc"),
-                            QStringLiteral("pattern.cut_spline"), QStringLiteral("pattern.cut_spline_path")}}};
+                            QStringLiteral("pattern.cut_spline"), QStringLiteral("pattern.cut_spline_path"),
+                            QStringLiteral("pattern.parallel_curve"),
+                            QStringLiteral("pattern.graduated_curve")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -887,6 +891,65 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         auto *tool = VToolCubicBezierPath::Create(initData);
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("CubicBezierPath"),
                        tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.parallel_curve"))
+    {
+        VToolParallelCurveInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.originCurveId = ResolveObject(arguments.value(QStringLiteral("curve")).toObject(), aliases);
+        initData.formulaWidth = arguments.contains(QStringLiteral("formula_width"))
+                                    ? RequiredString(arguments, QStringLiteral("formula_width"))
+                                    : NativeFormulaForMillimetres(
+                                          arguments.value(QStringLiteral("width_mm")).toDouble());
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
+        auto *tool = VToolParallelCurve::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("ParallelCurve"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.graduated_curve"))
+    {
+        const QJsonArray offsetValues = arguments.value(QStringLiteral("offsets")).toArray();
+        if (offsetValues.size() < 2)
+        {
+            throw std::invalid_argument("graduated_curve requires at least two offsets");
+        }
+
+        VToolGraduatedCurveInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.originCurveId = ResolveObject(arguments.value(QStringLiteral("curve")).toObject(), aliases);
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
+        for (qsizetype index = 0; index < offsetValues.size(); ++index)
+        {
+            const QJsonObject offset = offsetValues.at(index).toObject();
+            VRawGraduatedCurveOffset raw;
+            raw.name = offset.value(QStringLiteral("name")).toString(
+                QStringLiteral("offset_%1").arg(index + 1));
+            raw.formula = offset.contains(QStringLiteral("formula"))
+                              ? RequiredString(offset, QStringLiteral("formula"))
+                              : NativeFormulaForMillimetres(
+                                    offset.value(QStringLiteral("width_mm")).toDouble());
+            raw.description = offset.value(QStringLiteral("description")).toString();
+            initData.offsets.append(raw);
+        }
+        auto *tool = VToolGraduatedCurve::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("GraduatedCurve"), tool->getId(), aliases, summary);
         return;
     }
 
