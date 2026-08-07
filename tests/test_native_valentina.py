@@ -1230,6 +1230,41 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
         "construction.copies",
     ]
 
+    union = annotated.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.union_details",
+                arguments={
+                    "alias": "body.panel",
+                    "piece1": {"alias": "front.panel"},
+                    "piece2": {"alias": "back.panel"},
+                    "edge_index1": 0,
+                    "edge_index2": 0,
+                    "retain_pieces": False,
+                },
+            )
+        ]
+    )
+    assert union.ok
+    assert [item.alias for item in union.summary.created] == ["body.panel"]
+    assert {item.alias for item in union.summary.deleted} == {"front.panel", "back.panel"}
+    annotated.commit(union.token)
+    union_pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'name="United detail"' in union_pattern
+    assert union_pattern.count("<detail ") == 1
+
+    united = Project.open(project.root).preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.object_get",
+                target={"alias": "body.panel"},
+            )
+        ]
+    )
+    assert united.ok
+
 
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")

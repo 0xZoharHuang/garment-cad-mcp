@@ -57,6 +57,7 @@
 #include "../vtools/tools/nodeDetails/vtoolpin.h"
 #include "../vtools/tools/nodeDetails/vtoolplacelabel.h"
 #include "../vtools/tools/vtoolseamallowance.h"
+#include "../vtools/tools/vtooluniondetails.h"
 #include "../vtools/undocommands/undogroup.h"
 #include "../vgeometry/vcubicbezier.h"
 #include "../vgeometry/vcubicbezierpath.h"
@@ -320,7 +321,8 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.piece_path"), QStringLiteral("pattern.pin"),
                             QStringLiteral("pattern.place_label"), QStringLiteral("pattern.insert_node"),
                             QStringLiteral("pattern.duplicate_detail"),
-                            QStringLiteral("pattern.object_duplicate"), QStringLiteral("pattern.group")}}};
+                            QStringLiteral("pattern.object_duplicate"), QStringLiteral("pattern.group"),
+                            QStringLiteral("pattern.union_details")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -1462,6 +1464,97 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         VAbstractApplication::VApp()->getUndoStack()->push(new AddGroup(group, m_window->doc));
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Group"), groupId, aliases,
                        summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.union_details"))
+    {
+        const quint32 firstPiece = ResolveObject(arguments.value(QStringLiteral("piece1")).toObject(), aliases);
+        const quint32 secondPiece = ResolveObject(arguments.value(QStringLiteral("piece2")).toObject(), aliases);
+        if (firstPiece == secondPiece)
+        {
+            throw std::invalid_argument("union_details requires two different pieces");
+        }
+        const QSet<quint32> beforePieces(m_window->pattern->DataPieces()->keyBegin(),
+                                         m_window->pattern->DataPieces()->keyEnd());
+
+        VToolUnionDetailsInitData initData;
+        initData.d1id = firstPiece;
+        initData.d2id = secondPiece;
+        initData.indexD1 = static_cast<quint32>(arguments.value(QStringLiteral("edge_index1")).toInteger());
+        initData.indexD2 = static_cast<quint32>(arguments.value(QStringLiteral("edge_index2")).toInteger());
+        initData.retainPieces = arguments.value(QStringLiteral("retain_pieces")).toBool(false);
+        initData.scene = m_window->m_sceneDetails;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+
+        VAbstractApplication::VApp()->getUndoStack()->beginMacro(QStringLiteral("union details"));
+        auto macroGuard = qScopeGuard([]() { VAbstractApplication::VApp()->getUndoStack()->endMacro(); });
+        auto *unionTool = VToolUnionDetails::Create(initData);
+        if (unionTool == nullptr)
+        {
+            throw std::runtime_error("Valentina did not create the union tool");
+        }
+
+        QVector<quint32> newPieces;
+        for (auto iterator = m_window->pattern->DataPieces()->constBegin();
+             iterator != m_window->pattern->DataPieces()->constEnd(); ++iterator)
+        {
+            if (!beforePieces.contains(iterator.key()))
+            {
+                newPieces.append(iterator.key());
+            }
+        }
+        std::sort(newPieces.begin(), newPieces.end());
+        auto united = std::find_if(newPieces.constBegin(), newPieces.constEnd(), [this](quint32 id) {
+            return m_window->pattern->GetPiece(id).IsUnited();
+        });
+        if (united == newPieces.constEnd())
+        {
+            throw std::runtime_error("Valentina union did not produce a united piece");
+        }
+
+        QJsonObject objects = aliases.value(QStringLiteral("objects")).toObject();
+        QJsonArray deleted = summary.value(QStringLiteral("deleted")).toArray();
+        for (auto iterator = objects.begin(); iterator != objects.end(); ++iterator)
+        {
+            QJsonObject record = iterator.value().toObject();
+            const quint32 nativeId = static_cast<quint32>(record.value(QStringLiteral("native_id")).toInteger());
+            if (!record.value(QStringLiteral("deleted")).toBool() &&
+                (nativeId == firstPiece || nativeId == secondPiece))
+            {
+                record.insert(QStringLiteral("deleted"), true);
+                iterator.value() = record;
+                deleted.append(QJsonObject{{QStringLiteral("uuid"), iterator.key()},
+                                           {QStringLiteral("alias"), record.value(QStringLiteral("alias"))}});
+            }
+        }
+        aliases.insert(QStringLiteral("objects"), objects);
+        summary.insert(QStringLiteral("deleted"), deleted);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Piece"), *united, aliases,
+                       summary);
+
+        if (initData.retainPieces)
+        {
+            QVector<quint32> retained;
+            for (quint32 id : std::as_const(newPieces))
+            {
+                if (id != *united)
+                {
+                    retained.append(id);
+                }
+            }
+            if (retained.size() != 2)
+            {
+                throw std::runtime_error("Valentina union did not retain exactly two source pieces");
+            }
+            RegisterObject(RequiredString(arguments, QStringLiteral("retained_alias1")), QStringLiteral("Piece"),
+                           retained.at(0), aliases, summary);
+            RegisterObject(RequiredString(arguments, QStringLiteral("retained_alias2")), QStringLiteral("Piece"),
+                           retained.at(1), aliases, summary);
+        }
         return;
     }
 
