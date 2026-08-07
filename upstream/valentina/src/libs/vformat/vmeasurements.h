@@ -135,6 +135,7 @@ public:
     auto MeasurementForDimension(IMD type) const -> QString;
 
     auto Dimensions() const -> VDimensions;
+    void SetDimensionDefinition(const MeasurementDimension_p &dimension);
 
     auto GetRestrictions() const -> QMap<QString, VDimensionRestriction>;
     void SetRestrictions(const QMap<QString, VDimensionRestriction> &restrictions);

@@ -992,6 +992,36 @@ auto VMeasurements::Dimensions() const -> VDimensions
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void VMeasurements::SetDimensionDefinition(const MeasurementDimension_p &dimension)
+{
+    if (type != MeasurementsType::Multisize || dimension.isNull() || !dimension->IsValid())
+    {
+        throw VException(tr("Invalid multisize measurement dimension."));
+    }
+
+    const QString dimensionType = DimensionTypeToStr(dimension->Type());
+    const QDomNodeList dimensions = elementsByTagName(TagDimension);
+    for (int index = 0; index < dimensions.size(); ++index)
+    {
+        QDomElement element = dimensions.at(index).toElement();
+        if (!element.isNull() && element.attribute(AttrType) == dimensionType)
+        {
+            SetAttribute(element, AttrBase, dimension->BaseValue());
+            SetAttribute(element, AttrMin, dimension->MinValue());
+            SetAttribute(element, AttrMax, dimension->MaxValue());
+            SetAttribute(element, AttrStep, dimension->Step());
+            SetAttributeOrRemoveIf<bool>(element, AttrMeasurement, dimension->IsBodyMeasurement(),
+                                         [](bool value) noexcept { return value; });
+            SetAttributeOrRemoveIf<QString>(element, AttrCustomName, dimension->CustomName(),
+                                            [](const QString &value) noexcept { return value.isEmpty(); });
+            m_dimensions = ReadDimensions();
+            return;
+        }
+    }
+    throw VException(tr("The requested multisize dimension does not exist."));
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 auto VMeasurements::GetRestrictions() const -> QMap<QString, VDimensionRestriction>
 {
     QMap<QString, VDimensionRestriction> restrictions;

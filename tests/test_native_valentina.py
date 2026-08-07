@@ -1360,3 +1360,190 @@ def test_native_formula_increments_and_final_measurements(tmp_path):
         ]
     )
     assert removed.ok
+
+
+def test_native_tape_individual_measurement_lifecycle(tmp_path):
+    project = Project.create(tmp_path / "tape-individual")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_create",
+                arguments={
+                    "type": "individual",
+                    "path": "measurements/client.vit",
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={
+                    "name": "@bust",
+                    "value_mm": 920,
+                    "full_name": "Bust circumference",
+                    "description": "Client bust",
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={"name": "@waist", "value_mm": 740},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.rename",
+                arguments={"name": "@waist", "new_name": "@natural_waist"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={"name": "@temporary", "value_mm": 1},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.remove",
+                arguments={"name": "@temporary"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.export_csv",
+                arguments={"output_path": "measurements/client.csv"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_save",
+            ),
+        ]
+    )
+    assert preview.ok
+    candidate = project.root / f".garmentcad/changesets/{preview.token}/measurements/client.vit"
+    assert candidate.exists()
+    assert not (project.root / "measurements/client.vit").exists()
+    candidate_text = candidate.read_text(encoding="utf-8")
+    assert 'name="@bust"' in candidate_text
+    assert 'value="920"' in candidate_text
+    assert 'name="@natural_waist"' in candidate_text
+    assert "@temporary" not in candidate_text
+    candidate_csv = candidate.with_suffix(".csv")
+    assert candidate_csv.exists()
+    assert '"@bust",920' in candidate_csv.read_text(encoding="utf-8")
+
+    project.commit(preview.token)
+    measurement = project.root / "measurements/client.vit"
+    assert measurement.exists()
+    assert "../measurements/client.vit" in (project.root / "pattern/main.val").read_text(
+        encoding="utf-8"
+    )
+
+    reopened = Project.open(project.root)
+    updated = reopened.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={"name": "@natural_waist", "value_mm": 760},
+            )
+        ]
+    )
+    assert updated.ok
+    reopened.commit(updated.token)
+    assert 'value="760"' in measurement.read_text(encoding="utf-8")
+
+    imported = reopened.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_open",
+                arguments={
+                    "source_path": str(measurement),
+                    "path": "measurements/imported.vit",
+                },
+            )
+        ]
+    )
+    assert imported.ok
+    reopened.commit(imported.token)
+    assert (project.root / "measurements/imported.vit").exists()
+    assert "../measurements/imported.vit" in (project.root / "pattern/main.val").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_native_tape_multisize_dimensions_and_csv(tmp_path):
+    project = Project.create(tmp_path / "tape-multisize")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_create",
+                arguments={
+                    "type": "multisize",
+                    "path": "measurements/sizes.vst",
+                    "dimensions": [
+                        {
+                            "axis": "X",
+                            "min_mm": 500,
+                            "max_mm": 2000,
+                            "step_mm": 60,
+                            "base_mm": 1760,
+                            "name": "Height",
+                        },
+                        {
+                            "axis": "Y",
+                            "min_mm": 220,
+                            "max_mm": 720,
+                            "step_mm": 20,
+                            "base_mm": 500,
+                            "body_measurement": True,
+                            "name": "Half chest",
+                        },
+                    ],
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.dimension_set",
+                arguments={"axis": "X", "base_mm": 1820, "name": "Body height"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={
+                    "name": "@chest",
+                    "value_mm": 1000,
+                    "shift_a_mm": 5,
+                    "shift_b_mm": 10,
+                    "description": "Graded chest",
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.export_csv",
+                arguments={"output_path": "measurements/sizes.csv", "separator": ";"},
+            ),
+        ]
+    )
+    assert preview.ok
+    staged = project.root / f".garmentcad/changesets/{preview.token}/measurements/sizes.vst"
+    staged_text = staged.read_text(encoding="utf-8")
+    assert 'type="x"' in staged_text
+    assert 'base="1820"' in staged_text
+    assert 'customName="Body height"' in staged_text
+    assert 'name="@chest"' in staged_text
+    csv = staged.with_suffix(".csv")
+    assert csv.exists()
+    assert '"@chest";1000;5;10;0' in csv.read_text(encoding="utf-8")
+
+    project.commit(preview.token)
+    assert (project.root / "measurements/sizes.vst").exists()
+    assert (project.root / "measurements/sizes.csv").exists()
+
+    reopened = Project.open(project.root).preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_save",
+            )
+        ]
+    )
+    assert reopened.ok

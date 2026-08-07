@@ -61,8 +61,10 @@
 #include "../vtools/undocommands/undogroup.h"
 #include "../vgeometry/vcubicbezier.h"
 #include "../vgeometry/vcubicbezierpath.h"
+#include "../vformat/vmeasurements.h"
 #include "../vpatterndb/vpiecenode.h"
 #include "../vpatterndb/vpiecepath.h"
+#include "../vpatterndb/variables/vmeasurement.h"
 
 #include <QDir>
 #include <QCryptographicHash>
@@ -211,6 +213,40 @@ auto PlaceLabelKind(const QString &type) -> PlaceLabelType
     }
     return types.value(type);
 }
+
+void CopyDirectoryFiles(const QString &sourcePath, const QString &destinationPath)
+{
+    const QDir source(sourcePath);
+    if (!source.exists())
+    {
+        return;
+    }
+    QDir().mkpath(destinationPath);
+    const QFileInfoList entries = source.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QFileInfo &entry : entries)
+    {
+        const QString destination = QDir(destinationPath).filePath(entry.fileName());
+        if (entry.isDir())
+        {
+            CopyDirectoryFiles(entry.absoluteFilePath(), destination);
+        }
+        else
+        {
+            QFile::remove(destination);
+            if (!QFile::copy(entry.absoluteFilePath(), destination))
+            {
+                throw std::runtime_error(
+                    QStringLiteral("Unable to copy %1 to %2").arg(entry.absoluteFilePath(), destination).toStdString());
+            }
+        }
+    }
+}
+
+auto CsvCell(QString value) -> QString
+{
+    value.replace(QLatin1Char('"'), QStringLiteral("\"\""));
+    return QLatin1Char('"') + value + QLatin1Char('"');
+}
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -300,6 +336,11 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.dependency_query"), QStringLiteral("measurement.increment_set"),
                             QStringLiteral("measurement.increment_remove"),
                             QStringLiteral("measurement.final_measurement_set"),
+                            QStringLiteral("measurement.file_create"), QStringLiteral("measurement.file_open"),
+                            QStringLiteral("measurement.file_save"), QStringLiteral("measurement.set"),
+                            QStringLiteral("measurement.rename"), QStringLiteral("measurement.remove"),
+                            QStringLiteral("measurement.dimension_set"),
+                            QStringLiteral("measurement.export_csv"),
                             QStringLiteral("pattern.shoulder_point"), QStringLiteral("pattern.normal"),
                             QStringLiteral("pattern.bisector"), QStringLiteral("pattern.height"),
                             QStringLiteral("pattern.triangle"), QStringLiteral("pattern.point_of_intersection"),
@@ -352,6 +393,10 @@ auto VCommandService::Preview(const QJsonObject &request) -> QJsonObject
     const QString candidatePattern = QDir(candidateRoot).filePath(QStringLiteral("pattern/main.val"));
     QDir().mkpath(QFileInfo(candidatePattern).absolutePath());
     AtomicCopy(sourcePattern, candidatePattern);
+    CopyDirectoryFiles(QDir(projectRoot).filePath(QStringLiteral("measurements")),
+                       QDir(candidateRoot).filePath(QStringLiteral("measurements")));
+    m_candidateRoot = candidateRoot;
+    m_candidatePattern = candidatePattern;
 
     const QString sourceAliases = QDir(projectRoot).filePath(QStringLiteral(".garmentcad/aliases.json"));
     QJsonObject aliases = ReadJsonFile(sourceAliases);
@@ -401,6 +446,8 @@ auto VCommandService::Commit(const QJsonObject &request) -> QJsonObject
                QDir(projectRoot).filePath(QStringLiteral("pattern/main.val")));
     AtomicCopy(QDir(candidateRoot).filePath(QStringLiteral("aliases.json")),
                QDir(projectRoot).filePath(QStringLiteral(".garmentcad/aliases.json")));
+    CopyDirectoryFiles(QDir(candidateRoot).filePath(QStringLiteral("measurements")),
+                       QDir(projectRoot).filePath(QStringLiteral("measurements")));
     return {{QStringLiteral("change_set_id"), changeSetId}};
 }
 
@@ -409,6 +456,41 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
 {
     const QString action = RequiredString(operation, QStringLiteral("action"));
     const QJsonObject arguments = operation.value(QStringLiteral("arguments")).toObject();
+    const auto measurementPath = [this](const QJsonObject &args) -> QString {
+        QString path;
+        if (args.contains(QStringLiteral("path")))
+        {
+            path = QDir(m_candidateRoot).filePath(RequiredString(args, QStringLiteral("path")));
+        }
+        else
+        {
+            const QString attached = m_window->doc->MPath();
+            if (attached.isEmpty())
+            {
+                throw std::invalid_argument("No measurement file is attached; pass path or call measurement.file_open");
+            }
+            path = QDir(QFileInfo(m_candidatePattern).absolutePath()).filePath(attached);
+        }
+        path = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+        const QString allowedRoot = QDir::cleanPath(QFileInfo(m_candidateRoot).absoluteFilePath()) + QLatin1Char('/');
+        if (!path.startsWith(allowedRoot))
+        {
+            throw std::invalid_argument("Measurement path must stay inside the preview project");
+        }
+        return path;
+    };
+    const auto attachMeasurement = [this](const QString &path) {
+        const QString relative = QDir(QFileInfo(m_candidatePattern).absolutePath()).relativeFilePath(path);
+        m_window->doc->SetMPath(relative);
+    };
+    const auto reloadMeasurement = [this](const QString &path) {
+        QString nativePath = path;
+        if (!m_window->LoadMeasurements(m_candidatePattern, nativePath))
+        {
+            throw std::runtime_error("Valentina could not load the staged measurement file");
+        }
+        m_window->doc->LiteParseTree(Document::FullLiteParse);
+    };
     const auto operationSources = [this, &aliases](const QJsonArray &items) -> QVector<SourceItem> {
         if (items.isEmpty())
         {
@@ -485,6 +567,363 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                                   {QStringLiteral("objects"), QJsonArray{}},
                                   {QStringLiteral("details"), dependencies}});
         summary.insert(QStringLiteral("issues"), issues);
+        return;
+    }
+
+    if (action == QStringLiteral("measurement.file_create"))
+    {
+        const QString type = arguments.value(QStringLiteral("type")).toString(QStringLiteral("individual"));
+        QString relativePath = arguments.value(QStringLiteral("path")).toString();
+        if (relativePath.isEmpty())
+        {
+            relativePath = type == QStringLiteral("multisize") ? QStringLiteral("measurements/main.vst")
+                                                                : QStringLiteral("measurements/main.vit");
+        }
+        QJsonObject pathArguments = arguments;
+        pathArguments.insert(QStringLiteral("path"), relativePath);
+        const QString path = measurementPath(pathArguments);
+        QDir().mkpath(QFileInfo(path).absolutePath());
+
+        Unit unit = Unit::Mm;
+        VContainer data(VAbstractApplication::VApp()->TrVars(), &unit, VContainer::UniqueNamespace());
+        std::unique_ptr<VMeasurements> measurements;
+        if (type == QStringLiteral("individual"))
+        {
+            measurements = std::make_unique<VMeasurements>(unit, &data);
+        }
+        else if (type == QStringLiteral("multisize"))
+        {
+            QVector<MeasurementDimension_p> dimensions;
+            for (const QJsonValue value : arguments.value(QStringLiteral("dimensions")).toArray())
+            {
+                const QJsonObject item = value.toObject();
+                const QString axis = RequiredString(item, QStringLiteral("axis")).toUpper();
+                const qreal minimum = item.value(QStringLiteral("min_mm")).toDouble();
+                const qreal maximum = item.value(QStringLiteral("max_mm")).toDouble();
+                const qreal step = item.value(QStringLiteral("step_mm")).toDouble();
+                MeasurementDimension_p dimension;
+                if (axis == QStringLiteral("X"))
+                {
+                    dimension = QSharedPointer<VXMeasurementDimension>::create(unit, minimum, maximum, step);
+                }
+                else if (axis == QStringLiteral("Y"))
+                {
+                    dimension = QSharedPointer<VYMeasurementDimension>::create(unit, minimum, maximum, step);
+                }
+                else if (axis == QStringLiteral("W"))
+                {
+                    dimension = QSharedPointer<VWMeasurementDimension>::create(unit, minimum, maximum, step);
+                }
+                else if (axis == QStringLiteral("Z"))
+                {
+                    dimension = QSharedPointer<VZMeasurementDimension>::create(unit, minimum, maximum, step);
+                }
+                else
+                {
+                    throw std::invalid_argument("Measurement dimension axis must be X, Y, W, or Z");
+                }
+                dimension->SetBaseValue(item.value(QStringLiteral("base_mm")).toDouble(minimum));
+                dimension->SetBodyMeasurement(item.value(QStringLiteral("body_measurement")).toBool(true));
+                dimension->SetCustomName(item.value(QStringLiteral("name")).toString());
+                if (!dimension->IsValid())
+                {
+                    throw std::invalid_argument(
+                        QStringLiteral("Invalid %1 dimension: %2").arg(axis, dimension->Error()).toStdString());
+                }
+                dimensions.append(dimension);
+            }
+            if (dimensions.isEmpty() || dimensions.size() > 3)
+            {
+                throw std::invalid_argument("Multisize files require one to three dimensions");
+            }
+            measurements = std::make_unique<VMeasurements>(unit, dimensions, &data);
+            measurements->SetFullCircumference(arguments.value(QStringLiteral("full_circumference")).toBool(false));
+        }
+        else
+        {
+            throw std::invalid_argument("Measurement file type must be individual or multisize");
+        }
+        QString error;
+        if (!measurements->SaveDocument(path, error))
+        {
+            throw std::runtime_error(QStringLiteral("Unable to create measurement file: %1").arg(error).toStdString());
+        }
+        attachMeasurement(path);
+        reloadMeasurement(path);
+        QJsonObject values = summary.value(QStringLiteral("measurements")).toObject();
+        values.insert(QStringLiteral("file.created"), 1);
+        summary.insert(QStringLiteral("measurements"), values);
+        return;
+    }
+
+    if (action == QStringLiteral("measurement.file_open"))
+    {
+        const QString source = QDir::cleanPath(QFileInfo(
+            RequiredString(arguments, QStringLiteral("source_path"))).absoluteFilePath());
+        if (!QFileInfo::exists(source))
+        {
+            throw std::invalid_argument("Measurement source file does not exist");
+        }
+        QString relativePath = arguments.value(QStringLiteral("path")).toString();
+        if (relativePath.isEmpty())
+        {
+            relativePath = QStringLiteral("measurements/%1").arg(QFileInfo(source).fileName());
+        }
+        QJsonObject pathArguments;
+        pathArguments.insert(QStringLiteral("path"), relativePath);
+        const QString destination = measurementPath(pathArguments);
+        QDir().mkpath(QFileInfo(destination).absolutePath());
+        Unit unit = Unit::Mm;
+        VContainer data(VAbstractApplication::VApp()->TrVars(), &unit, VContainer::UniqueNamespace());
+        VMeasurements measurements(&data);
+        measurements.setXMLContent(source);
+        QString error;
+        if (!measurements.SaveDocument(destination, error))
+        {
+            throw std::runtime_error(QStringLiteral("Unable to import measurement file: %1").arg(error).toStdString());
+        }
+        attachMeasurement(destination);
+        reloadMeasurement(destination);
+        QJsonObject values = summary.value(QStringLiteral("measurements")).toObject();
+        values.insert(QStringLiteral("file.opened"), 1);
+        summary.insert(QStringLiteral("measurements"), values);
+        return;
+    }
+
+    if (action == QStringLiteral("measurement.file_save") || action == QStringLiteral("measurement.set") ||
+        action == QStringLiteral("measurement.rename") || action == QStringLiteral("measurement.remove") ||
+        action == QStringLiteral("measurement.dimension_set"))
+    {
+        const QString path = measurementPath(arguments);
+        if (!QFileInfo::exists(path))
+        {
+            throw std::invalid_argument("Attached measurement file does not exist in the project");
+        }
+        Unit unit = Unit::Mm;
+        VContainer data(VAbstractApplication::VApp()->TrVars(), &unit, VContainer::UniqueNamespace());
+        VMeasurements measurements(&data);
+        measurements.setXMLContent(path);
+
+        if (action == QStringLiteral("measurement.set"))
+        {
+            const QString name = RequiredString(arguments, QStringLiteral("name"));
+            if (!measurements.ListAll().contains(name))
+            {
+                measurements.AddEmpty(name);
+            }
+            const qreal value = UnitConvertor(arguments.value(QStringLiteral("value_mm")).toDouble(), Unit::Mm,
+                                              measurements.Units());
+            if (measurements.Type() == MeasurementsType::Individual)
+            {
+                measurements.SetMValue(
+                    name, arguments.value(QStringLiteral("formula")).toString(QString::number(value, 'g', 15)));
+            }
+            else
+            {
+                measurements.SetMBaseValue(name, value);
+                if (arguments.contains(QStringLiteral("shift_a_mm")))
+                {
+                    measurements.SetMShiftA(
+                        name, UnitConvertor(arguments.value(QStringLiteral("shift_a_mm")).toDouble(), Unit::Mm,
+                                            measurements.Units()));
+                }
+                if (arguments.contains(QStringLiteral("shift_b_mm")))
+                {
+                    measurements.SetMShiftB(
+                        name, UnitConvertor(arguments.value(QStringLiteral("shift_b_mm")).toDouble(), Unit::Mm,
+                                            measurements.Units()));
+                }
+                if (arguments.contains(QStringLiteral("shift_c_mm")))
+                {
+                    measurements.SetMShiftC(
+                        name, UnitConvertor(arguments.value(QStringLiteral("shift_c_mm")).toDouble(), Unit::Mm,
+                                            measurements.Units()));
+                }
+            }
+            if (arguments.contains(QStringLiteral("description")))
+            {
+                measurements.SetMDescription(name, arguments.value(QStringLiteral("description")).toString());
+            }
+            if (arguments.contains(QStringLiteral("full_name")))
+            {
+                measurements.SetMFullName(name, arguments.value(QStringLiteral("full_name")).toString());
+            }
+            QJsonObject values = summary.value(QStringLiteral("measurements")).toObject();
+            values.insert(name, arguments.value(QStringLiteral("value_mm")).toDouble());
+            summary.insert(QStringLiteral("measurements"), values);
+        }
+        else if (action == QStringLiteral("measurement.rename"))
+        {
+            const QString name = RequiredString(arguments, QStringLiteral("name"));
+            const QString newName = RequiredString(arguments, QStringLiteral("new_name"));
+            if (!measurements.ListAll().contains(name) || measurements.ListAll().contains(newName))
+            {
+                throw std::invalid_argument("Measurement rename source is missing or destination already exists");
+            }
+            measurements.SetMName(name, newName);
+        }
+        else if (action == QStringLiteral("measurement.remove"))
+        {
+            const QString name = RequiredString(arguments, QStringLiteral("name"));
+            if (!measurements.ListAll().contains(name))
+            {
+                throw std::invalid_argument("Measurement does not exist");
+            }
+            measurements.Remove(name);
+        }
+        else if (action == QStringLiteral("measurement.dimension_set"))
+        {
+            if (measurements.Type() != MeasurementsType::Multisize)
+            {
+                throw std::invalid_argument("dimension_set requires a multisize measurement file");
+            }
+            const QString axis = RequiredString(arguments, QStringLiteral("axis")).toUpper();
+            MeasurementDimension type;
+            if (axis == QStringLiteral("X"))
+            {
+                type = MeasurementDimension::X;
+            }
+            else if (axis == QStringLiteral("Y"))
+            {
+                type = MeasurementDimension::Y;
+            }
+            else if (axis == QStringLiteral("W"))
+            {
+                type = MeasurementDimension::W;
+            }
+            else if (axis == QStringLiteral("Z"))
+            {
+                type = MeasurementDimension::Z;
+            }
+            else
+            {
+                throw std::invalid_argument("Measurement dimension axis must be X, Y, W, or Z");
+            }
+            MeasurementDimension_p dimension = measurements.Dimensions().value(type);
+            if (dimension.isNull())
+            {
+                throw std::invalid_argument("The requested dimension does not exist in the measurement file");
+            }
+            const auto fileValue = [&measurements](qreal millimetres) {
+                return UnitConvertor(millimetres, Unit::Mm, measurements.Units());
+            };
+            if (arguments.contains(QStringLiteral("min_mm")))
+            {
+                dimension->SetMinValue(fileValue(arguments.value(QStringLiteral("min_mm")).toDouble()));
+            }
+            if (arguments.contains(QStringLiteral("max_mm")))
+            {
+                dimension->SetMaxValue(fileValue(arguments.value(QStringLiteral("max_mm")).toDouble()));
+            }
+            if (arguments.contains(QStringLiteral("step_mm")))
+            {
+                dimension->SetStep(fileValue(arguments.value(QStringLiteral("step_mm")).toDouble()));
+            }
+            if (arguments.contains(QStringLiteral("base_mm")))
+            {
+                dimension->SetBaseValue(fileValue(arguments.value(QStringLiteral("base_mm")).toDouble()));
+            }
+            if (arguments.contains(QStringLiteral("body_measurement")))
+            {
+                dimension->SetBodyMeasurement(arguments.value(QStringLiteral("body_measurement")).toBool());
+            }
+            if (arguments.contains(QStringLiteral("name")))
+            {
+                dimension->SetCustomName(arguments.value(QStringLiteral("name")).toString());
+            }
+            if (!dimension->IsValid())
+            {
+                throw std::invalid_argument(
+                    QStringLiteral("Invalid %1 dimension: %2").arg(axis, dimension->Error()).toStdString());
+            }
+            measurements.SetDimensionDefinition(dimension);
+            QJsonObject values = summary.value(QStringLiteral("measurements")).toObject();
+            values.insert(QStringLiteral("dimension.%1.base_mm").arg(axis),
+                          UnitConvertor(dimension->BaseValue(), measurements.Units(), Unit::Mm));
+            summary.insert(QStringLiteral("measurements"), values);
+        }
+
+        QString error;
+        if (!measurements.SaveDocument(path, error))
+        {
+            throw std::runtime_error(QStringLiteral("Unable to save measurement file: %1").arg(error).toStdString());
+        }
+        attachMeasurement(path);
+        reloadMeasurement(path);
+        return;
+    }
+
+    if (action == QStringLiteral("measurement.export_csv"))
+    {
+        const QString sourcePath = measurementPath(arguments);
+        Unit unit = Unit::Mm;
+        VContainer data(VAbstractApplication::VApp()->TrVars(), &unit, VContainer::UniqueNamespace());
+        VMeasurements measurements(&data);
+        measurements.setXMLContent(sourcePath);
+        measurements.StoreNames(false);
+        measurements.ReadMeasurements(measurements.DimensionABase(), measurements.DimensionBBase(),
+                                      measurements.DimensionCBase());
+
+        QJsonObject outputArguments;
+        outputArguments.insert(
+            QStringLiteral("path"),
+            arguments.value(QStringLiteral("output_path")).toString(QStringLiteral("measurements/export.csv")));
+        const QString outputPath = measurementPath(outputArguments);
+        QDir().mkpath(QFileInfo(outputPath).absolutePath());
+        QSaveFile output(outputPath);
+        if (!output.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            throw std::runtime_error("Unable to open measurement CSV output");
+        }
+        QTextStream stream(&output);
+        const QString separatorText =
+            arguments.value(QStringLiteral("separator")).toString(QStringLiteral(","));
+        if (separatorText.size() != 1 || separatorText.at(0) == QLatin1Char('\n') ||
+            separatorText.at(0) == QLatin1Char('\r') || separatorText.at(0) == QLatin1Char('"'))
+        {
+            throw std::invalid_argument("CSV separator must be one character other than a quote or newline");
+        }
+        const QChar separator = separatorText.at(0);
+        if (measurements.Type() == MeasurementsType::Individual)
+        {
+            stream << "name" << separator << "value_mm" << separator << "full_name" << separator << "description"
+                   << separator << "formula\n";
+        }
+        else
+        {
+            stream << "name" << separator << "base_mm" << separator << "shift_a_mm" << separator << "shift_b_mm"
+                   << separator << "shift_c_mm" << separator << "full_name" << separator << "description\n";
+        }
+        for (const QString &name : measurements.ListAll())
+        {
+            const QSharedPointer<VMeasurement> item = data.GetVariable<VMeasurement>(name);
+            stream << CsvCell(name) << separator;
+            if (measurements.Type() == MeasurementsType::Individual)
+            {
+                stream << QString::number(UnitConvertor(*item->GetValue(), measurements.Units(), Unit::Mm), 'g', 15)
+                       << separator << CsvCell(item->GetGuiText()) << separator << CsvCell(item->GetDescription())
+                       << separator << CsvCell(item->GetFormula()) << '\n';
+            }
+            else
+            {
+                stream << QString::number(UnitConvertor(item->GetBase(), measurements.Units(), Unit::Mm), 'g', 15)
+                       << separator
+                       << QString::number(UnitConvertor(item->GetShiftA(), measurements.Units(), Unit::Mm), 'g', 15)
+                       << separator
+                       << QString::number(UnitConvertor(item->GetShiftB(), measurements.Units(), Unit::Mm), 'g', 15)
+                       << separator
+                       << QString::number(UnitConvertor(item->GetShiftC(), measurements.Units(), Unit::Mm), 'g', 15)
+                       << separator << CsvCell(item->GetGuiText()) << separator << CsvCell(item->GetDescription())
+                       << '\n';
+            }
+        }
+        if (!output.commit())
+        {
+            throw std::runtime_error("Unable to commit measurement CSV output");
+        }
+        QJsonObject values = summary.value(QStringLiteral("measurements")).toObject();
+        values.insert(QStringLiteral("csv.rows"), measurements.ListAll().size());
+        summary.insert(QStringLiteral("measurements"), values);
         return;
     }
 

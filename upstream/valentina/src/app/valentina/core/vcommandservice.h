@@ -26,6 +26,8 @@ public:
 
 private:
     MainWindow *m_window;
+    QString m_candidateRoot{};
+    QString m_candidatePattern{};
 
     auto Dispatch(const QJsonObject &request) -> QJsonObject;
     auto Preview(const QJsonObject &request) -> QJsonObject;
