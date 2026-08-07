@@ -215,3 +215,48 @@ def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     assert next(iter(read_json(reopened.root / ".garmentcad/aliases.json")["objects"].values()))[
         "deleted"
     ]
+
+
+def test_native_formula_increments_and_final_measurements(tmp_path):
+    project = Project.create(tmp_path / "formulas")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.formula_evaluate",
+                arguments={"formula": "2+3"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.increment_set",
+                arguments={"name": "#ease", "value_mm": 25, "description": "wearing ease"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.final_measurement_set",
+                arguments={
+                    "name": "finished_width",
+                    "formula": "#ease * 2",
+                    "description": "finished width allowance",
+                },
+            ),
+        ]
+    )
+    assert preview.ok
+    assert preview.summary.measurements["formula.value_mm"] == pytest.approx(50)
+    assert preview.summary.measurements["#ease"] == pytest.approx(25)
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'name="#ease"' in pattern
+    assert 'name="finished_width"' in pattern
+
+    removed = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.increment_remove",
+                arguments={"name": "#ease"},
+            )
+        ]
+    )
+    assert removed.ok

@@ -33,6 +33,7 @@
 #include <QTextStream>
 #include <QUuid>
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace
@@ -132,7 +133,10 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.end_line"), QStringLiteral("pattern.line"),
                             QStringLiteral("pattern.along_line"), QStringLiteral("pattern.midpoint"),
                             QStringLiteral("pattern.line_intersect"), QStringLiteral("pattern.arc"),
-                            QStringLiteral("pattern.spline")}}};
+                            QStringLiteral("pattern.spline"), QStringLiteral("pattern.formula_evaluate"),
+                            QStringLiteral("pattern.dependency_query"), QStringLiteral("measurement.increment_set"),
+                            QStringLiteral("measurement.increment_remove"),
+                            QStringLiteral("measurement.final_measurement_set")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -219,6 +223,105 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
 {
     const QString action = RequiredString(operation, QStringLiteral("action"));
     const QJsonObject arguments = operation.value(QStringLiteral("arguments")).toObject();
+
+    if (action == QStringLiteral("pattern.formula_evaluate"))
+    {
+        QString formula = RequiredString(arguments, QStringLiteral("formula"));
+        const qreal value = VAbstractTool::CheckFormula(NULL_ID, formula, m_window->pattern);
+        QJsonObject measurements = summary.value(QStringLiteral("measurements")).toObject();
+        if (arguments.value(QStringLiteral("quantity")).toString() == QStringLiteral("angle"))
+        {
+            measurements.insert(QStringLiteral("formula.value_deg"), value);
+        }
+        else
+        {
+            measurements.insert(QStringLiteral("formula.value_mm"),
+                                UnitConvertor(value, VAbstractValApplication::VApp()->patternUnits(), Unit::Mm));
+        }
+        summary.insert(QStringLiteral("measurements"), measurements);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.dependency_query"))
+    {
+        const quint32 nativeId = ResolveObject(operation.value(QStringLiteral("target")).toObject(), aliases);
+        QJsonObject dependencies;
+        const auto variableDependencies = m_window->pattern->DataDependencyVariables();
+        for (auto iterator = variableDependencies.constBegin(); iterator != variableDependencies.constEnd(); ++iterator)
+        {
+            if (iterator.value().contains(nativeId))
+            {
+                QJsonArray dependents;
+                for (quint32 id : iterator.value())
+                {
+                    dependents.append(static_cast<qint64>(id));
+                }
+                dependencies.insert(iterator.key(), dependents);
+            }
+        }
+        QJsonArray issues = summary.value(QStringLiteral("issues")).toArray();
+        issues.append(QJsonObject{{QStringLiteral("severity"), QStringLiteral("info")},
+                                  {QStringLiteral("code"), QStringLiteral("dependency_query")},
+                                  {QStringLiteral("message"),
+                                   QStringLiteral("Formula dependencies for native object %1").arg(nativeId)},
+                                  {QStringLiteral("objects"), QJsonArray{}},
+                                  {QStringLiteral("details"), dependencies}});
+        summary.insert(QStringLiteral("issues"), issues);
+        return;
+    }
+
+    if (action == QStringLiteral("measurement.increment_set"))
+    {
+        const QString name = RequiredString(arguments, QStringLiteral("name"));
+        if (!m_window->pattern->DataIncrements().contains(name))
+        {
+            m_window->doc->AddEmptyIncrement(name);
+        }
+        const QString formula = arguments.contains(QStringLiteral("formula"))
+                                    ? RequiredString(arguments, QStringLiteral("formula"))
+                                    : NativeFormulaForMillimetres(
+                                          arguments.value(QStringLiteral("value_mm")).toDouble());
+        m_window->doc->SetIncrementFormula(name, formula);
+        m_window->doc->SetIncrementDescription(name, arguments.value(QStringLiteral("description")).toString());
+        m_window->doc->SetIncrementSpecialUnits(name,
+                                                arguments.value(QStringLiteral("special_units")).toBool(false));
+        m_window->doc->LiteParseIncrements();
+        QJsonObject measurements = summary.value(QStringLiteral("measurements")).toObject();
+        QString evaluated = formula;
+        const qreal value = VAbstractTool::CheckFormula(NULL_ID, evaluated, m_window->pattern);
+        measurements.insert(name,
+                            UnitConvertor(value, VAbstractValApplication::VApp()->patternUnits(), Unit::Mm));
+        summary.insert(QStringLiteral("measurements"), measurements);
+        return;
+    }
+
+    if (action == QStringLiteral("measurement.increment_remove"))
+    {
+        const QString name = RequiredString(arguments, QStringLiteral("name"));
+        m_window->doc->RemoveIncrement(name);
+        m_window->doc->LiteParseIncrements();
+        return;
+    }
+
+    if (action == QStringLiteral("measurement.final_measurement_set"))
+    {
+        const QString name = RequiredString(arguments, QStringLiteral("name"));
+        QVector<VFinalMeasurement> measurements = m_window->doc->GetFinalMeasurements();
+        auto iterator = std::find_if(measurements.begin(), measurements.end(),
+                                     [&name](const VFinalMeasurement &item) { return item.name == name; });
+        const VFinalMeasurement replacement{name, RequiredString(arguments, QStringLiteral("formula")),
+                                              arguments.value(QStringLiteral("description")).toString()};
+        if (iterator == measurements.end())
+        {
+            measurements.append(replacement);
+        }
+        else
+        {
+            *iterator = replacement;
+        }
+        m_window->doc->SetFinalMeasurements(measurements);
+        return;
+    }
 
     if (action == QStringLiteral("pattern.object_get"))
     {
