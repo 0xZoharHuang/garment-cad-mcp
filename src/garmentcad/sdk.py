@@ -179,6 +179,28 @@ class GarmentSDK:
             action="validate",
         )
 
+    def import_valentina_revision(
+        self,
+        *,
+        sidecar: dict[str, Any] | None = None,
+        commit: bool = False,
+    ) -> ToolResult:
+        """Import the current `.val` revision through Valentina's native snapshot API."""
+        from garmentcad.backends import JsonLineCommandBackend
+        from garmentcad.storage import read_json
+
+        project = Project.open(self.project_path)
+        snapshot = JsonLineCommandBackend().snapshot(project.root)
+        if sidecar is None:
+            sidecar = read_json(project.root / "assembly/sewing-sidecar.json", default={})
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.ASSEMBLY,
+            action="valentina.import",
+            arguments={"snapshot": snapshot, "sidecar": sidecar or {}},
+            commit=commit,
+        )
+
     def valentina(
         self,
         action: str,

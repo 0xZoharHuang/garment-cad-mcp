@@ -84,6 +84,18 @@ class JsonLineCommandBackend:
     def service_info(self) -> dict:
         return self._call({"method": "service.info"})
 
+    def snapshot(self, project_root: Path) -> dict:
+        """Ask Valentina to expand the current native pattern without parsing XML here."""
+        from garmentcad.models import PatternSnapshot
+
+        response = self._call(
+            {
+                "method": "pattern.snapshot",
+                "project_root": str(project_root),
+            }
+        )
+        return PatternSnapshot.model_validate(response).model_dump(mode="json")
+
     def commit(self, project_root: Path, change_set_id: str) -> None:
         self._call(
             {

@@ -8,13 +8,67 @@ from pathlib import Path
 import pytest
 
 from garmentcad.artifacts import ArtifactStore
+from garmentcad.assembly import to_garmentcode
+from garmentcad.backends import JsonLineCommandBackend
 from garmentcad.models import Operation, OperationDomain
 from garmentcad.project import Project
 from garmentcad.sdk import GarmentSDK
 from garmentcad.storage import read_json
+from garmentcad.valentina_bridge import snapshot_to_assembly
 
 NATIVE_COMMAND = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
 pytestmark = pytest.mark.skipif(not NATIVE_COMMAND, reason="native Valentina host is not built")
+
+
+def test_native_snapshot_and_sidecar_roundtrip_into_garmentcode(tmp_path):
+    project = Project.create(tmp_path / "snapshot-to-garmentcode")
+    collection = (
+        Path(__file__).parents[1]
+        / "upstream/valentina/src/app/share/collection/MaleShirt"
+    )
+    shutil.copy2(collection / "MaleShirt.val", project.root / "pattern/main.val")
+    shutil.copy2(collection / "MaleShirt.vit", project.root / "pattern/MaleShirt.vit")
+
+    first = JsonLineCommandBackend().snapshot(project.root)
+    second = JsonLineCommandBackend().snapshot(project.root)
+    assert first["units"] == "mm"
+    assert first["revision"] == 0
+    assert len(first["pieces"]) == 17
+    assert first == second
+    assert all(len(piece["contour"]) >= 3 for piece in first["pieces"])
+    assert {piece["alias"] for piece in first["pieces"]} >= {"FrontPanel", "BackPanel"}
+
+    sidecar = {
+        "interfaces": [
+            {"alias": "front.test", "edges": ["FrontPanel.edge.0000"]},
+            {"alias": "back.test", "edges": ["BackPanel.edge.0000"], "reverse": True},
+        ],
+        "stitches": [
+            {
+                "alias": "test.seam",
+                "interface_a": "front.test",
+                "interface_b": "back.test",
+                "direction": "opposed",
+            }
+        ],
+    }
+    assembly = snapshot_to_assembly(first, sidecar)
+    native = to_garmentcode(assembly)
+    assert len(native["pattern"]["panels"]) == 17
+    assert len(native["pattern"]["stitches"]) >= 1
+    assert native["properties"]["units_in_meter"] == 100
+
+    preview = GarmentSDK(project.root).import_valentina_revision(sidecar=sidecar)
+    assert preview.ok
+    committed = project.commit(preview.token)
+    assert committed.revision == 1
+    saved = read_json(project.root / "assembly/assembly.json")
+    assert saved["source_revision"] == 0
+    assert {panel["alias"] for panel in saved["panels"].values()} >= {
+        "FrontPanel",
+        "BackPanel",
+    }
+    assert next(iter(saved["stitches"].values()))["direction"] == "opposed"
 
 
 def _assert_preview_png(path: Path) -> None:

@@ -65,6 +65,7 @@
 #include "../vpatterndb/vpiecenode.h"
 #include "../vpatterndb/vpiecepath.h"
 #include "../vpatterndb/variables/vmeasurement.h"
+#include "../vlayout/vlayoutpoint.h"
 
 #include <QDir>
 #include <QCryptographicHash>
@@ -391,7 +392,7 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.place_label"), QStringLiteral("pattern.insert_node"),
                             QStringLiteral("pattern.duplicate_detail"),
                             QStringLiteral("pattern.object_duplicate"), QStringLiteral("pattern.group"),
-                            QStringLiteral("pattern.union_details")}}};
+                            QStringLiteral("pattern.union_details"), QStringLiteral("pattern.snapshot")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -401,7 +402,119 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
     {
         return Commit(request);
     }
+    if (method == QStringLiteral("pattern.snapshot"))
+    {
+        return Snapshot(request);
+    }
     throw std::invalid_argument(QStringLiteral("Unknown method: %1").arg(method).toStdString());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VCommandService::Snapshot(const QJsonObject &request) -> QJsonObject
+{
+    const QString projectRoot = QDir::cleanPath(RequiredString(request, QStringLiteral("project_root")));
+    const QString patternPath = QDir(projectRoot).filePath(QStringLiteral("pattern/main.val"));
+    if (!QFileInfo::exists(patternPath))
+    {
+        throw std::invalid_argument("The project does not contain pattern/main.val");
+    }
+    if (!m_window->LoadPattern(patternPath))
+    {
+        throw std::runtime_error("Valentina could not open pattern/main.val for snapshot");
+    }
+
+    const QJsonObject aliases =
+        ReadJsonFile(QDir(projectRoot).filePath(QStringLiteral(".garmentcad/aliases.json")));
+    const QJsonObject aliasObjects = aliases.value(QStringLiteral("objects")).toObject();
+    const QJsonObject manifest = ReadJsonFile(QDir(projectRoot).filePath(QStringLiteral("garment.json")));
+    const QUuid edgeNamespace(QStringLiteral("4eec45ae-b00d-5a3d-8cf5-98d9a8ec20a4"));
+    QJsonArray pieces;
+
+    const auto *dataPieces = m_window->pattern->DataPieces();
+    QList<quint32> pieceIds = dataPieces->keys();
+    std::sort(pieceIds.begin(), pieceIds.end());
+    for (const quint32 nativeId : pieceIds)
+    {
+        const VPiece &piece = dataPieces->value(nativeId);
+        QString pieceUuid;
+        QString pieceAlias;
+        for (auto aliasIterator = aliasObjects.constBegin(); aliasIterator != aliasObjects.constEnd(); ++aliasIterator)
+        {
+            const QJsonObject record = aliasIterator.value().toObject();
+            if (!record.value(QStringLiteral("deleted")).toBool()
+                && record.value(QStringLiteral("kind")).toString().compare(QStringLiteral("Piece"),
+                                                                            Qt::CaseInsensitive) == 0
+                && static_cast<quint32>(record.value(QStringLiteral("native_id")).toInteger()) == nativeId)
+            {
+                pieceUuid = aliasIterator.key();
+                pieceAlias = record.value(QStringLiteral("alias")).toString();
+                break;
+            }
+        }
+        if (pieceAlias.isEmpty())
+        {
+            pieceAlias = piece.GetName();
+        }
+        if (pieceAlias.isEmpty())
+        {
+            pieceAlias = QStringLiteral("piece_%1").arg(nativeId);
+        }
+        if (pieceUuid.isEmpty())
+        {
+            // Older/external .val files may receive a fresh VPiece UUID on every load. Derive the public identity
+            // from project identity plus the stable native piece id instead; once an alias record exists its UUID
+            // above remains authoritative.
+            pieceUuid = QUuid::createUuidV5(
+                            edgeNamespace,
+                            QStringLiteral("piece:%1:%2:%3")
+                                .arg(manifest.value(QStringLiteral("project_id")).toString())
+                                .arg(nativeId)
+                                .arg(pieceAlias))
+                            .toString(QUuid::WithoutBraces);
+        }
+
+        QVector<VLayoutPoint> points = piece.FullMainPathPoints(m_window->pattern);
+        while (points.size() > 1
+               && QLineF(points.constFirst(), points.constLast()).length() <= ToPixel(0.001, Unit::Mm))
+        {
+            points.removeLast();
+        }
+        if (points.size() < 3)
+        {
+            throw std::runtime_error(
+                QStringLiteral("Piece %1 has fewer than three snapshot points").arg(pieceAlias).toStdString());
+        }
+
+        QJsonArray contour;
+        for (qsizetype index = 0; index < points.size(); ++index)
+        {
+            const QString edgeAlias = QStringLiteral("%1.edge.%2").arg(pieceAlias).arg(index, 4, 10, QLatin1Char('0'));
+            const QString edgeUuid =
+                QUuid::createUuidV5(edgeNamespace, QStringLiteral("%1:%2").arg(pieceUuid).arg(index))
+                    .toString(QUuid::WithoutBraces);
+            contour.append(QJsonObject{{QStringLiteral("x_mm"), FromPixel(points.at(index).x(), Unit::Mm)},
+                                       {QStringLiteral("y_mm"), FromPixel(points.at(index).y(), Unit::Mm)},
+                                       {QStringLiteral("edge_uuid"), edgeUuid},
+                                       {QStringLiteral("edge_alias"), edgeAlias},
+                                       {QStringLiteral("curve_point"), points.at(index).CurvePoint()},
+                                       {QStringLiteral("turn_point"), points.at(index).TurnPoint()}});
+        }
+
+        const qreal seamAllowanceMm =
+            UnitConvertor(piece.GetSAWidth(), *m_window->pattern->GetPatternUnit(), Unit::Mm);
+        pieces.append(QJsonObject{{QStringLiteral("uuid"), pieceUuid},
+                                  {QStringLiteral("alias"), pieceAlias},
+                                  {QStringLiteral("native_id"), static_cast<qint64>(nativeId)},
+                                  {QStringLiteral("name"), piece.GetName()},
+                                  {QStringLiteral("contour"), contour},
+                                  {QStringLiteral("seam_allowance"), piece.IsSeamAllowance()},
+                                  {QStringLiteral("seam_allowance_mm"), seamAllowanceMm}});
+    }
+
+    return {{QStringLiteral("schema_version"), QStringLiteral("1.0")},
+            {QStringLiteral("units"), QStringLiteral("mm")},
+            {QStringLiteral("revision"), manifest.value(QStringLiteral("current_revision")).toInteger()},
+            {QStringLiteral("pieces"), pieces}};
 }
 
 //---------------------------------------------------------------------------------------------------------------------

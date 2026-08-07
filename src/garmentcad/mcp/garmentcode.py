@@ -4,6 +4,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from garmentcad.backends import JsonLineCommandBackend
 from garmentcad.catalog import GARMENTCODE_TOOLS
 from garmentcad.mcp.common import add_core_tools, result_payload
 from garmentcad.models import OperationDomain
@@ -233,27 +234,23 @@ def component_define(
 
 def valentina_import_revision(
     project_path: str,
-    snapshot_relative_path: str = "pattern/snapshot.json",
     sidecar_relative_path: str = "assembly/sewing-sidecar.json",
     commit: bool = False,
 ) -> dict[str, Any]:
-    """Import a VCommandService snapshot and explicit sewing-semantics sidecar."""
+    """Snapshot the current `.val` natively and apply an optional sewing sidecar."""
     project = Project.open(project_path)
 
     def project_file(relative: str) -> dict[str, Any]:
         path = (project.root / relative).resolve()
         if project.root not in path.parents:
             raise ValueError("Import path must stay inside the project")
-        value = read_json(path)
-        if value is None:
-            raise FileNotFoundError(path)
-        return value
+        return read_json(path, default={})
 
     return _run(
         project_path,
         "valentina.import",
         {
-            "snapshot": project_file(snapshot_relative_path),
+            "snapshot": JsonLineCommandBackend().snapshot(project.root),
             "sidecar": project_file(sidecar_relative_path),
         },
         commit=commit,

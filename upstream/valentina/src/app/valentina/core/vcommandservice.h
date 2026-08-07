@@ -32,6 +32,7 @@ private:
     auto Dispatch(const QJsonObject &request) -> QJsonObject;
     auto Preview(const QJsonObject &request) -> QJsonObject;
     auto Commit(const QJsonObject &request) -> QJsonObject;
+    auto Snapshot(const QJsonObject &request) -> QJsonObject;
     auto ApplyOperation(const QJsonObject &operation, QJsonObject &aliases, QJsonObject &summary) -> void;
     auto ResolveObject(const QJsonObject &reference, const QJsonObject &aliases) const -> quint32;
     auto FindNativeObjectByName(const QString &name) const -> quint32;

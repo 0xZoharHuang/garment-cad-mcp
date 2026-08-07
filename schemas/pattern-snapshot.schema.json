@@ -1,0 +1,120 @@
+{
+  "$defs": {
+    "PatternSnapshotNode": {
+      "properties": {
+        "curve_point": {
+          "default": false,
+          "title": "Curve Point",
+          "type": "boolean"
+        },
+        "edge_alias": {
+          "title": "Edge Alias",
+          "type": "string"
+        },
+        "edge_uuid": {
+          "title": "Edge Uuid",
+          "type": "string"
+        },
+        "turn_point": {
+          "default": false,
+          "title": "Turn Point",
+          "type": "boolean"
+        },
+        "x_mm": {
+          "title": "X Mm",
+          "type": "number"
+        },
+        "y_mm": {
+          "title": "Y Mm",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x_mm",
+        "y_mm",
+        "edge_uuid",
+        "edge_alias"
+      ],
+      "title": "PatternSnapshotNode",
+      "type": "object"
+    },
+    "PatternSnapshotPiece": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        },
+        "contour": {
+          "items": {
+            "$ref": "#/$defs/PatternSnapshotNode"
+          },
+          "title": "Contour",
+          "type": "array"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "native_id": {
+          "title": "Native Id",
+          "type": "integer"
+        },
+        "seam_allowance": {
+          "default": false,
+          "title": "Seam Allowance",
+          "type": "boolean"
+        },
+        "seam_allowance_mm": {
+          "default": 0.0,
+          "title": "Seam Allowance Mm",
+          "type": "number"
+        },
+        "uuid": {
+          "title": "Uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid",
+        "alias",
+        "native_id",
+        "contour"
+      ],
+      "title": "PatternSnapshotPiece",
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/pattern-snapshot.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "pieces": {
+      "items": {
+        "$ref": "#/$defs/PatternSnapshotPiece"
+      },
+      "title": "Pieces",
+      "type": "array"
+    },
+    "revision": {
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "units": {
+      "const": "mm",
+      "default": "mm",
+      "title": "Units",
+      "type": "string"
+    }
+  },
+  "required": [
+    "revision",
+    "pieces"
+  ],
+  "title": "PatternSnapshot",
+  "type": "object"
+}

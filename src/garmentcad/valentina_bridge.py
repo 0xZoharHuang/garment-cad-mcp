@@ -4,6 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 from garmentcad.assembly import empty_assembly
+from garmentcad.models import SewingSidecar
 
 
 def snapshot_to_assembly(
@@ -43,7 +44,10 @@ def snapshot_to_assembly(
             "grainline_deg": piece.get("grainline_deg"),
             "seam_allowance_mm": piece.get("seam_allowance_mm"),
         }
-    _apply_sidecar(assembly, sidecar or {}, edge_aliases)
+    validated_sidecar = SewingSidecar.model_validate(sidecar or {}).model_dump(
+        mode="json", exclude_none=True
+    )
+    _apply_sidecar(assembly, validated_sidecar, edge_aliases)
     return assembly
 
 
@@ -70,6 +74,8 @@ def _apply_sidecar(
             "edge_ids": edge_ids,
             "edge_indices": [by_id[edge_id] for edge_id in edge_ids],
             "reverse": bool(item.get("reverse", False)),
+            "ruffle": float(item.get("ruffle", 1.0)),
+            "right_wrong": bool(item.get("right_wrong", False)),
         }
         interface_by_alias[item["alias"]] = interface_id
     for item in sidecar.get("stitches", []):

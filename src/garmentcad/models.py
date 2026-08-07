@@ -176,6 +176,55 @@ class AssemblyEdge(BaseModel):
     label: str | None = None
 
 
+class PatternSnapshotNode(BaseModel):
+    x_mm: float
+    y_mm: float
+    edge_uuid: str
+    edge_alias: str
+    curve_point: bool = False
+    turn_point: bool = False
+
+
+class PatternSnapshotPiece(BaseModel):
+    uuid: str
+    alias: str
+    native_id: int
+    name: str = ""
+    contour: list[PatternSnapshotNode]
+    seam_allowance: bool = False
+    seam_allowance_mm: float = 0.0
+
+
+class PatternSnapshot(BaseModel):
+    schema_version: str = "1.0"
+    units: Literal["mm"] = "mm"
+    revision: int
+    pieces: list[PatternSnapshotPiece]
+
+
+class SewingSidecarInterface(BaseModel):
+    uuid: str | None = None
+    alias: str
+    edges: list[str] = Field(min_length=1)
+    reverse: bool = False
+    ruffle: float = Field(default=1.0, gt=0)
+    right_wrong: bool = False
+
+
+class SewingSidecarStitch(BaseModel):
+    uuid: str | None = None
+    alias: str
+    interface_a: str
+    interface_b: str
+    direction: Literal["same", "opposed", "auto"] = "auto"
+
+
+class SewingSidecar(BaseModel):
+    schema_version: str = "1.0"
+    interfaces: list[SewingSidecarInterface] = Field(default_factory=list)
+    stitches: list[SewingSidecarStitch] = Field(default_factory=list)
+
+
 class AssemblyPanel(BaseModel):
     id: str
     alias: str

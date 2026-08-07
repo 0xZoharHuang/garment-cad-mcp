@@ -29,6 +29,40 @@ Launch each upstream GUI through the reproducible wrappers:
 ./scripts/launch-guis.sh garmentcode
 ```
 
+## Valentina revision to GarmentCode
+
+The SDK and `valentina_import_revision` MCP tool ask the native Valentina host to expand the
+current `pattern/main.val`; they never parse or edit its XML in Python. Optional sewing semantics
+live in `assembly/sewing-sidecar.json` and reference deterministic edge aliases from the native
+snapshot:
+
+```json
+{
+  "schema_version": "1.0",
+  "interfaces": [
+    {"alias": "front.side", "edges": ["FrontPanel.edge.0000"]},
+    {"alias": "back.side", "edges": ["BackPanel.edge.0000"], "reverse": true}
+  ],
+  "stitches": [
+    {
+      "alias": "side.seam",
+      "interface_a": "front.side",
+      "interface_b": "back.side",
+      "direction": "opposed"
+    }
+  ]
+}
+```
+
+```python
+from garmentcad.sdk import GarmentSDK
+
+preview = GarmentSDK("./project").import_valentina_revision()
+```
+
+The contracts are generated as `schemas/pattern-snapshot.schema.json` and
+`schemas/sewing-sidecar.schema.json`.
+
 ## AutoDL GPU worker
 
 Clone this repository on AutoDL, then:

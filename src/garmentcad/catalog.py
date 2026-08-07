@@ -140,7 +140,7 @@ GARMENTCODE_TOOLS = (
     ToolSpec(
         "valentina_import_revision",
         "valentina.import",
-        "Import a native Valentina snapshot plus explicit sewing sidecar.",
+        "Snapshot the current Valentina revision natively and apply a sewing sidecar.",
     ),
     ToolSpec("interface_define", "interface.define", "Name an ordered set of panel edges."),
     ToolSpec("interface_delete", "interface.delete", "Delete one sewing interface."),

@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "SewingSidecarInterface": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        },
+        "edges": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Edges",
+          "type": "array"
+        },
+        "reverse": {
+          "default": false,
+          "title": "Reverse",
+          "type": "boolean"
+        },
+        "right_wrong": {
+          "default": false,
+          "title": "Right Wrong",
+          "type": "boolean"
+        },
+        "ruffle": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "Ruffle",
+          "type": "number"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uuid"
+        }
+      },
+      "required": [
+        "alias",
+        "edges"
+      ],
+      "title": "SewingSidecarInterface",
+      "type": "object"
+    },
+    "SewingSidecarStitch": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        },
+        "direction": {
+          "default": "auto",
+          "enum": [
+            "same",
+            "opposed",
+            "auto"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "interface_a": {
+          "title": "Interface A",
+          "type": "string"
+        },
+        "interface_b": {
+          "title": "Interface B",
+          "type": "string"
+        },
+        "uuid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uuid"
+        }
+      },
+      "required": [
+        "alias",
+        "interface_a",
+        "interface_b"
+      ],
+      "title": "SewingSidecarStitch",
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/sewing-sidecar.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "interfaces": {
+      "items": {
+        "$ref": "#/$defs/SewingSidecarInterface"
+      },
+      "title": "Interfaces",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stitches": {
+      "items": {
+        "$ref": "#/$defs/SewingSidecarStitch"
+      },
+      "title": "Stitches",
+      "type": "array"
+    }
+  },
+  "title": "SewingSidecar",
+  "type": "object"
+}
