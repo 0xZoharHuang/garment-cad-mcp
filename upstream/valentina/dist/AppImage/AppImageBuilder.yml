@@ -1,0 +1,157 @@
+# appimage-builder recipe see https://appimage-builder.readthedocs.io for details
+version: 1
+
+AppDir:
+  app_info:
+    id: ua.com.smart-pattern.valentina
+    name: Valentina
+    icon: valentina
+    version: continuous
+    exec: usr/local/bin/valentina
+    exec_args: $@
+  apt:
+    arch:
+    - amd64
+    allow_unauthenticated: true
+    sources:
+    - sourceline: deb http://us.archive.ubuntu.com/ubuntu/ jammy main restricted
+    - sourceline: deb http://us.archive.ubuntu.com/ubuntu/ jammy-updates main restricted
+    - sourceline: deb http://us.archive.ubuntu.com/ubuntu/ jammy universe
+    - sourceline: deb http://us.archive.ubuntu.com/ubuntu/ jammy-updates universe
+    - sourceline: deb http://us.archive.ubuntu.com/ubuntu/ jammy multiverse
+    - sourceline: deb http://us.archive.ubuntu.com/ubuntu/ jammy-updates multiverse
+    - sourceline: deb http://us.archive.ubuntu.com/ubuntu/ jammy-backports main restricted
+        universe multiverse
+    - sourceline: deb http://security.ubuntu.com/ubuntu jammy-security main restricted
+    - sourceline: deb http://security.ubuntu.com/ubuntu jammy-security universe
+    - sourceline: deb http://security.ubuntu.com/ubuntu jammy-security multiverse
+    include:
+    - bash
+    - libgtk-3-0
+    - libgtk-3-common
+    - libcap2:amd64
+    - libcom-err2:amd64
+    - libdbus-1-3:amd64
+    - libgpg-error0:amd64
+    - librsvg2-2
+    - librsvg2-common:amd64
+    - libkeyutils1:amd64
+    - liblzma5:amd64
+    - libpcre3:amd64
+    - libselinux1:amd64
+    - libtinfo6:amd64
+    - libgdk-pixbuf2.0-0
+    - libgdk-pixbuf2.0-bin
+    - libgdk-pixbuf2.0-common
+    - libpango-1.0-0
+    - libqt6concurrent6:amd64
+    - libqt6core6:amd64
+    - libqt6gui6:amd64
+    - libqt6network6:amd64
+    - libqt6svg6:amd64
+    - libqt6printsupport6:amd64
+    - libqt6concurrent6:amd64
+    - libqt6widgets6:amd64
+    - libqt6xml6:amd64
+    - libqt6openglwidgets6:amd64
+    - libqt6opengl6:amd64
+    - qt6-image-formats-plugins:amd64
+    - qt6-translations-l10n
+    - qt6-gtk-platformtheme:amd64
+    - qt6-qpa-plugins:amd64
+    - libxerces-c3.2
+    # x11
+    - libx11-6
+    - libx11-xcb1
+    - libxcb1
+    - libxcb-render0
+    - libxcb-xfixes0
+    - libxcb-shape0
+    - libxcb-dri2-0
+    - libxcb-shm0
+    - libxcb-glx0
+    - libxcb-present0
+    - libxcb-dri3-0
+    # graphic libraries interface (safe graphics bundle including drivers, acceleration may not work in some systems)
+    - libglvnd0
+    - libglx0
+    - libglapi-mesa
+    - libgl1
+    - libegl1
+    - libgbm1
+    - libdrm2
+    - libglx-mesa0
+    - libgl1-amber-dri
+    - libgl1-mesa-dri
+    - mesa-utils
+    - libgl1-mesa-glx
+    - libdrm-amdgpu1
+    - libdrm-nouveau2
+    exclude:
+    - humanity-icon-theme
+    - hicolor-icon-theme
+    - adwaita-icon-theme
+    - ubuntu-mono
+    - perl
+    - libicu60
+    - gnupg
+  files:
+    include: []
+    exclude:
+    - usr/lib/x86_64-linux-gnu/gconv
+    - usr/share/man
+    - usr/share/doc
+    - usr/share/bug
+    - usr/share/menu
+    - usr/include
+    - usr/share/bash-completion
+    - usr/lib/*/cmake
+    - usr/lib/*/qt6/mkspecs
+    - usr/lib/*/systemd
+    - usr/lib/*/girepository*
+    - '**/hooks/*'
+    - '**/clean-up-*'
+    - '**/init.d/*'
+    - '**/rc?.d/*'
+    - '**/*.prl'
+    - usr/share/qt6/translations/assistant_*
+    - usr/share/qt6/translations/designer_*
+    - usr/share/qt6/translations/linguist_*
+    - usr/share/qt6/translations/qt_help_*
+    - usr/share/qt6/translations/qtbase_*
+    - usr/share/qt6/translations/qtconnectivity_*
+    - usr/share/qt6/translations/qtdeclarative_*
+    - usr/share/qt6/translations/qtlocation_*
+    - usr/share/qt6/translations/qtmultimedia_*
+    - usr/share/qt6/translations/qtserialport_*
+    - usr/share/qt6/translations/qtwebengine_*
+    - usr/share/qt6/translations/qtwebsockets_*
+    - usr/share/lintian/**
+    - usr/share/thumbnailers/**
+    - usr/share/glib-2.0/schemas/org.gtk.Settings.*.gschema.xml
+    - etc/gtk-3.0/**
+    - usr/share/themes/Default/**
+    - usr/share/themes/Emacs/**
+    - usr/share/icons/**
+    - usr/share/icons/hicolor/icon-theme.cache
+  after_bundle:
+    # Provide a fallback /bin/sh
+    - ln -s bash $TARGET_APPDIR/bin/sh
+    # Strip .note.ABI-tag from Qt6 libraries
+    - find "$TARGET_APPDIR" -type f -name 'libQt6*.so*' -exec strip --remove-section=.note.ABI-tag {} + 2>/dev/null || true
+  runtime:
+    env:
+      APPDIR_LIBRARY_PATH: "$APPDIR:$APPDIR/runtime/compat/:$APPDIR/usr/lib/x86_64-linux-gnu:$APPDIR/lib/x86_64-linux-gnu:$APPDIR/usr/lib:$APPDIR/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders:$APPDIR/usr/local/lib/valentina"
+      LD_LIBRARY_PATH: "$APPDIR:$APPDIR/runtime/compat/:$APPDIR/usr/lib/x86_64-linux-gnu:$APPDIR/lib/x86_64-linux-gnu:$APPDIR/usr/lib:$APPDIR/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders:$APPDIR/usr/local/lib/valentina"
+      QT_PLUGIN_PATH: "$APPDIR/usr/lib/x86_64-linux-gnu/qt6/plugins"
+      GDK_PIXBUF_MODULEDIR: $APPDIR/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders
+      GDK_PIXBUF_MODULE_FILE: $APPDIR/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache
+      GDK_BACKEND: x11
+  test:
+    ubuntu-jammy:
+      image: appimagecrafters/tests-env:ubuntu-jammy
+      command: ./AppRun
+AppImage:
+  arch: x86_64
+  update-information: guess
+  comp: gzip

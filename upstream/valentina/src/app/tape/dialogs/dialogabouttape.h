@@ -1,0 +1,67 @@
+/************************************************************************
+ **
+ **  @file   dialogabouttape.h
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   12 7, 2015
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2015 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#ifndef DIALOGABOUTTAPE_H
+#define DIALOGABOUTTAPE_H
+
+#include <memory>
+#include <QDialog>
+#include <QPointer>
+
+namespace Ui
+{
+class DialogAboutTape;
+}
+
+class DialogCredits;
+
+class DialogAboutTape : public QDialog
+{
+    Q_OBJECT // NOLINT
+
+public:
+    explicit DialogAboutTape(QWidget *parent = nullptr);
+    ~DialogAboutTape() override;
+
+protected:
+    void changeEvent(QEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+
+private:
+    // cppcheck-suppress unknownMacro
+    Q_DISABLE_COPY_MOVE(DialogAboutTape) // NOLINT
+    std::unique_ptr<Ui::DialogAboutTape> ui;
+    bool m_isInitialized;
+    QPointer<DialogCredits> m_dialogCredits{};
+
+    static void FontPointSize(QWidget *w, int pointSize);
+
+    void RetranslateUi();
+};
+
+#endif // DIALOGABOUTTAPE_H

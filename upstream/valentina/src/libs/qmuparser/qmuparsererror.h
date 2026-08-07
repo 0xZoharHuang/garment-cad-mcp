@@ -1,0 +1,255 @@
+/***************************************************************************************************
+ **
+ **  Copyright (C) 2013 Ingo Berg
+ **
+ **  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ **  software and associated documentation files (the "Software"), to deal in the Software
+ **  without restriction, including without limitation the rights to use, copy, modify,
+ **  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ **  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ **
+ **  The above copyright notice and this permission notice shall be included in all copies or
+ **  substantial portions of the Software.
+ **
+ **  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+ **  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ **  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ **  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ **  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ **
+ ******************************************************************************************************/
+
+#ifndef QMUPARSERERROR_H
+#define QMUPARSERERROR_H
+
+#include <QCoreApplication>
+#include <QException>
+#include <QMap>
+#include <QString>
+#include <QVector>
+#include <QtGlobal>
+#include <sstream>
+
+#include "qmuparser_global.h"
+#include "qmuparserdef.h"
+#include "qmutranslation.h"
+
+/** @file
+    @brief This file defines the error class used by the parser.
+*/
+
+namespace qmu
+{
+
+/** @brief Error codes. */
+enum EErrorCodes
+{
+    // Formula syntax errors
+    ecUNEXPECTED_OPERATOR = 0,  ///< Unexpected binary operator found
+    ecUNASSIGNABLE_TOKEN = 1,   ///< Token cant be identified.
+    ecUNEXPECTED_EOF = 2,       ///< Unexpected end of formula. (Example: "2+sin(")
+    ecUNEXPECTED_ARG_SEP = 3,   ///< An unexpected semicolon has been found. (Example: "1;23")
+    ecUNEXPECTED_ARG = 4,       ///< An unexpected argument has been found
+    ecUNEXPECTED_VAL = 5,       ///< An unexpected value token has been found
+    ecUNEXPECTED_VAR = 6,       ///< An unexpected variable token has been found
+    ecUNEXPECTED_PARENS = 7,    ///< Unexpected Parenthesis, opening or closing
+    ecUNEXPECTED_STR = 8,       ///< A string has been found at an inapropriate position
+    ecSTRING_EXPECTED = 9,      ///< A string function has been called with a different type of argument
+    ecVAL_EXPECTED = 10,        ///< A numerical function has been called with a non value type of argument
+    ecMISSING_PARENS = 11,      ///< Missing parens. (Example: "3*sin(3")
+    ecUNEXPECTED_FUN = 12,      ///< Unexpected function found. (Example: "sin(8)cos(9)")
+    ecUNTERMINATED_STRING = 13, ///< unterminated string constant. (Example: "3*valueof("hello)")
+    ecTOO_MANY_PARAMS = 14,     ///< Too many function parameters
+    ecTOO_FEW_PARAMS = 15,      ///< Too few function parameters. (Example: "ite(1<2;2)")
+    ecOPRT_TYPE_CONFLICT = 16,  ///< binary operators may only be applied to value items of the same type
+    ecSTR_RESULT = 17,          ///< result is a string
+
+    // Invalid Parser input Parameters
+    ecINVALID_NAME = 18,          ///< Invalid function, variable or constant name.
+    ecINVALID_BINOP_IDENT = 19,   ///< Invalid binary operator identifier
+    ecINVALID_INFIX_IDENT = 20,   ///< Invalid function, variable or constant name.
+    ecINVALID_POSTFIX_IDENT = 21, ///< Invalid function, variable or constant name.
+
+    ecBUILTIN_OVERLOAD = 22, ///< Trying to overload builtin operator
+    ecINVALID_FUN_PTR = 23,  ///< Invalid callback function pointer
+    ecINVALID_VAR_PTR = 24,  ///< Invalid variable pointer
+    ecEMPTY_EXPRESSION = 25, ///< The Expression is empty
+    ecNAME_CONFLICT = 26,    ///< Name conflict
+    ecOPT_PRI = 27,          ///< Invalid operator priority
+                             //
+    ecDOMAIN_ERROR = 28,     ///< catch division by zero, sqrt(-1), log(0) (currently unused)
+    ecDIV_BY_ZERO = 29,      ///< Division by zero (currently unused)
+    ecGENERIC = 30,          ///< Generic error
+    ecLOCALE = 31,           ///< Conflict with current locale
+
+    ecUNEXPECTED_CONDITIONAL = 32,
+    ecMISSING_ELSE_CLAUSE = 33,
+    ecMISPLACED_COLON = 34,
+
+    // internal errors
+    ecINTERNAL_ERROR = 35, ///< Internal error of any kind.
+
+    // The last two are special entries
+    ecCOUNT,         ///< This is no error code, It just stores just the total number of error codes
+    ecUNDEFINED = -1 ///< Undefined message, placeholder to detect unassigned error messages
+};
+
+//---------------------------------------------------------------------------
+/** @brief A class that handles the error messages.
+ */
+class QMUPARSERSHARED_EXPORT QmuParserErrorMsg
+{
+public:
+    using self_type = QmuParserErrorMsg;
+
+    QmuParserErrorMsg();
+    ~QmuParserErrorMsg() = default;
+
+    static auto Instance() -> const QmuParserErrorMsg &;
+    auto operator[](int a_iIdx) const -> QString;
+
+private:
+    // cppcheck-suppress unknownMacro
+    Q_DISABLE_COPY_MOVE(QmuParserErrorMsg) // NOLINT
+    QMap<int, QmuTranslation> m_vErrMsg{}; ///< A map with the predefined error messages
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+// cppcheck-suppress unusedFunction
+inline auto QmuParserErrorMsg::Instance() -> const QmuParserErrorMsg &
+{
+    const static QmuParserErrorMsg instance;
+    return instance;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline auto QmuParserErrorMsg::operator[](int a_iIdx) const -> QString
+{
+    return m_vErrMsg.value(a_iIdx).translate(QString());
+}
+
+class QMUPARSERSHARED_EXPORT QmuParserWarning : public QException
+{
+public:
+    explicit QmuParserWarning(const QString &sMsg);
+    QmuParserWarning(const QmuParserWarning &a_Obj);
+    auto operator=(const QmuParserWarning &a_Obj) -> QmuParserWarning &;
+    // cppcheck-suppress unknownMacro
+    virtual ~QmuParserWarning() QMUP_NOEXCEPT_EXPR(true) override {}
+
+    auto GetMsg() const -> const QString &;
+
+    Q_NORETURN virtual void raise() const override;
+    Q_REQUIRED_RESULT virtual auto clone() const -> QmuParserWarning * override;
+
+private:
+    QString m_sMsg; ///< The message string
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Returns the message string for this error.
+ */
+inline auto QmuParserWarning::GetMsg() const -> const QString &
+{
+    return m_sMsg;
+}
+
+//---------------------------------------------------------------------------
+/** @brief Error class of the parser.
+    @author Ingo Berg
+
+  Part of the math parser package.
+*/
+class QMUPARSERSHARED_EXPORT QmuParserError : public QException
+{
+public:
+    QmuParserError();
+    explicit QmuParserError(EErrorCodes a_iErrc);
+    explicit QmuParserError(const QString &sMsg);
+    QmuParserError(EErrorCodes a_iErrc, const QString &sTok, const QString &sFormula = QString(),
+                   qmusizetype a_iPos = -1);
+    QmuParserError(EErrorCodes a_iErrc, int a_iPos, const QString &sTok);
+    QmuParserError(const QString &szMsg, int iPos, const QString &sTok = QString());
+    QmuParserError(const QmuParserError &a_Obj);
+    auto operator=(const QmuParserError &a_Obj) -> QmuParserError &;
+    virtual ~QmuParserError() QMUP_NOEXCEPT_EXPR(true) override {}
+
+    void SetFormula(const QString &a_strFormula);
+    auto GetExpr() const -> const QString &;
+    auto GetMsg() const -> const QString &;
+    auto GetPos() const -> qmusizetype;
+    auto GetToken() const -> const QString &;
+    auto GetCode() const -> EErrorCodes;
+    Q_NORETURN virtual void raise() const override;
+    Q_REQUIRED_RESULT virtual auto clone() const -> QmuParserError * override;
+
+private:
+    QString m_sMsg;      ///< The message string
+    QString m_sExpr;     ///< Formula string
+    QString m_sTok;      ///< Token related with the error
+    qmusizetype m_iPos;  ///< Formula position related to the error
+    EErrorCodes m_iErrc; ///< Error code
+    const QmuParserErrorMsg &m_ErrMsg;
+    void Reset();
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Set the expression related to this error.
+ */
+inline void QmuParserError::SetFormula(const QString &a_strFormula)
+{
+    m_sExpr = a_strFormula;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief gets the expression related tp this error.
+ */
+inline auto QmuParserError::GetExpr() const -> const QString &
+{
+    return m_sExpr;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Returns the message string for this error.
+ */
+inline auto QmuParserError::GetMsg() const -> const QString &
+{
+    return m_sMsg;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Return the formula position related to the error.
+ *
+ * If the error is not related to a distinct position this will return -1
+ */
+inline auto QmuParserError::GetPos() const -> qmusizetype
+{
+    return m_iPos;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Return string related with this token (if available).
+ */
+inline auto QmuParserError::GetToken() const -> const QString &
+{
+    return m_sTok;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Return the error code.
+ */
+inline auto QmuParserError::GetCode() const -> EErrorCodes
+{
+    return m_iErrc;
+}
+
+} // namespace qmu
+
+#endif

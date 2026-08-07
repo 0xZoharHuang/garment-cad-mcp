@@ -1,0 +1,174 @@
+/************************************************************************
+ **
+ **  @file
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   31 1, 2017
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2017 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#include "vtoolpin.h"
+#include "../../dialogs/tools/piece/dialogpin.h"
+#include "../../undocommands/savepieceoptions.h"
+#include "../ifc/xml/vpatternblockmapper.h"
+#include "../ifc/xml/vpatterngraph.h"
+#include "../vgeometry/vpointf.h"
+#include "../vtoolseamallowance.h"
+
+const QString VToolPin::ToolType = QStringLiteral("pin");
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolPin::Create(const QPointer<DialogTool> &dialog, VAbstractPattern *doc, VContainer *data) -> VToolPin *
+{
+    SCASSERT(not dialog.isNull());
+    const QPointer<DialogPin> dialogTool = qobject_cast<DialogPin *>(dialog);
+    SCASSERT(not dialogTool.isNull())
+
+    VToolPinInitData initData;
+    initData.pointId = dialogTool->GetPointId();
+    initData.idObject = dialogTool->GetPieceId();
+    initData.doc = doc;
+    initData.data = data;
+    initData.parse = Document::FullParse;
+    initData.typeCreation = Source::FromGui;
+
+    return Create(initData);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolPin::Create(VToolPinInitData initData) -> VToolPin *
+{
+    QSharedPointer<VPointF> point;
+    try
+    {
+        point = initData.data->GeometricObject<VPointF>(initData.pointId);
+    }
+    catch (const VExceptionBadId &e)
+    { // Possible case. Parent was deleted, but the node object is still here.
+        Q_UNUSED(e)
+        if (initData.typeCreation != Source::FromGui)
+        {
+            initData.data->UpdateId(initData.id);
+        }
+        return nullptr; // Just ignore
+    }
+
+    auto *pinPoint = new VPointF(*point);
+    pinPoint->setIdObject(initData.pointId);
+    pinPoint->setMode(Draw::Modeling);
+
+    if (initData.typeCreation == Source::FromGui)
+    {
+        initData.id = initData.data->AddGObject(pinPoint);
+    }
+    else
+    {
+        initData.data->UpdateGObject(initData.id, pinPoint);
+    }
+
+    VPatternGraph *patternGraph = initData.doc->PatternGraph();
+    SCASSERT(patternGraph != nullptr)
+
+    patternGraph->AddVertex(initData.id, VNodeType::MODELING_OBJECT, initData.doc->PatternBlockMapper()->GetActiveId());
+    patternGraph->AddEdge(initData.pointId, initData.id);
+
+    if (initData.typeCreation != Source::FromGui && initData.parse != Document::FullParse)
+    {
+        initData.doc->UpdateToolData(initData.id, initData.data);
+    }
+
+    VAbstractTool::AddRecord(initData.id, Tool::Pin, initData.doc);
+    if (initData.parse == Document::FullParse)
+    {
+        auto *pinTool = new VToolPin(initData);
+
+        VAbstractPattern::AddTool(initData.id, pinTool);
+        if (initData.idTool != NULL_ID)
+        {
+            //Some nodes we don't show on scene. Tool that create this nodes must free memory.
+            VDataTool *tool = VAbstractPattern::getTool(initData.idTool);
+            SCASSERT(tool != nullptr)
+            pinTool->setParent(tool); // Adopted by a tool
+        }
+        else
+        {
+            // Help to delete the node before each FullParse
+            initData.doc->AddToolOnRemove(pinTool);
+        }
+    }
+    return nullptr;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolPin::getTagName() const -> QString
+{
+    return VAbstractPattern::TagPoint;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VToolPin::AllowHover(bool enabled)
+{
+    Q_UNUSED(enabled)
+    // do nothing
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VToolPin::AllowSelecting(bool enabled)
+{
+    Q_UNUSED(enabled)
+    // do nothing
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VToolPin::AddToFile()
+{
+    QDomElement domElement = doc->createElement(getTagName());
+
+    doc->SetAttribute(domElement, VDomDocument::AttrId, m_id);
+    doc->SetAttribute(domElement, AttrType, ToolType);
+    doc->SetAttribute(domElement, AttrIdObject, idNode);
+    if (idTool != NULL_ID)
+    {
+        doc->SetAttribute(domElement, AttrIdTool, idTool);
+    }
+
+    AddToModeling(domElement);
+
+    if (m_pieceId > NULL_ID)
+    {
+        const VPiece oldDet = VAbstractTool::data.GetPiece(m_pieceId);
+        VPiece newDet = oldDet;
+
+        newDet.GetPins().append(m_id);
+
+        VAbstractApplication::VApp()->getUndoStack()->push(new SavePieceOptions(oldDet, newDet, doc, m_pieceId));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+VToolPin::VToolPin(const VToolPinInitData &initData, QObject *qoParent)
+    : VAbstractNode(initData.doc, initData.data, initData.id, initData.pointId, initData.drawName, initData.idTool,
+                    qoParent),
+      m_pieceId(initData.idObject)
+{
+    ToolCreation(initData.typeCreation);
+}

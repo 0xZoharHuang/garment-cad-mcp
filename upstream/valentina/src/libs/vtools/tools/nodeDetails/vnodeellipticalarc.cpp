@@ -1,0 +1,134 @@
+/************************************************************************
+ **
+ **  @file
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   20 12, 2016
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2016 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#include "vnodeellipticalarc.h"
+
+#include <QDomElement>
+
+#include "../ifc/ifcdef.h"
+#include "../ifc/xml/vdomdocument.h"
+#include "../ifc/xml/vpatternblockmapper.h"
+#include "../ifc/xml/vpatterngraph.h"
+#include "../vabstracttool.h"
+#include "../vdatatool.h"
+#include "../vgeometry/vellipticalarc.h"
+#include "vabstractnode.h"
+
+const QString VNodeEllipticalArc::ToolType = QStringLiteral("modeling");
+
+//---------------------------------------------------------------------------------------------------------------------
+void VNodeEllipticalArc::Create(const VAbstractNodeInitData &initData)
+{
+    VPatternGraph *patternGraph = initData.doc->PatternGraph();
+    SCASSERT(patternGraph != nullptr)
+
+    patternGraph->AddVertex(initData.id, VNodeType::MODELING_OBJECT, initData.doc->PatternBlockMapper()->GetActiveId());
+
+    try
+    {
+        auto *arc = new VEllipticalArc(*initData.data->GeometricObject<VEllipticalArc>(initData.idObject));
+        arc->setIdObject(initData.idObject);
+        arc->setMode(Draw::Modeling);
+        initData.data->UpdateGObject(initData.id, arc);
+    }
+    catch (const VExceptionBadId &e)
+    { // Possible case. Parent was deleted, but the node object is still here.
+        Q_UNUSED(e)
+        return; // Just ignore
+    }
+
+    patternGraph->AddEdge(initData.idObject, initData.id);
+
+    if (initData.parse == Document::FullParse)
+    {
+        VAbstractTool::AddRecord(initData.id, Tool::NodeElArc, initData.doc);
+        auto *arc = new VNodeEllipticalArc(initData);
+
+        VAbstractPattern::AddTool(initData.id, arc);
+        if (initData.idTool != NULL_ID)
+        {
+            //Some nodes we don't show on scene. Tool that create this nodes must free memory.
+            VDataTool *tool = VAbstractPattern::getTool(initData.idTool);
+            SCASSERT(tool != nullptr)
+            arc->setParent(tool);// Adopted by a tool
+        }
+        else
+        {
+            // Help to delete the node before each FullParse
+            initData.doc->AddToolOnRemove(arc);
+        }
+    }
+    else
+    {
+        initData.doc->UpdateToolData(initData.id, initData.data);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VNodeEllipticalArc::getTagName() const -> QString
+{
+    return VAbstractPattern::TagElArc;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VNodeEllipticalArc::AllowHover(bool enabled)
+{
+    Q_UNUSED(enabled)
+    // do nothing
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VNodeEllipticalArc::AllowSelecting(bool enabled)
+{
+    Q_UNUSED(enabled)
+    // do nothing
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VNodeEllipticalArc::AddToFile()
+{
+    QDomElement domElement = doc->createElement(getTagName());
+
+    doc->SetAttribute(domElement, VDomDocument::AttrId, m_id);
+    doc->SetAttribute(domElement, AttrType, ToolType);
+    doc->SetAttribute(domElement, AttrIdObject, idNode);
+    if (idTool != NULL_ID)
+    {
+        doc->SetAttribute(domElement, AttrIdTool, idTool);
+    }
+
+    AddToModeling(domElement);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+VNodeEllipticalArc::VNodeEllipticalArc(const VAbstractNodeInitData &initData, QObject *qoParent)
+    :VAbstractNode(initData.doc, initData.data, initData.id, initData.idObject, initData.drawName, initData.idTool,
+                   qoParent)
+{
+    ToolCreation(initData.typeCreation);
+}
