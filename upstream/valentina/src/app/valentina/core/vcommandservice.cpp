@@ -20,6 +20,7 @@
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarc.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolellipticalarcwithlength.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
+#include "../vtools/tools/drawTools/toolcurve/vtoolsplinepath.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoollineintersect.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointfromarcandtangent.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointfromcircleandtangent.h"
@@ -37,6 +38,9 @@
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolnormal.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolshoulderpoint.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolalongline.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toolcut/vtoolcutarc.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toolcut/vtoolcutspline.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toolcut/vtoolcutsplinepath.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolbasepoint.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolsinglepoint.h"
 #include "../vtools/tools/drawTools/vtoolline.h"
@@ -185,7 +189,8 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.arc_start"), QStringLiteral("pattern.arc_end"),
                             QStringLiteral("pattern.arc_with_length"), QStringLiteral("pattern.elliptical_arc"),
                             QStringLiteral("pattern.elliptical_arc_with_length"),
-                            QStringLiteral("pattern.spline"), QStringLiteral("pattern.cubic_bezier"),
+                            QStringLiteral("pattern.spline"), QStringLiteral("pattern.spline_path"),
+                            QStringLiteral("pattern.cubic_bezier"),
                             QStringLiteral("pattern.formula_evaluate"),
                             QStringLiteral("pattern.dependency_query"), QStringLiteral("measurement.increment_set"),
                             QStringLiteral("measurement.increment_remove"),
@@ -201,7 +206,8 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.point_from_arc_and_tangent"),
                             QStringLiteral("pattern.line_intersect_axis"),
                             QStringLiteral("pattern.curve_intersect_axis"),
-                            QStringLiteral("pattern.arc_intersect_axis")}}};
+                            QStringLiteral("pattern.arc_intersect_axis"), QStringLiteral("pattern.cut_arc"),
+                            QStringLiteral("pattern.cut_spline"), QStringLiteral("pattern.cut_spline_path")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -807,6 +813,50 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         return;
     }
 
+    if (action == QStringLiteral("pattern.spline_path"))
+    {
+        const QJsonArray pathPoints = arguments.value(QStringLiteral("points")).toArray();
+        if (pathPoints.size() < 2)
+        {
+            throw std::invalid_argument("spline_path requires at least two points");
+        }
+
+        VToolSplinePathInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.color = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        initData.penStyle = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.aliasSuffix = arguments.value(QStringLiteral("native_alias_suffix")).toString();
+        for (const QJsonValue value : pathPoints)
+        {
+            const QJsonObject point = value.toObject();
+            initData.points.append(ResolveObject(point.value(QStringLiteral("point")).toObject(), aliases));
+            initData.a1.append(point.contains(QStringLiteral("formula_angle1"))
+                                   ? RequiredString(point, QStringLiteral("formula_angle1"))
+                                   : QString::number(
+                                         point.value(QStringLiteral("angle1_deg")).toDouble(), 'g', 15));
+            initData.a2.append(point.contains(QStringLiteral("formula_angle2"))
+                                   ? RequiredString(point, QStringLiteral("formula_angle2"))
+                                   : QString::number(
+                                         point.value(QStringLiteral("angle2_deg")).toDouble(), 'g', 15));
+            initData.l1.append(point.contains(QStringLiteral("formula_length1"))
+                                   ? RequiredString(point, QStringLiteral("formula_length1"))
+                                   : NativeFormulaForMillimetres(
+                                         point.value(QStringLiteral("length1_mm")).toDouble()));
+            initData.l2.append(point.contains(QStringLiteral("formula_length2"))
+                                   ? RequiredString(point, QStringLiteral("formula_length2"))
+                                   : NativeFormulaForMillimetres(
+                                         point.value(QStringLiteral("length2_mm")).toDouble()));
+        }
+        auto *tool = VToolSplinePath::Create(initData);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("SplinePath"),
+                       tool->getId(), aliases, summary);
+        return;
+    }
+
     if (action == QStringLiteral("pattern.shoulder_point"))
     {
         VToolShoulderPointInitData initData;
@@ -1093,6 +1143,43 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
         auto *tool = VToolCurveIntersectAxis::Create(initData);
         RegisterObject(initData.name, QStringLiteral("CurveIntersectAxis"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.cut_arc") || action == QStringLiteral("pattern.cut_spline") ||
+        action == QStringLiteral("pattern.cut_spline_path"))
+    {
+        VToolCutInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.baseCurveId = ResolveObject(arguments.value(QStringLiteral("curve")).toObject(), aliases);
+        initData.formula = arguments.contains(QStringLiteral("formula_length"))
+                               ? RequiredString(arguments, QStringLiteral("formula_length"))
+                               : NativeFormulaForMillimetres(
+                                     arguments.value(QStringLiteral("length_mm")).toDouble());
+
+        VToolSinglePoint *tool = nullptr;
+        QString type;
+        if (action == QStringLiteral("pattern.cut_arc"))
+        {
+            tool = VToolCutArc::Create(initData);
+            type = QStringLiteral("CutArc");
+        }
+        else if (action == QStringLiteral("pattern.cut_spline"))
+        {
+            tool = VToolCutSpline::Create(initData);
+            type = QStringLiteral("CutSpline");
+        }
+        else
+        {
+            tool = VToolCutSplinePath::Create(initData);
+            type = QStringLiteral("CutSplinePath");
+        }
+        RegisterObject(initData.name, type, tool->getId(), aliases, summary);
         return;
     }
 

@@ -635,6 +635,116 @@ def test_native_cubic_bezier_and_curve_intersection(tmp_path):
     assert 'name="bezier-cross"' in pattern
 
 
+def test_native_spline_path_and_cut_handlers(tmp_path):
+    project = Project.create(tmp_path / "curve-cuts")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "D",
+                "base_point": {"alias": "B"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.arc",
+            arguments={
+                "alias": "arc",
+                "center": {"alias": "A"},
+                "radius_mm": 100,
+                "start_angle_deg": 0,
+                "end_angle_deg": 180,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.spline",
+            arguments={
+                "alias": "spline",
+                "point1": {"alias": "B"},
+                "point4": {"alias": "C"},
+                "angle1_deg": 90,
+                "angle2_deg": 0,
+                "length1_mm": 40,
+                "length2_mm": 40,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.spline_path",
+            arguments={
+                "alias": "path",
+                "points": [
+                    {
+                        "point": {"alias": alias},
+                        "angle1_deg": 180,
+                        "angle2_deg": 0,
+                        "length1_mm": 30,
+                        "length2_mm": 30,
+                    }
+                    for alias in ("A", "B", "D", "C")
+                ],
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.cut_arc",
+            arguments={"alias": "arc-cut", "curve": {"alias": "arc"}, "length_mm": 50},
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.cut_spline",
+            arguments={
+                "alias": "spline-cut",
+                "curve": {"alias": "spline"},
+                "length_mm": 50,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.cut_spline_path",
+            arguments={"alias": "path-cut", "curve": {"alias": "path"}, "length_mm": 50},
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created[-4:]] == [
+        "path",
+        "arc-cut",
+        "spline-cut",
+        "path-cut",
+    ]
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'type="pathInteractive"' in pattern
+    assert 'type="cutArc"' in pattern
+    assert 'type="cutSpline"' in pattern
+    assert 'type="cutSplinePath"' in pattern
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(
