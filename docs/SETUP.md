@@ -29,6 +29,11 @@ Launch each upstream GUI through the reproducible wrappers:
 ./scripts/launch-guis.sh garmentcode
 ```
 
+The repository-launched GarmentCode GUI includes a collapsible **Garment Project / AutoDL** panel
+for project status, submission, polling, and revision-safe artifact download. It calls the same
+Python client as MCP and the CLI; the original GarmentCode editor remains unchanged outside that
+optional panel.
+
 ## Valentina revision to GarmentCode
 
 The SDK and `valentina_import_revision` MCP tool ask the native Valentina host to expand the
@@ -77,19 +82,37 @@ Clone this repository on AutoDL, then:
 
 ```bash
 ./scripts/bootstrap-autodl.sh
-export GARMENTCAD_SIM_COMMAND='python /absolute/runner.py --input {input} --output {output}'
-export GARMENTCAD_WORKER_HOST=127.0.0.1
 ./scripts/start-worker.sh
 ```
 
-The runner receives an input directory containing `garmentcode.json`, `assembly.json`, and `job.json`.
-It must write its mesh, structured metrics, and at least one PNG/JPEG into the output directory.
-Use the vendored GarmentCode `pygarment.meshgen.simulation.run_sim` and custom Warp fork inside that
-runner.
+Bootstrap builds the fixed Warp fork against the instance CUDA toolkit, installs fixed GarmentCode,
+and runs `scripts/autodl-runner.py --preflight`. The runner consumes the self-contained bundle,
+generates the stitched BoxMesh, runs Warp simulation, writes structured metrics, and renders every
+view named by the project camera config. After the official smoke job succeeds, save the configured
+instance as an AutoDL private image.
 
 Keep the worker bound to loopback and open an SSH tunnel from the Mac:
 
 ```bash
-ssh -N -L 8765:127.0.0.1:8765 user@autodl-host
+export GARMENTCAD_AUTODL_HOST=autodl-host
+export GARMENTCAD_AUTODL_USER=root
+./scripts/open-autodl-tunnel.sh
 export GARMENTCAD_WORKER_URL=http://127.0.0.1:8765
+```
+
+The project manifest must select a body mesh (`OBJ`, `PLY`, or `GLB`), corresponding body-measurement
+YAML and vertex-segmentation JSON, fabric JSON/YAML, simulation JSON/YAML, and camera JSON. A minimal
+camera file is:
+
+```json
+{
+  "schema_version": "1.0",
+  "resolution": [800, 800],
+  "views": [
+    {"name": "front", "side": "front"},
+    {"name": "back", "side": "back"},
+    {"name": "left", "azimuth_deg": -90},
+    {"name": "right", "azimuth_deg": 90}
+  ]
+}
 ```

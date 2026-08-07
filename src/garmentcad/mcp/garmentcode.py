@@ -37,6 +37,28 @@ def simulation_submit(project_path: str, worker_url: str | None = None) -> dict[
     return SimulationClient(worker_url).submit(Project.open(project_path))
 
 
+def simulation_configure(
+    project_path: str,
+    body_mesh: str,
+    body_measurements: str,
+    body_segmentation: str,
+    fabric: str,
+    simulation_config: str,
+    camera_config: str,
+    commit: bool = False,
+) -> dict[str, Any]:
+    """Preview or commit the complete body, fabric, simulation, and camera input set."""
+    arguments = {
+        "body_mesh": body_mesh,
+        "body_measurements": body_measurements,
+        "body_segmentation": body_segmentation,
+        "fabric": fabric,
+        "simulation_config": simulation_config,
+        "camera_config": camera_config,
+    }
+    return _run(project_path, "simulation.configure", arguments, commit=commit)
+
+
 def simulation_status(job_id: str, worker_url: str | None = None) -> dict[str, Any]:
     """Poll an AutoDL simulation job."""
     return SimulationClient(worker_url).status(job_id)
@@ -72,10 +94,15 @@ def _run(
     target: str | None = None,
     commit: bool = False,
 ) -> dict[str, Any]:
+    domain = (
+        OperationDomain.SIMULATION
+        if action.startswith("simulation.")
+        else OperationDomain.ASSEMBLY
+    )
     return result_payload(
         execute_atomic(
             project_path,
-            domain=OperationDomain.ASSEMBLY,
+            domain=domain,
             action=action,
             arguments=arguments,
             target=target,
@@ -337,6 +364,7 @@ LAZY_TOOLS = {
     "changeset_discard": changeset_discard,
     "revision_revert": revision_revert,
     "simulation_submit": simulation_submit,
+    "simulation_configure": simulation_configure,
     "simulation_status": simulation_status,
     "simulation_cancel": simulation_cancel,
     "simulation_download": simulation_download,

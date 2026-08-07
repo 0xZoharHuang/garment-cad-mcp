@@ -24,7 +24,7 @@ case "${1:-all}" in
       echo "GarmentCode is not bootstrapped; run ./scripts/bootstrap-macos.sh" >&2
       exit 69
     }
-    export PYTHONPATH="$repo_dir/upstream/garmentcode:$repo_dir/upstream/nvidia-warp-garmentcode"
+    export PYTHONPATH="$repo_dir/src:$repo_dir/upstream/garmentcode:$repo_dir/upstream/nvidia-warp-garmentcode"
     cd "$repo_dir/upstream/garmentcode"
     exec "$garmentcode_python" gui.py
     ;;

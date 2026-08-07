@@ -123,6 +123,11 @@ GARMENTCODE_TOOLS = (
     ToolSpec("changeset_discard", "changeset.discard", "Discard one immutable preview."),
     ToolSpec("revision_revert", "revision.revert", "Append a reverse revision."),
     ToolSpec("simulation_submit", "simulation.submit", "Submit a self-contained GPU job bundle."),
+    ToolSpec(
+        "simulation_configure",
+        "simulation.configure",
+        "Select revisioned body, measurements, fabric, simulation, and camera inputs.",
+    ),
     ToolSpec("simulation_status", "simulation.status", "Poll structured GPU job status."),
     ToolSpec("simulation_cancel", "simulation.cancel", "Cancel a queued or running GPU job."),
     ToolSpec(

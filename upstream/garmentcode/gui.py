@@ -1,4 +1,6 @@
-from nicegui import ui, Client
+import json
+
+from nicegui import Client, run, ui
 
 # Custom
 from gui.callbacks import GUIState
@@ -12,6 +14,76 @@ async def index(client: Client):
     # Start the interface!
     gui_st = GUIState()
 
+    # Optional garment-cad-mcp bridge. The upstream GUI remains importable on its own; the repository
+    # launcher adds src/ to PYTHONPATH and exposes revisioned project/AutoDL actions here.
+    try:
+        from garmentcad.project import Project
+        from garmentcad.simulation import SimulationClient
+
+        bridge_state = {'job_id': None}
+        with ui.expansion('Garment Project / AutoDL', icon='cloud_upload').classes('w-full'):
+            project_path = ui.input('Garment Project path').props('clearable').classes('w-full')
+            worker_url = ui.input(
+                'Worker URL', value='http://127.0.0.1:8765'
+            ).classes('w-full')
+            bridge_output = ui.code('{}', language='json').classes('w-full')
+
+            def show(value):
+                bridge_output.content = json.dumps(value, ensure_ascii=False, indent=2, default=str)
+                bridge_output.update()
+
+            async def perform(operation):
+                try:
+                    show(await run.io_bound(operation))
+                except Exception as error:
+                    ui.notify(str(error), type='negative', multi_line=True)
+                    show({'error': type(error).__name__, 'message': str(error)})
+
+            def require_project():
+                if not project_path.value:
+                    raise ValueError('Choose a Garment Project directory first')
+                return Project.open(project_path.value)
+
+            async def project_status():
+                await perform(lambda: require_project().status())
+
+            async def submit_simulation():
+                def submit():
+                    result = SimulationClient(worker_url.value).submit(require_project())
+                    bridge_state['job_id'] = result['id']
+                    return result
+
+                await perform(submit)
+
+            async def poll_simulation():
+                if not bridge_state['job_id']:
+                    ui.notify('Submit a job first', type='warning')
+                    return
+                await perform(
+                    lambda: SimulationClient(worker_url.value).status(bridge_state['job_id'])
+                )
+
+            async def download_simulation():
+                if not bridge_state['job_id']:
+                    ui.notify('Submit a job first', type='warning')
+                    return
+
+                def download():
+                    project = require_project()
+                    resources = SimulationClient(worker_url.value).download(
+                        project, bridge_state['job_id'])
+                    return {'revision': project.current_revision, 'resources': resources}
+
+                await perform(download)
+
+            with ui.row():
+                ui.button('Project status', on_click=project_status)
+                ui.button('Submit', on_click=submit_simulation)
+                ui.button('Poll', on_click=poll_simulation)
+                ui.button('Download', on_click=download_simulation)
+    except ImportError:
+        pass
+
     # Connection end
     # https://github.com/zauberzeug/nicegui/discussions/1379
     await client.disconnected()
@@ -24,4 +96,3 @@ if __name__ == '__main__':
             favicon=icon_image_b64,
             title='GarmentCode'
         )
-    

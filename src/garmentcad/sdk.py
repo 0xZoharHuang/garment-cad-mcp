@@ -207,6 +207,34 @@ class GarmentSDK:
 
         return export_garmentcode(self.project_path, formats)
 
+    def configure_simulation(
+        self,
+        *,
+        body_mesh: str,
+        body_measurements: str,
+        body_segmentation: str,
+        fabric: str,
+        simulation_config: str,
+        camera_config: str,
+        commit: bool = False,
+    ) -> ToolResult:
+        """Select a complete revisioned simulation input set."""
+        arguments = {
+            "body_mesh": body_mesh,
+            "body_measurements": body_measurements,
+            "body_segmentation": body_segmentation,
+            "fabric": fabric,
+            "simulation_config": simulation_config,
+            "camera_config": camera_config,
+        }
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.SIMULATION,
+            action="simulation.configure",
+            arguments=arguments,
+            commit=commit,
+        )
+
     def valentina(
         self,
         action: str,

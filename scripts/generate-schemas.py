@@ -17,7 +17,9 @@ from garmentcad.models import (
     ProjectManifest,
     Revision,
     SewingSidecar,
+    SimulationCameraConfig,
     SimulationJob,
+    SimulationTask,
     ToolResult,
     ValidationIssue,
 )
@@ -37,6 +39,8 @@ MODELS = {
     "validation": ValidationIssue,
     "tool-result": ToolResult,
     "simulation-job": SimulationJob,
+    "simulation-camera": SimulationCameraConfig,
+    "simulation-task": SimulationTask,
 }
 
 

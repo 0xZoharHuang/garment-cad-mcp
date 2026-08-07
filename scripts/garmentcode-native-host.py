@@ -143,6 +143,8 @@ def _convert(assembly: dict[str, Any]) -> dict[str, Any]:
     pattern = component.assembly().pattern
     document = {
         "pattern": pattern,
+        "parameters": {},
+        "parameter_order": [],
         "properties": {
             "units_in_meter": 100,
             "curvature_coords": "relative",

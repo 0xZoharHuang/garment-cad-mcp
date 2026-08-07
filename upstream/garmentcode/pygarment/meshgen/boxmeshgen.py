@@ -455,7 +455,7 @@ class Edge:
         self.n_edge_verts = n_edge_verts
 
         if n_edge_verts == 2 and res > 1.0:
-            print(f'{self.__class__.__name__}::{self.name}::WARNING::Detected edge represented only by two vertices..'
+            print(f'{self.__class__.__name__}::WARNING::Detected edge represented only by two vertices..'
                   'mesh resolution might be too low. resolution = {}, edge length = {}'.format(res, edgelength))
 
 

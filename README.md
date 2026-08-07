@@ -46,7 +46,8 @@ commits and licenses.
 
 - GarmentCode panel/interface/stitch transactions, SDK, and MCP: implemented and tested.
 - Remote worker upload, serial execution, cache, polling, artifacts, and screenshot enforcement:
-  implemented; deployment supplies the pinned Warp runner and GPU assets.
+  implemented together with the pinned Warp/GarmentCode runner, AutoDL bootstrap, and SSH tunnel;
+  deployment supplies the body assets and an NVIDIA AutoDL instance.
 - Valentina/Tape/Puzzle native command services, MCP catalog, and schema-generated typed recipes:
   implemented with complete reviewed handler coverage.
 - Native previews include compact image resources; full coordinates, change-sets, assembly data,

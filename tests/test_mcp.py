@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 
 import pytest
 from mcp.types import ImageContent, TextContent
 
+from garmentcad.artifacts import ArtifactStore
 from garmentcad.catalog import GARMENTCODE_TOOLS, VALENTINA_TOOLS
 from garmentcad.generated.atomic_commands import ARGUMENT_SCHEMAS, AtomicCommands
 from garmentcad.mcp.garmentcode import mcp as garmentcode_mcp
@@ -100,6 +102,28 @@ async def test_thumbnail_resource_returns_compact_metadata_and_image_content(tmp
     assert "byte_length" in result[0].text
     assert isinstance(result[1], ImageContent)
     assert result[1].mimeType == "image/svg+xml"
+
+
+@pytest.mark.asyncio
+async def test_content_addressed_render_resource_returns_image_content(tmp_path):
+    project = Project.create(tmp_path / "render-resource")
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )
+    uri = ArtifactStore(project.root).put(
+        png,
+        filename="front.png",
+        kind="simulation",
+        revision=0,
+    )
+    resource_tool = garmentcode_mcp._tool_manager.get_tool("resource_read")
+    result = await resource_tool.run(
+        {"project_path": str(project.root), "uri": uri}, convert_result=True
+    )
+    assert isinstance(result, list)
+    assert isinstance(result[0], TextContent)
+    assert isinstance(result[1], ImageContent)
+    assert result[1].mimeType == "image/png"
 
 
 @pytest.mark.asyncio

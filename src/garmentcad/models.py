@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, Self
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 def utc_now() -> datetime:
@@ -124,6 +125,8 @@ class ProjectManifest(BaseModel):
     assembly_file: str = "assembly/assembly.json"
     measurement_files: list[str] = Field(default_factory=list)
     active_body: str | None = None
+    active_body_measurements: str | None = None
+    active_body_segmentation: str | None = None
     active_fabric: str | None = None
     active_simulation_config: str | None = None
     active_camera_config: str | None = None
@@ -151,6 +154,61 @@ class SimulationStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class SimulationCameraView(BaseModel):
+    name: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+    side: Literal["front", "back"] | None = None
+    azimuth_deg: float | None = None
+    elevation_deg: float | None = None
+    camera_location_mm: tuple[float, float, float] | None = None
+    distance_scale: float = Field(default=1.6, gt=0)
+
+
+class SimulationCameraConfig(BaseModel):
+    schema_version: str = "1.0"
+    resolution: tuple[int, int] = (800, 800)
+    views: list[SimulationCameraView] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_camera_contract(self) -> Self:
+        if any(value <= 0 for value in self.resolution):
+            raise ValueError("Camera resolution must be positive")
+        names = [view.name for view in self.views]
+        if len(names) != len(set(names)):
+            raise ValueError("Camera view names must be unique")
+        return self
+
+
+class SimulationTask(BaseModel):
+    schema_version: str = "1.0"
+    project_id: str
+    revision: int = Field(ge=0)
+    units: Literal["mm"] = "mm"
+    pattern_snapshot_format: Literal["garmentcode"] = "garmentcode"
+    inputs: dict[str, str]
+    expected_views: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_required_inputs(self) -> Self:
+        required = {
+            "body_mesh",
+            "body_measurements",
+            "body_segmentation",
+            "fabric",
+            "simulation_config",
+            "camera_config",
+        }
+        if missing := sorted(required - set(self.inputs)):
+            raise ValueError(f"Simulation task inputs are missing: {missing}")
+        if len(self.expected_views) != len(set(self.expected_views)):
+            raise ValueError("Simulation task views must be unique")
+        if any(
+            re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", name) is None
+            for name in self.expected_views
+        ):
+            raise ValueError("Simulation task contains an unsafe view name")
+        return self
 
 
 class SimulationJob(BaseModel):

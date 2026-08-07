@@ -116,6 +116,22 @@ def add_core_tools(
         if uri.startswith(artifact_prefix):
             digest = uri[len(artifact_prefix) :]
             path, metadata = ArtifactStore(project.root).resolve(digest)
+            if metadata["media_type"].startswith("image/"):
+                image_format = metadata["media_type"].split("/", 1)[1]
+                return [
+                    {
+                        "media_type": metadata["media_type"],
+                        "metadata": metadata,
+                        "resource_uri": uri,
+                    },
+                    Image(data=path.read_bytes(), format=image_format),
+                ]
+            if metadata["media_type"] == "application/json":
+                return {
+                    "media_type": metadata["media_type"],
+                    "metadata": metadata,
+                    "data": read_json(path),
+                }
             return {
                 "media_type": metadata["media_type"],
                 "metadata": metadata,

@@ -219,6 +219,17 @@ class Project:
                     f"garment://project/{change_set.project_id}/changeset/{change_set.id}/assembly"
                 )
                 summaries.append(summary)
+            elif domain == OperationDomain.SIMULATION:
+                from garmentcad.simulation_inputs import preview_simulation_configuration
+
+                staged_manifest, summary = preview_simulation_configuration(
+                    self.root, domain_operations
+                )
+                atomic_write_json(
+                    preview_directory / "garment.json",
+                    staged_manifest.model_dump(mode="json"),
+                )
+                summaries.append(summary)
             elif validate_backends and domain not in NATIVE_VALENTINA_DOMAINS:
                 summaries.append(
                     ProjectMetadataBackend().preview(
@@ -293,6 +304,22 @@ class Project:
                             self.root / "assembly/assembly.json",
                             read_json(staged),
                         )
+                    elif domain == OperationDomain.SIMULATION:
+                        staged = self.root / f".garmentcad/changesets/{change_set.id}/garment.json"
+                        if not staged.exists():
+                            raise ChangeSetNotFoundError(
+                                f"Missing staged manifest for {change_set.id}"
+                            )
+                        configured = ProjectManifest.model_validate(read_json(staged))
+                        for field_name in (
+                            "active_body",
+                            "active_body_measurements",
+                            "active_body_segmentation",
+                            "active_fabric",
+                            "active_simulation_config",
+                            "active_camera_config",
+                        ):
+                            setattr(manifest, field_name, getattr(configured, field_name))
                 if domains & NATIVE_VALENTINA_DOMAINS:
                     native_operations = [
                         operation

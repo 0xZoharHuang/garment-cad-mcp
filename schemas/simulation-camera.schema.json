@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "SimulationCameraView": {
+      "properties": {
+        "azimuth_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Azimuth Deg"
+        },
+        "camera_location_mm": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Camera Location Mm"
+        },
+        "distance_scale": {
+          "default": 1.6,
+          "exclusiveMinimum": 0,
+          "title": "Distance Scale",
+          "type": "number"
+        },
+        "elevation_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elevation Deg"
+        },
+        "name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "side": {
+          "anyOf": [
+            {
+              "enum": [
+                "front",
+                "back"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Side"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "SimulationCameraView",
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/simulation-camera.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "resolution": {
+      "default": [
+        800,
+        800
+      ],
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "integer"
+        }
+      ],
+      "title": "Resolution",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "views": {
+      "items": {
+        "$ref": "#/$defs/SimulationCameraView"
+      },
+      "minItems": 1,
+      "title": "Views",
+      "type": "array"
+    }
+  },
+  "required": [
+    "views"
+  ],
+  "title": "SimulationCameraConfig",
+  "type": "object"
+}

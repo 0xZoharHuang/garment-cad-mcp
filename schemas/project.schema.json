@@ -14,6 +14,30 @@
       "default": null,
       "title": "Active Body"
     },
+    "active_body_measurements": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active Body Measurements"
+    },
+    "active_body_segmentation": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active Body Segmentation"
+    },
     "active_camera_config": {
       "anyOf": [
         {

@@ -80,6 +80,8 @@ def test_native_conversion_preserves_units_placement_curve_and_roundtrip(
     assert panel["translation"] == [1.0, 2.0, 3.0]
     assert panel["edges"][0]["curvature"]["type"] == "cubic"
     assert diagnostics["roundtrip_ok"] is True
+    assert converted["parameters"] == {}
+    assert converted["parameter_order"] == []
     assert diagnostics["panels"]["front"] == {
         "edge_count": 4,
         "closed": True,
@@ -142,18 +144,38 @@ def test_official_tshirt_program_and_gui_import_remain_compatible():
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join([str(GARMENTCODE), str(WARP)])
     source = """
-import json, yaml
+import json, tempfile, yaml
+from pathlib import Path
 from assets.bodies.body_params import BodyParameters
 from assets.garment_programs.meta_garment import MetaGarment
+from pygarment.meshgen.boxmeshgen import BoxMesh
 body = BodyParameters('assets/bodies/mean_all.yaml')
 with open('assets/design_params/t-shirt.yaml') as stream:
     design = yaml.safe_load(stream)['design']
 garment = MetaGarment('t-shirt', body, design)
 pattern = garment.assembly().pattern
+document = {
+    'pattern': pattern,
+    'parameters': {},
+    'parameter_order': [],
+    'properties': {
+        'units_in_meter': 100,
+        'curvature_coords': 'relative',
+        'normalize_panel_translation': False,
+        'normalized_edge_loops': True,
+    },
+}
+with tempfile.TemporaryDirectory() as temporary:
+    path = Path(temporary) / 'tshirt_specification.json'
+    path.write_text(json.dumps(document))
+    mesh = BoxMesh(path, 1.0)
+    mesh.load()
 print(json.dumps({
     'panels': len(pattern['panels']),
     'stitches': len(pattern['stitches']),
     'self_intersecting': garment.is_self_intersecting(),
+    'mesh_vertices': len(mesh.vertices),
+    'mesh_faces': len(mesh.faces),
 }))
 """
     program = subprocess.run(
@@ -166,11 +188,12 @@ print(json.dumps({
         check=False,
     )
     assert program.returncode == 0, program.stderr
-    assert json.loads(program.stdout.splitlines()[-1]) == {
-        "panels": 8,
-        "stitches": 16,
-        "self_intersecting": False,
-    }
+    report = json.loads(program.stdout.splitlines()[-1])
+    assert report["panels"] == 8
+    assert report["stitches"] == 16
+    assert report["self_intersecting"] is False
+    assert report["mesh_vertices"] > 7_000
+    assert report["mesh_faces"] > 14_000
     gui_import = subprocess.run(
         [str(COMPAT_PYTHON), "-c", "import gui.callbacks, gui.gui_pattern"],
         cwd=GARMENTCODE,

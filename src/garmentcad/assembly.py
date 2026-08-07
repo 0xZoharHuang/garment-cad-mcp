@@ -550,6 +550,8 @@ def to_garmentcode(state: dict[str, Any]) -> dict[str, Any]:
         stitches.extend([[left, right] for left, right in zip(*sides, strict=True)])
     return {
         "pattern": {"panels": pattern_panels, "stitches": stitches},
+        "parameters": {},
+        "parameter_order": [],
         "properties": {
             "units_in_meter": 100,
             "curvature_coords": "relative",

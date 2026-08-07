@@ -1,0 +1,55 @@
+{
+  "$id": "https://garmentcad.local/schemas/simulation-task.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "expected_views": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Expected Views",
+      "type": "array"
+    },
+    "inputs": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Inputs",
+      "type": "object"
+    },
+    "pattern_snapshot_format": {
+      "const": "garmentcode",
+      "default": "garmentcode",
+      "title": "Pattern Snapshot Format",
+      "type": "string"
+    },
+    "project_id": {
+      "title": "Project Id",
+      "type": "string"
+    },
+    "revision": {
+      "minimum": 0,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "units": {
+      "const": "mm",
+      "default": "mm",
+      "title": "Units",
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "revision",
+    "inputs",
+    "expected_views"
+  ],
+  "title": "SimulationTask",
+  "type": "object"
+}
