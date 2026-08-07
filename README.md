@@ -36,8 +36,9 @@ commits and licenses.
 - Remote worker upload, serial execution, cache, polling, artifacts, and screenshot enforcement:
   implemented; deployment supplies the pinned Warp runner and GPU assets.
 - Valentina/Tape/Puzzle MCP catalog and process adapter: implemented.
-- Native Valentina C++ command host: specified but not yet implemented. Pattern calls fail closed until
-  `GARMENTCAD_VALENTINA_COMMAND` points to a host using Valentina's own `InitData/Create` APIs.
+- Native Valentina C++ command host: preview/commit, UUID sidecar, object read, base point, line,
+  end-line, along-line/midpoint, line intersection, arc, and spline handlers are implemented through
+  native `InitData/Create`; remaining catalog actions fail closed until their handlers land.
 
-That last boundary is intentionally explicit: this project never edits `.val` XML behind Valentina's
-back, and it does not claim native parity before those C++ handlers exist.
+That boundary remains explicit: this project never edits `.val` XML behind Valentina's back, and it
+does not claim native parity for catalog actions whose C++ handlers are still pending.

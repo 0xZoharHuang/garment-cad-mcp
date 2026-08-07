@@ -6,13 +6,14 @@ import pytest
 
 from garmentcad.assembly import to_garmentcode
 from garmentcad.errors import StaleRevisionError
-from garmentcad.models import ObjectRef, Operation, OperationDomain
+from garmentcad.models import AliasRecord, AliasRegistry, ObjectRef, Operation, OperationDomain
 from garmentcad.project import Project
 from garmentcad.sdk import GarmentSDK
 
 
 def test_assembly_preview_commit_and_units(tmp_path):
     project = Project.create(tmp_path / "dress")
+    assert (project.root / "pattern/main.val").is_file()
     sdk = GarmentSDK(project.root)
     preview = sdk.panel_create("front", [[0, 0], [400, 0], [350, 600], [0, 600]])
     assert preview.ok
@@ -123,3 +124,20 @@ def test_invalid_interface_does_not_commit(tmp_path):
         ]
     )
     assert not result.ok
+
+
+def test_alias_registry_rejects_ambiguity_and_is_revision_content(tmp_path):
+    project = Project.create(tmp_path / "aliases")
+    initial_hash = project.status()["content_hash"]
+    registry = AliasRegistry(
+        objects={
+            "one": AliasRecord(uuid="one", alias="front.armhole", kind="point"),
+            "two": AliasRecord(uuid="two", alias="front.armhole", kind="curve"),
+        }
+    )
+    with pytest.raises(ValueError, match="ambiguous"):
+        registry.resolve(ObjectRef(alias="front.armhole"))
+    (project.root / ".garmentcad/aliases.json").write_text(
+        registry.model_dump_json(indent=2), encoding="utf-8"
+    )
+    assert project.status()["content_hash"] != initial_hash

@@ -8,8 +8,10 @@ from pathlib import Path
 from pydantic import TypeAdapter
 
 from garmentcad.models import (
+    AliasRegistry,
     AssemblyDocument,
     ChangeSet,
+    ObjectRef,
     Operation,
     ProjectManifest,
     Revision,
@@ -21,6 +23,8 @@ from garmentcad.models import (
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "schemas"
 MODELS = {
+    "object-reference": ObjectRef,
+    "alias-registry": AliasRegistry,
     "assembly": AssemblyDocument,
     "project": ProjectManifest,
     "command": Operation,

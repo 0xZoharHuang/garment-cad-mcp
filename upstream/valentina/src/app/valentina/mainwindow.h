@@ -61,6 +61,7 @@ class Quuid;
 class VBackgroundImageItem;
 class VBackgroundImageControls;
 class VWidgetBackgroundImages;
+class VCommandService;
 namespace VPE
 {
 class QtColorPicker;
@@ -288,6 +289,7 @@ private slots:
     void UpdateShortcuts();
 
 private:
+    friend class VCommandService;
     // cppcheck-suppress unknownMacro
     Q_DISABLE_COPY_MOVE(MainWindow) // NOLINT
     /** @brief ui keeps information about user interface */

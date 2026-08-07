@@ -14,6 +14,7 @@ qbs resolve \
   -f "$repo_dir/upstream/valentina/valentina.qbs" \
   profile:"$profile" \
   config:release \
+  modules.buildconfig.runMacDeployQt:false \
   projects.Valentina.enableSigning:false
 qbs build \
   --no-install \
@@ -21,6 +22,7 @@ qbs build \
   -f "$repo_dir/upstream/valentina/valentina.qbs" \
   profile:"$profile" \
   config:release \
+  modules.buildconfig.runMacDeployQt:false \
   projects.Valentina.enableSigning:false
 
 property_framework="$(find "$build_dir/release" -type d -path '*VPropertyExplorerLib.*/*VPropertyExplorerLib.framework' -print -quit)"

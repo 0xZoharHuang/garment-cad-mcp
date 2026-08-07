@@ -53,6 +53,8 @@ project/
 
 A preview records its base revision. Commit rejects it if another writer has moved the project.
 UUIDs provide durable identity; aliases remain readable handles for agents and humans.
+New projects copy a minimal Valentina-authored seed pattern; subsequent `.val` changes only pass
+through the native command service.
 
 ## Boundary with GarmentCode
 
@@ -66,7 +68,7 @@ replace GarmentCode's design grammar; it wraps and interoperates with its serial
 Pattern commands use a newline-JSON process contract selected by `GARMENTCAD_VALENTINA_COMMAND`:
 
 ```text
-commands.preview { project_root, operations[] } -> { summary, resources[] }
+commands.preview { project_root, change_set_id, operations[] } -> { summary, resources[] }
 commands.commit  { project_root, change_set_id } -> { ok }
 ```
 

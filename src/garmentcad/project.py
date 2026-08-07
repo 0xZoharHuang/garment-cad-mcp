@@ -43,6 +43,13 @@ DIRECTORIES = (
     ".garmentcad/snapshots",
 )
 
+NATIVE_VALENTINA_DOMAINS = {
+    OperationDomain.PATTERN,
+    OperationDomain.MEASUREMENTS,
+    OperationDomain.LAYOUT,
+    OperationDomain.EXPORT,
+}
+
 
 class CommandNamespace:
     def __init__(self, project: Project, domain: OperationDomain, prefix: str = "") -> None:
@@ -110,6 +117,8 @@ class Project:
         root_path.mkdir(parents=True, exist_ok=False)
         for directory in DIRECTORIES:
             (root_path / directory).mkdir(parents=True, exist_ok=True)
+        template = Path(__file__).with_name("templates") / "empty.val"
+        shutil.copy2(template, root_path / "pattern/main.val")
         manifest = ProjectManifest(name=name or root_path.name)
         atomic_write_json(root_path / "garment.json", manifest.model_dump(mode="json"))
         atomic_write_json(
@@ -123,7 +132,7 @@ class Project:
             },
         )
         atomic_write_json(
-            root_path / ".garmentcad/aliases.json", {"schema_version": "1.0", "aliases": {}}
+            root_path / ".garmentcad/aliases.json", {"schema_version": "1.0", "objects": {}}
         )
         atomic_write_json(
             root_path / ".garmentcad/revisions/0.json",
@@ -148,7 +157,7 @@ class Project:
     @staticmethod
     def _content_hash_static(root: Path) -> str:
         tracked: list[tuple[str, str]] = []
-        roots = [root / "garment.json"]
+        roots = [root / "garment.json", root / ".garmentcad/aliases.json"]
         for directory in ("pattern", "measurements", "layout", "assembly", "simulation"):
             base = root / directory
             if base.exists():
@@ -209,19 +218,19 @@ class Project:
                     f"garment://project/{change_set.project_id}/changeset/{change_set.id}/assembly"
                 )
                 summaries.append(summary)
-            elif validate_backends:
-                backend = (
-                    JsonLineCommandBackend()
-                    if domain
-                    in {
-                        OperationDomain.PATTERN,
-                        OperationDomain.MEASUREMENTS,
-                        OperationDomain.LAYOUT,
-                        OperationDomain.EXPORT,
-                    }
-                    else ProjectMetadataBackend()
+            elif validate_backends and domain not in NATIVE_VALENTINA_DOMAINS:
+                summaries.append(
+                    ProjectMetadataBackend().preview(
+                        self.root, change_set.id, domain_operations
+                    )
                 )
-                summaries.append(backend.preview(self.root, domain_operations))
+        native_operations = [
+            operation for operation in selected if operation.domain in NATIVE_VALENTINA_DOMAINS
+        ]
+        if validate_backends and native_operations:
+            summaries.append(
+                JsonLineCommandBackend().preview(self.root, change_set.id, native_operations)
+            )
         change_set.summary = merge_summaries(summaries)
         atomic_write_json(
             self.root / f".garmentcad/changesets/{change_set.id}.json",
@@ -266,7 +275,8 @@ class Project:
             next_revision = manifest.current_revision + 1
             snapshot = self._snapshot(next_revision)
             try:
-                for domain in {operation.domain for operation in change_set.operations}:
+                domains = {operation.domain for operation in change_set.operations}
+                for domain in domains:
                     if domain == OperationDomain.ASSEMBLY:
                         staged = self.root / f".garmentcad/changesets/{change_set.id}/assembly.json"
                         if not staged.exists():
@@ -277,13 +287,8 @@ class Project:
                             self.root / "assembly/assembly.json",
                             read_json(staged),
                         )
-                    if domain in {
-                        OperationDomain.PATTERN,
-                        OperationDomain.MEASUREMENTS,
-                        OperationDomain.LAYOUT,
-                        OperationDomain.EXPORT,
-                    }:
-                        JsonLineCommandBackend().commit(self.root, change_set.id)
+                if domains & NATIVE_VALENTINA_DOMAINS:
+                    JsonLineCommandBackend().commit(self.root, change_set.id)
             except Exception:
                 self._restore_snapshot(snapshot)
                 shutil.rmtree(snapshot)
@@ -321,20 +326,20 @@ class Project:
     def _snapshot(self, revision: int) -> Path:
         snapshot = self.root / f".garmentcad/snapshots/{revision}"
         snapshot.mkdir(parents=True, exist_ok=False)
-        for relative in ("garment.json",):
+        for relative in ("garment.json", ".garmentcad/aliases.json"):
             source = self.root / relative
             if source.exists():
                 destination = snapshot / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
-        for relative in ("pattern", "measurements", "layout", "assembly"):
+        for relative in ("pattern", "measurements", "layout", "assembly", "simulation"):
             source = self.root / relative
             if source.exists():
                 shutil.copytree(source, snapshot / relative)
         return snapshot
 
     def _restore_snapshot(self, snapshot: Path) -> None:
-        for relative in ("pattern", "measurements", "layout", "assembly"):
+        for relative in ("pattern", "measurements", "layout", "assembly", "simulation"):
             destination = self.root / relative
             source = snapshot / relative
             if source.exists() and destination.exists():

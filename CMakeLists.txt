@@ -9,6 +9,8 @@ if(QBS_EXECUTABLE)
       "${CMAKE_SOURCE_DIR}/scripts/build-valentina.sh"
     COMMAND
       "${CMAKE_SOURCE_DIR}/scripts/smoke-valentina-guis.sh"
+    COMMAND
+      "${CMAKE_SOURCE_DIR}/scripts/test-native-valentina.sh"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     USES_TERMINAL
   )

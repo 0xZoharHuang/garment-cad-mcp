@@ -8,6 +8,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from garmentcad.backends import JsonLineCommandBackend
+from garmentcad.catalog import VALENTINA_TOOLS
+
 
 def run_doctor() -> dict:
     repository = Path(__file__).resolve().parents[2]
@@ -18,6 +21,26 @@ def run_doctor() -> dict:
         check=False,
         capture_output=True,
     )
+    command = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
+    if not command:
+        bundled_host = repository / "scripts/valentina-command-host.sh"
+        command = str(bundled_host) if bundled_host.is_file() else None
+    command_info = None
+    if command:
+        previous = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
+        os.environ["GARMENTCAD_VALENTINA_COMMAND"] = command
+        try:
+            command_info = JsonLineCommandBackend().service_info()
+        except Exception:
+            command_info = None
+        finally:
+            if previous is None:
+                os.environ.pop("GARMENTCAD_VALENTINA_COMMAND", None)
+            else:
+                os.environ["GARMENTCAD_VALENTINA_COMMAND"] = previous
+    expected_handlers = {spec.action for spec in VALENTINA_TOOLS}
+    actual_handlers = set(command_info.get("handlers", [])) if command_info else set()
+    missing_handlers = sorted(expected_handlers - actual_handlers)
     checks = {
         "python_3_12": sys.version_info[:2] == (3, 12),
         "macos_arm64": platform.system() == "Darwin" and platform.machine() == "arm64",
@@ -32,11 +55,13 @@ def run_doctor() -> dict:
             for record in revisions.values()
         ),
         "schemas_current": schema_check.returncode == 0,
-        "valentina_command": bool(os.environ.get("GARMENTCAD_VALENTINA_COMMAND")),
+        "valentina_command": bool(command_info and command_info.get("ok")),
+        "valentina_handler_coverage": not missing_handlers,
         "autodl_worker_url": bool(os.environ.get("GARMENTCAD_WORKER_URL")),
     }
     required = {
         "python_3_12",
+        "macos_arm64",
         "cmake",
         "qmake_or_qtpaths",
         "qbs",
@@ -45,5 +70,12 @@ def run_doctor() -> dict:
         "warp_source",
         "upstream_pins",
         "schemas_current",
+        "valentina_command",
+        "valentina_handler_coverage",
     }
-    return {"ok": all(checks[key] for key in required), "checks": checks}
+    return {
+        "ok": all(checks[key] for key in required),
+        "checks": checks,
+        "valentina_command_info": command_info,
+        "missing_valentina_handlers": missing_handlers,
+    }

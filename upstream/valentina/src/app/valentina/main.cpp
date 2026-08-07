@@ -29,6 +29,7 @@
 #include "../fervor/fvupdater.h"
 #include "../vpatterndb/vpiecenode.h"
 #include "core/vapplication.h"
+#include "core/vcommandservice.h"
 #include "mainwindow.h"
 #include "vabstractapplication.h"
 
@@ -62,6 +63,13 @@ using namespace Qt::Literals::StringLiterals;
 //---------------------------------------------------------------------------------------------------------------------
 auto main(int argc, char *argv[]) -> int
 {
+    const bool garmentCadCommandMode = qEnvironmentVariableIsSet("GARMENTCAD_COMMAND_MODE");
+    if (garmentCadCommandMode)
+    {
+        // stdout is the JSON protocol channel.  Valentina's diagnostic logger
+        // is intentionally silenced here so clients never have to scrape logs.
+        qputenv("QT_LOGGING_RULES", QByteArrayLiteral("*=false"));
+    }
 #ifdef Q_OS_WIN
     std::setlocale(LC_ALL, ".UTF8");
 #endif
@@ -135,6 +143,12 @@ auto main(int argc, char *argv[]) -> int
     VApplication::setWindowIcon(QIcon(":/icon/64x64/icon64x64.png"));
 #endif // !defined(Q_OS_MAC)
     app.setMainWindow(&w);
+
+    if (garmentCadCommandMode)
+    {
+        VCommandService service(&w);
+        return service.RunOnce();
+    }
 
     if (VApplication::IsGUIMode() && VAbstractApplication::VApp()->Settings()->IsAutomaticallyCheckUpdates())
     {

@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "AliasRecord": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string"
+        },
+        "deleted": {
+          "default": false,
+          "title": "Deleted",
+          "type": "boolean"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OperationDomain"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "native_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Native Id"
+        },
+        "uuid": {
+          "title": "Uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uuid",
+        "alias",
+        "kind"
+      ],
+      "title": "AliasRecord",
+      "type": "object"
+    },
+    "OperationDomain": {
+      "enum": [
+        "project",
+        "pattern",
+        "measurements",
+        "layout",
+        "assembly",
+        "simulation",
+        "export"
+      ],
+      "title": "OperationDomain",
+      "type": "string"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/alias-registry.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "objects": {
+      "additionalProperties": {
+        "$ref": "#/$defs/AliasRecord"
+      },
+      "title": "Objects",
+      "type": "object"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "title": "AliasRegistry",
+  "type": "object"
+}

@@ -4,7 +4,7 @@
       "command": "uv",
       "args": ["--directory", "${CLAUDE_PROJECT_DIR}", "run", "valentina-mcp"],
       "env": {
-        "GARMENTCAD_VALENTINA_COMMAND": "${CLAUDE_PROJECT_DIR}/build/valentina-command/garmentcad-valentina-command"
+        "GARMENTCAD_VALENTINA_COMMAND": "${CLAUDE_PROJECT_DIR}/scripts/valentina-command-host.sh"
       }
     },
     "garmentcode-cad": {

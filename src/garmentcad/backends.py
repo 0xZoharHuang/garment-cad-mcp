@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
@@ -12,7 +13,9 @@ from garmentcad.models import ChangeSummary, Operation, ValidationIssue
 
 
 class CommandBackend(Protocol):
-    def preview(self, project_root: Path, operations: list[Operation]) -> ChangeSummary: ...
+    def preview(
+        self, project_root: Path, change_set_id: str, operations: list[Operation]
+    ) -> ChangeSummary: ...
 
     def commit(self, project_root: Path, change_set_id: str) -> None: ...
 
@@ -34,26 +37,39 @@ class JsonLineCommandBackend:
             raise CommandBackendUnavailable(
                 f"{self.executable_env} is not set; build the Valentina command host first"
             )
+        command = [executable] if Path(executable).is_file() else shlex.split(executable)
+        if not command:
+            raise CommandBackendUnavailable(f"{self.executable_env} is empty")
+        environment = os.environ.copy()
+        environment.setdefault("QT_QPA_PLATFORM", "offscreen")
+        environment["GARMENTCAD_COMMAND_MODE"] = "1"
         process = subprocess.run(
-            [executable],
+            command,
             input=json.dumps(request),
             text=True,
             capture_output=True,
             check=False,
+            env=environment,
         )
         if process.returncode != 0:
             raise CommandBackendUnavailable(process.stderr.strip() or "Valentina command failed")
         return json.loads(process.stdout)
 
-    def preview(self, project_root: Path, operations: list[Operation]) -> ChangeSummary:
+    def preview(
+        self, project_root: Path, change_set_id: str, operations: list[Operation]
+    ) -> ChangeSummary:
         response = self._call(
             {
                 "method": "commands.preview",
                 "project_root": str(project_root),
+                "change_set_id": change_set_id,
                 "operations": [operation.model_dump(mode="json") for operation in operations],
             }
         )
         return ChangeSummary.model_validate(response.get("summary", {}))
+
+    def service_info(self) -> dict:
+        return self._call({"method": "service.info"})
 
     def commit(self, project_root: Path, change_set_id: str) -> None:
         self._call(
@@ -68,7 +84,10 @@ class JsonLineCommandBackend:
 class ProjectMetadataBackend:
     """Validator for project-owned metadata operations."""
 
-    def preview(self, project_root: Path, operations: list[Operation]) -> ChangeSummary:
+    def preview(
+        self, project_root: Path, change_set_id: str, operations: list[Operation]
+    ) -> ChangeSummary:
+        del project_root, change_set_id
         summary = ChangeSummary()
         for operation in operations:
             if not operation.action:

@@ -4,12 +4,19 @@
 
 ```bash
 ./scripts/bootstrap-macos.sh
+cmake --build --preset valentina-guis
 uv run garmentcad doctor
 ```
 
-Build Valentina, Tape, and Puzzle from `upstream/valentina` with its documented Qt/CMake workflow.
-Set `GARMENTCAD_VALENTINA_COMMAND` to the native JSON command host. Claude Code and compatible MCP
-clients can load `.mcp.json`; commands default to preview-only.
+The build produces Valentina, Tape, and Puzzle and runs native command replay tests. For direct SDK
+use outside MCP, set:
+
+```bash
+export GARMENTCAD_VALENTINA_COMMAND="$PWD/scripts/valentina-command-host.sh"
+```
+
+Claude Code and compatible MCP clients load the same wrapper from `.mcp.json`; commands default to
+preview-only.
 
 ## AutoDL GPU worker
 

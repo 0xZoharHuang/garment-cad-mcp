@@ -208,11 +208,13 @@ VToolApp {
             "vhistorymanager.h",
             "vtooloptionspropertybrowser.h",
             "vcmdexport.h",
+            "vcommandservice.h",
             "vapplication.cpp",
             "vformulaproperty.cpp",
             "vformulapropertyeditor.cpp",
             "vtooloptionspropertybrowser.cpp",
             "vcmdexport.cpp",
+            "vcommandservice.cpp",
             "vvalentinashortcutmanager.cpp",
             "vvalentinashortcutmanager.h",
         ]

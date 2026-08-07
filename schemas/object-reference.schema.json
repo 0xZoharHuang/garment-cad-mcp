@@ -1,0 +1,32 @@
+{
+  "$id": "https://garmentcad.local/schemas/object-reference.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "alias": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Alias"
+    },
+    "uuid": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uuid"
+    }
+  },
+  "title": "ObjectRef",
+  "type": "object"
+}

@@ -30,6 +30,37 @@ class ObjectRef(BaseModel):
         return self.alias or self.uuid or "<unresolved>"
 
 
+class AliasRecord(BaseModel):
+    uuid: str
+    alias: str
+    domain: OperationDomain | None = None
+    kind: str
+    native_id: int | str | None = None
+    deleted: bool = False
+
+
+class AliasRegistry(BaseModel):
+    schema_version: str = "1.0"
+    objects: dict[str, AliasRecord] = Field(default_factory=dict)
+
+    def resolve(self, reference: ObjectRef) -> AliasRecord:
+        if reference.uuid:
+            record = self.objects.get(reference.uuid)
+            if record is None or record.deleted:
+                raise KeyError(f"Unknown object UUID: {reference.uuid}")
+            return record
+        matches = [
+            record
+            for record in self.objects.values()
+            if not record.deleted and record.alias == reference.alias
+        ]
+        if not matches:
+            raise KeyError(f"Unknown object alias: {reference.alias}")
+        if len(matches) > 1:
+            raise ValueError(f"Alias is ambiguous: {reference.alias}")
+        return matches[0]
+
+
 class Operation(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     domain: OperationDomain
