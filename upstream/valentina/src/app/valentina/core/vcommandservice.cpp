@@ -17,7 +17,14 @@
 #include "../vtools/tools/drawTools/toolcurve/vtoolabstractcurve.h"
 #include "../vtools/tools/drawTools/toolcurve/vtoolspline.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoollineintersect.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofcontact.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolpointofintersection.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtooltriangle.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolbisector.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolendline.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolheight.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolnormal.h"
+#include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolshoulderpoint.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/toollinepoint/vtoolalongline.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolbasepoint.h"
 #include "../vtools/tools/drawTools/toolpoint/toolsinglepoint/vtoolsinglepoint.h"
@@ -136,7 +143,11 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.spline"), QStringLiteral("pattern.formula_evaluate"),
                             QStringLiteral("pattern.dependency_query"), QStringLiteral("measurement.increment_set"),
                             QStringLiteral("measurement.increment_remove"),
-                            QStringLiteral("measurement.final_measurement_set")}}};
+                            QStringLiteral("measurement.final_measurement_set"),
+                            QStringLiteral("pattern.shoulder_point"), QStringLiteral("pattern.normal"),
+                            QStringLiteral("pattern.bisector"), QStringLiteral("pattern.height"),
+                            QStringLiteral("pattern.triangle"), QStringLiteral("pattern.point_of_intersection"),
+                            QStringLiteral("pattern.point_of_contact")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -616,6 +627,148 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         auto *tool = VToolSpline::Create(initData);
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Spline"), tool->getId(),
                        aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.shoulder_point"))
+    {
+        VToolShoulderPointInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.p1Line = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
+        initData.p2Line = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
+        initData.pShoulder = ResolveObject(arguments.value(QStringLiteral("shoulder_point")).toObject(), aliases);
+        initData.formula = arguments.contains(QStringLiteral("formula"))
+                               ? RequiredString(arguments, QStringLiteral("formula"))
+                               : NativeFormulaForMillimetres(
+                                     arguments.value(QStringLiteral("length_mm")).toDouble());
+        initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        auto *tool = VToolShoulderPoint::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("ShoulderPoint"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.normal"))
+    {
+        VToolNormalInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
+        initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
+        initData.formula = arguments.contains(QStringLiteral("formula"))
+                               ? RequiredString(arguments, QStringLiteral("formula"))
+                               : NativeFormulaForMillimetres(
+                                     arguments.value(QStringLiteral("length_mm")).toDouble());
+        initData.angle = arguments.value(QStringLiteral("angle_deg")).toDouble();
+        initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        auto *tool = VToolNormal::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("Normal"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.bisector"))
+    {
+        VToolBisectorInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
+        initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("vertex")).toObject(), aliases);
+        initData.thirdPointId = ResolveObject(arguments.value(QStringLiteral("third_point")).toObject(), aliases);
+        initData.formula = arguments.contains(QStringLiteral("formula"))
+                               ? RequiredString(arguments, QStringLiteral("formula"))
+                               : NativeFormulaForMillimetres(
+                                     arguments.value(QStringLiteral("length_mm")).toDouble());
+        initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        auto *tool = VToolBisector::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("Bisector"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.height"))
+    {
+        VToolHeightInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.basePointId = ResolveObject(arguments.value(QStringLiteral("base_point")).toObject(), aliases);
+        initData.p1LineId = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
+        initData.p2LineId = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
+        initData.typeLine = arguments.value(QStringLiteral("line_type")).toString(TypeLineLine);
+        initData.lineColor = arguments.value(QStringLiteral("line_color")).toString(ColorBlack);
+        auto *tool = VToolHeight::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("Height"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.triangle"))
+    {
+        VToolTriangleInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.axisP1Id = ResolveObject(arguments.value(QStringLiteral("axis_p1")).toObject(), aliases);
+        initData.axisP2Id = ResolveObject(arguments.value(QStringLiteral("axis_p2")).toObject(), aliases);
+        initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
+        initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
+        auto *tool = VToolTriangle::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("Triangle"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.point_of_intersection"))
+    {
+        VToolPointOfIntersectionInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("first_point")).toObject(), aliases);
+        initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("second_point")).toObject(), aliases);
+        auto *tool = VToolPointOfIntersection::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("PointOfIntersection"), tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.point_of_contact"))
+    {
+        VToolPointOfContactInitData initData;
+        initData.scene = m_window->m_sceneDraw;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.name = RequiredString(arguments, QStringLiteral("alias"));
+        initData.center = ResolveObject(arguments.value(QStringLiteral("center")).toObject(), aliases);
+        initData.firstPointId = ResolveObject(arguments.value(QStringLiteral("line_p1")).toObject(), aliases);
+        initData.secondPointId = ResolveObject(arguments.value(QStringLiteral("line_p2")).toObject(), aliases);
+        initData.radius = arguments.contains(QStringLiteral("formula_radius"))
+                              ? RequiredString(arguments, QStringLiteral("formula_radius"))
+                              : NativeFormulaForMillimetres(arguments.value(QStringLiteral("radius_mm")).toDouble());
+        auto *tool = VToolPointOfContact::Create(initData);
+        RegisterObject(initData.name, QStringLiteral("PointOfContact"), tool->getId(), aliases, summary);
         return;
     }
 

@@ -166,6 +166,137 @@ def test_native_common_geometry_handlers_replay_in_order(tmp_path):
     assert committed.revision == 1
 
 
+def test_native_derived_point_handlers_replay_in_order(tmp_path):
+    project = Project.create(tmp_path / "derived-points")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "D",
+                "base_point": {"alias": "B"},
+                "length_mm": 100,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.shoulder_point",
+            arguments={
+                "alias": "shoulder",
+                "line_p1": {"alias": "B"},
+                "line_p2": {"alias": "D"},
+                "shoulder_point": {"alias": "A"},
+                "length_mm": 120,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.normal",
+            arguments={
+                "alias": "normal",
+                "first_point": {"alias": "A"},
+                "second_point": {"alias": "B"},
+                "length_mm": 30,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.bisector",
+            arguments={
+                "alias": "bisector",
+                "first_point": {"alias": "B"},
+                "vertex": {"alias": "A"},
+                "third_point": {"alias": "C"},
+                "length_mm": 40,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.height",
+            arguments={
+                "alias": "height",
+                "base_point": {"alias": "D"},
+                "line_p1": {"alias": "A"},
+                "line_p2": {"alias": "C"},
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.triangle",
+            arguments={
+                "alias": "triangle",
+                "axis_p1": {"alias": "A"},
+                "axis_p2": {"alias": "D"},
+                "first_point": {"alias": "B"},
+                "second_point": {"alias": "C"},
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.point_of_intersection",
+            arguments={
+                "alias": "coordinate-intersection",
+                "first_point": {"alias": "B"},
+                "second_point": {"alias": "C"},
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.point_of_contact",
+            arguments={
+                "alias": "contact",
+                "center": {"alias": "A"},
+                "line_p1": {"alias": "A"},
+                "line_p2": {"alias": "B"},
+                "radius_mm": 50,
+            },
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created] == [
+        "B",
+        "C",
+        "D",
+        "shoulder",
+        "normal",
+        "bisector",
+        "height",
+        "triangle",
+        "coordinate-intersection",
+        "contact",
+    ]
+    committed = project.commit(preview.token)
+    assert committed.revision == 1
+
+    reopened = Project.open(project.root)
+    pattern = (reopened.root / "pattern/main.val").read_text(encoding="utf-8")
+    for name in ("shoulder", "normal", "bisector", "height", "triangle", "contact"):
+        assert f'name="{name}"' in pattern
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(
