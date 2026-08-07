@@ -169,6 +169,46 @@ def test_unsupported_native_action_fails_closed(tmp_path):
     assert result.summary.issues[0].code == "unsupported_action"
 
 
+def test_native_base_point_and_dependency_query_replay(tmp_path):
+    project = Project.create(tmp_path / "base-point-dependencies")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.base_point",
+                arguments={"alias": "draft.origin", "x_mm": 25, "y_mm": 30},
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.end_line",
+                arguments={
+                    "alias": "draft.axis",
+                    "base_point": {"alias": "draft.origin"},
+                    "length_mm": 100,
+                    "angle_deg": 90,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.dependency_query",
+                target={"alias": "draft.axis"},
+            ),
+        ]
+    )
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created] == [
+        "draft.origin",
+        "draft.axis",
+    ]
+    assert any(issue.code == "dependency_query" for issue in preview.summary.issues)
+    project.commit(preview.token)
+    aliases = read_json(project.root / ".garmentcad/aliases.json")["objects"]
+    assert {record["alias"] for record in aliases.values()} >= {
+        "draft.origin",
+        "draft.axis",
+    }
+
+
 def test_native_common_geometry_handlers_replay_in_order(tmp_path):
     project = Project.create(tmp_path / "geometry")
     operations = [
@@ -1559,6 +1599,88 @@ def test_native_tape_individual_measurement_lifecycle(tmp_path):
     assert "../measurements/imported.vit" in (project.root / "pattern/main.val").read_text(
         encoding="utf-8"
     )
+
+
+def test_native_tape_change_recalculates_parametric_piece(tmp_path):
+    project = Project.create(tmp_path / "tape-recalculation")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_create",
+                arguments={"type": "individual", "path": "measurements/parametric.vit"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={"name": "@panel_width", "value_mm": 100},
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.end_line",
+                arguments={
+                    "alias": "B",
+                    "base_point": {"alias": "A"},
+                    "formula_length": "@panel_width",
+                    "angle_deg": 0,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.end_line",
+                arguments={
+                    "alias": "C",
+                    "base_point": {"alias": "A"},
+                    "length_mm": 120,
+                    "angle_deg": 90,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.end_line",
+                arguments={
+                    "alias": "D",
+                    "base_point": {"alias": "B"},
+                    "length_mm": 120,
+                    "angle_deg": 90,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.piece",
+                arguments={
+                    "alias": "param.panel",
+                    "name": "Parametric panel",
+                    "nodes": [
+                        {"object": {"alias": alias}, "type": "point"}
+                        for alias in ("A", "B", "D", "C")
+                    ],
+                },
+            ),
+        ]
+    )
+    assert preview.ok
+    project.commit(preview.token)
+
+    def width_mm() -> float:
+        snapshot = JsonLineCommandBackend().snapshot(project.root)
+        panel = next(piece for piece in snapshot["pieces"] if piece["alias"] == "param.panel")
+        xs = [point["x_mm"] for point in panel["contour"]]
+        return max(xs) - min(xs)
+
+    assert width_mm() == pytest.approx(100, abs=0.1)
+    changed = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={"name": "@panel_width", "value_mm": 200},
+            )
+        ]
+    )
+    assert changed.ok
+    project.commit(changed.token)
+    assert width_mm() == pytest.approx(200, abs=0.1)
 
 
 def test_native_tape_multisize_dimensions_and_csv(tmp_path):

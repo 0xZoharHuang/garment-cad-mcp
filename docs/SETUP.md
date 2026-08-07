@@ -10,7 +10,14 @@ uv run garmentcad doctor
 
 Bootstrap creates the main uv environment, a separately locked GarmentCode compatibility environment,
 and the pinned universal macOS CPU Warp library. The build produces Valentina, Tape, and Puzzle and
-runs native command replay tests. For direct SDK use outside MCP, set:
+runs native command replay tests. Run the complete verification with:
+
+```bash
+./scripts/test.sh
+```
+
+That repeatable full check covers generated contracts, Python, native Valentina/Tape/Puzzle,
+native GarmentCode/exports, and doctor. For direct SDK use outside MCP, set:
 
 ```bash
 export GARMENTCAD_VALENTINA_COMMAND="$PWD/scripts/valentina-command-host.sh"
@@ -27,6 +34,19 @@ Launch each upstream GUI through the reproducible wrappers:
 ./scripts/launch-guis.sh tape
 ./scripts/launch-guis.sh puzzle
 ./scripts/launch-guis.sh garmentcode
+```
+
+When editing project truth, pass the project directory. The Valentina/Tape/Puzzle launchers open the
+canonical document and hold the same single-writer lock used by SDK/MCP commits for the GUI lifetime;
+status/resource reads remain available. On exit, a changed document is recorded as an append-only
+`project.gui_save` revision using its pre-session snapshot; an unchanged session adds no revision.
+GarmentCode uses the path to prefill its optional bridge:
+
+```bash
+./scripts/launch-guis.sh valentina ./projects/sample
+./scripts/launch-guis.sh tape ./projects/sample
+./scripts/launch-guis.sh puzzle ./projects/sample
+./scripts/launch-guis.sh garmentcode ./projects/sample
 ```
 
 The repository-launched GarmentCode GUI includes a collapsible **Garment Project / AutoDL** panel
@@ -91,6 +111,15 @@ generates the stitched BoxMesh, runs Warp simulation, writes structured metrics,
 view named by the project camera config. After the official smoke job succeeds, save the configured
 instance as an AutoDL private image.
 
+With the worker running, execute the real pinned official-asset acceptance from a second shell:
+
+```bash
+uv run scripts/smoke-autodl.py --worker-url http://127.0.0.1:8765
+```
+
+It requires a successful shirt BoxMesh, CUDA simulation, front/back/left/right PNGs, and a cache hit
+on identical resubmission. A fixture runner is never accepted by this command.
+
 Keep the worker bound to loopback and open an SSH tunnel from the Mac:
 
 ```bash
@@ -101,8 +130,9 @@ export GARMENTCAD_WORKER_URL=http://127.0.0.1:8765
 ```
 
 The project manifest must select a body mesh (`OBJ`, `PLY`, or `GLB`), corresponding body-measurement
-YAML and vertex-segmentation JSON, fabric JSON/YAML, simulation JSON/YAML, and camera JSON. A minimal
-camera file is:
+YAML and vertex-segmentation JSON, fabric JSON/YAML, simulation JSON/YAML, and camera JSON. Body mesh
+coordinates follow GarmentCode's body-asset convention and are metres; pattern coordinates and
+camera locations remain public millimetres. A minimal camera file is:
 
 ```json
 {

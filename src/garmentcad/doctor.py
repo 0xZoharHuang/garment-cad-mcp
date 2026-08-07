@@ -12,6 +12,12 @@ from garmentcad.backends import JsonLineCommandBackend
 from garmentcad.catalog import VALENTINA_TOOLS
 from garmentcad.garmentcode_facade import GarmentCodeFacade
 
+EXPECTED_UPSTREAM_REVISIONS = {
+    "valentina": "b75c9bff3be3f2f8e07d95778f953538799f4cd5",
+    "garmentcode": "d449629979028123a5c4dc9e732a2ec19b7fce31",
+    "nvidia-warp-garmentcode": "63baf6855efdd89b2834b74640f84b3bb0d86b50",
+}
+
 
 def run_doctor() -> dict:
     repository = Path(__file__).resolve().parents[2]
@@ -94,8 +100,10 @@ def run_doctor() -> dict:
         "garmentcode_source": (repository / "upstream/garmentcode").exists(),
         "warp_source": (repository / "upstream/nvidia-warp-garmentcode").exists(),
         "upstream_pins": all(
-            (repository / record["path"]).is_dir() and len(record["revision"]) == 40
-            for record in revisions.values()
+            name in revisions
+            and revisions[name]["revision"] == expected
+            and (repository / revisions[name]["path"]).is_dir()
+            for name, expected in EXPECTED_UPSTREAM_REVISIONS.items()
         ),
         "schemas_current": schema_check.returncode == 0,
         "atomic_contracts_current": atomic_contract_check.returncode == 0,

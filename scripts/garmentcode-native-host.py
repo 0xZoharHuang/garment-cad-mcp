@@ -115,10 +115,14 @@ def _build(assembly: dict[str, Any]):
         elif direction not in {"auto", "same"}:
             raise ValueError(f"Unsupported stitch direction: {direction}")
         probe = StitchingRule(left, right)
+        left_length_mm = sum(left.projecting_lengths().tolist()) * 10.0
+        right_length_mm = sum(right.projecting_lengths().tolist()) * 10.0
         stitch_metrics[str(item.get("alias") or stitch_id)] = {
             "native_matching": probe.isMatching(),
             "edge_pairs": len(left),
             "direction": direction,
+            "side_lengths_mm": [left_length_mm, right_length_mm],
+            "length_difference_mm": abs(left_length_mm - right_length_mm),
         }
         component.stitching_rules.rules.append(probe)
 

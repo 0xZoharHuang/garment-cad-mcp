@@ -135,6 +135,8 @@ def test_native_stitch_rule_matches_different_edge_partitions(facade: GarmentCod
         "native_matching": True,
         "edge_pairs": 2,
         "direction": "opposed",
+        "side_lengths_mm": pytest.approx([100.0, 100.0]),
+        "length_difference_mm": pytest.approx(0.0),
     }
 
 
@@ -204,3 +206,40 @@ print(json.dumps({
         check=False,
     )
     assert gui_import.returncode == 0, gui_import.stderr
+
+
+def test_autodl_render_geometry_uses_garment_centimetres_and_body_metres():
+    if not COMPAT_PYTHON.is_file():
+        pytest.skip("run scripts/bootstrap-macos.sh to create the GarmentCode environment")
+    source = f"""
+import importlib.util, json, tempfile
+from pathlib import Path
+spec = importlib.util.spec_from_file_location(
+    'autodl_runner',
+    {str(REPOSITORY / 'scripts/autodl-runner.py')!r},
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+with tempfile.TemporaryDirectory() as temporary:
+    root = Path(temporary)
+    garment = root / 'garment.obj'
+    body = root / 'body.obj'
+    garment.write_text('v 0 0 0\\nv 0 180 0\\nv 100 0 0\\nf 1 2 3\\n')
+    body.write_text('v 0 0 0\\nv 0 1.8 0\\nv 1 0 0\\nf 1 2 3\\n')
+    garment_mesh, body_mesh = module._load_render_geometry(garment, body)
+    print(json.dumps({{
+        'garment_height': garment_mesh.extents[1],
+        'body_height': body_mesh.extents[1],
+    }}))
+"""
+    process = subprocess.run(
+        [str(COMPAT_PYTHON), "-c", source],
+        cwd=REPOSITORY,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert process.returncode == 0, process.stderr
+    dimensions = json.loads(process.stdout.splitlines()[-1])
+    assert dimensions == pytest.approx({"garment_height": 1.8, "body_height": 1.8})

@@ -2,6 +2,12 @@
   "$id": "https://garmentcad.local/schemas/simulation-task.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "body_mesh_units": {
+      "const": "m",
+      "default": "m",
+      "title": "Body Mesh Units",
+      "type": "string"
+    },
     "expected_views": {
       "items": {
         "type": "string"

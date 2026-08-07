@@ -18,5 +18,9 @@ class ChangeSetNotFoundError(GarmentCadError):
     pass
 
 
+class ChangeSetIntegrityError(GarmentCadError):
+    pass
+
+
 class CommandBackendUnavailable(GarmentCadError):
     pass

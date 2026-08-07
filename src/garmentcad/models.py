@@ -92,6 +92,7 @@ class ChangeSet(BaseModel):
     project_id: str
     base_revision: int
     base_content_hash: str
+    preview_content_hash: str = ""
     created_at: datetime = Field(default_factory=utc_now)
     author: str = "agent"
     message: str = ""
@@ -185,6 +186,7 @@ class SimulationTask(BaseModel):
     project_id: str
     revision: int = Field(ge=0)
     units: Literal["mm"] = "mm"
+    body_mesh_units: Literal["m"] = "m"
     pattern_snapshot_format: Literal["garmentcode"] = "garmentcode"
     inputs: dict[str, str]
     expected_views: list[str] = Field(min_length=1)

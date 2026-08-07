@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import io
 import json
 import sys
@@ -16,6 +17,8 @@ from garmentcad.sdk import GarmentSDK
 from garmentcad.simulation import SimulationClient, build_simulation_bundle
 from garmentcad.worker import app as worker_app
 from garmentcad.worker.app import JobStore
+
+REPOSITORY = Path(__file__).resolve().parents[1]
 
 
 def configured_project(tmp_path):
@@ -117,8 +120,36 @@ def test_bundle_is_self_contained_and_revisioned(tmp_path):
         } <= names
         task = json.load(archive.extractfile("job.json"))
     assert task["revision"] == 1
+    assert task["units"] == "mm"
+    assert task["body_mesh_units"] == "m"
     assert task["expected_views"] == ["front", "back"]
     assert not any(str(value).startswith("/") for value in task["inputs"].values())
+
+
+def test_official_autodl_smoke_bundle_satisfies_worker_contract(tmp_path, monkeypatch):
+    script = REPOSITORY / "scripts/smoke-autodl.py"
+    spec = importlib.util.spec_from_file_location("smoke_autodl", script)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    payload, content_hash = module.official_bundle()
+    runner = Path(__file__).with_name("fixture_sim_runner.py")
+    monkeypatch.setenv(
+        "GARMENTCAD_SIM_COMMAND",
+        f"{quote(sys.executable)} {quote(str(runner))} --input {{input}} --output {{output}}",
+    )
+    store = JobStore(tmp_path / "official-smoke-contract")
+    job = store.submit(payload, content_hash)
+    store.futures[job.id].result(timeout=10)
+    completed = store.load(job.id)
+    assert completed.status == "succeeded"
+    assert {
+        "artifacts/renders/front.png",
+        "artifacts/renders/back.png",
+        "artifacts/renders/left.png",
+        "artifacts/renders/right.png",
+    } <= set(completed.artifacts)
+    store.close()
 
 
 def test_simulation_configuration_rejects_missing_input_as_preview_issue(tmp_path):

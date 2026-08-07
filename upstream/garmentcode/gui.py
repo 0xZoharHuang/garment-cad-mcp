@@ -1,4 +1,5 @@
 import json
+import os
 
 from nicegui import Client, run, ui
 
@@ -22,7 +23,9 @@ async def index(client: Client):
 
         bridge_state = {'job_id': None}
         with ui.expansion('Garment Project / AutoDL', icon='cloud_upload').classes('w-full'):
-            project_path = ui.input('Garment Project path').props('clearable').classes('w-full')
+            project_path = ui.input(
+                'Garment Project path', value=os.environ.get('GARMENTCAD_PROJECT_PATH', '')
+            ).props('clearable').classes('w-full')
             worker_url = ui.input(
                 'Worker URL', value='http://127.0.0.1:8765'
             ).classes('w-full')

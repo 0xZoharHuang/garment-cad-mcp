@@ -75,18 +75,25 @@ def _camera_pose(center, eye):
     return pose
 
 
+def _load_render_geometry(garment_path: Path, body_path: Path):
+    import trimesh
+
+    garment = trimesh.load(garment_path, force="mesh", process=False)
+    body = trimesh.load(body_path, force="mesh", process=False)
+    # GarmentCode/Warp writes simulated cloth in centimetres. Its body assets are metres and are
+    # multiplied by 100 only inside the simulator; the self-contained source body stays in metres.
+    garment.vertices = garment.vertices / 100.0
+    return garment, body
+
+
 def _render_views(
     garment_path: Path, body_path: Path, camera_config: dict, output: Path
 ) -> list[str]:
     import numpy as np
     import pyrender
-    import trimesh
     from PIL import Image
 
-    garment = trimesh.load(garment_path, force="mesh", process=False)
-    body = trimesh.load(body_path, force="mesh", process=False)
-    garment.vertices = garment.vertices / 100.0
-    body.vertices = body.vertices / 100.0
+    garment, body = _load_render_geometry(garment_path, body_path)
     combined_min = np.minimum(garment.bounds[0], body.bounds[0])
     combined_max = np.maximum(garment.bounds[1], body.bounds[1])
     center = (combined_min + combined_max) / 2.0
@@ -164,6 +171,8 @@ def run(input_root: Path, output: Path) -> dict:
             "Pinned Warp did not detect CUDA; refusing an accidental CPU production run"
         )
     task = _load_mapping(input_root / "job.json")
+    if task.get("units") != "mm" or task.get("body_mesh_units") != "m":
+        raise ValueError("Simulation task must use mm pattern/camera units and metre body meshes")
     inputs = task["inputs"]
     body_source = _safe_input(input_root, inputs["body_mesh"])
     body_measurements = _safe_input(input_root, inputs["body_measurements"])

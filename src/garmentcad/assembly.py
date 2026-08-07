@@ -47,6 +47,37 @@ def _panel_edges(vertices: list[list[float]]) -> list[dict[str, Any]]:
     ]
 
 
+def _copy_edge_identity(target: dict[str, Any], source: dict[str, Any]) -> None:
+    target["id"] = source["id"]
+    if source.get("alias") is not None:
+        target["alias"] = source["alias"]
+
+
+def _replace_edge(
+    panel: dict[str, Any],
+    interfaces: dict[str, Any],
+    edge_index: int,
+    inserted: list[list[float]],
+) -> None:
+    old_edges = panel["edges"]
+    if edge_index < 0 or edge_index >= len(old_edges):
+        raise ValueError("edge_index is out of range")
+    original = old_edges[edge_index]
+    panel["vertices_mm"][edge_index + 1 : edge_index + 1] = inserted
+    new_edges = _panel_edges(panel["vertices_mm"])
+    added = len(inserted)
+    for index, old_edge in enumerate(old_edges):
+        mapped = index if index <= edge_index else index + added
+        _copy_edge_identity(new_edges[mapped], old_edge)
+    replacement_ids = [edge["id"] for edge in new_edges[edge_index : edge_index + added + 1]]
+    for interface in interfaces.values():
+        ids = interface.get("edge_ids", [])
+        if original["id"] in ids:
+            position = ids.index(original["id"])
+            ids[position : position + 1] = replacement_ids
+    panel["edges"] = new_edges
+
+
 def _panel_ref(value: Any) -> ObjectRef:
     if isinstance(value, str):
         return ObjectRef(uuid=value) if len(value) == 36 else ObjectRef(alias=value)
@@ -79,7 +110,7 @@ def apply_operations(
     for operation in operations:
         try:
             _apply_one(state, operation, summary)
-        except (KeyError, TypeError, ValueError) as error:
+        except (IndexError, KeyError, TypeError, ValueError, ZeroDivisionError) as error:
             summary.issues.append(
                 ValidationIssue(
                     severity="error",
@@ -181,19 +212,7 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
         start = vertices[original["start"]]
         end = vertices[original["end"]]
         inserted = [_lerp(start, end, fraction) for fraction in fractions]
-        insertion_index = edge_index + 1
-        vertices[insertion_index:insertion_index] = inserted
-        new_edges = _panel_edges(vertices)
-        replacement = new_edges[edge_index : edge_index + len(fractions) + 1]
-        replacement[0]["id"] = original["id"]
-        replacement[0]["alias"] = original.get("alias")
-        panel["edges"] = new_edges
-        split_ids = [edge["id"] for edge in replacement]
-        for interface in interfaces.values():
-            ids = interface.get("edge_ids", [])
-            if original["id"] in ids:
-                position = ids.index(original["id"])
-                ids[position : position + 1] = split_ids
+        _replace_edge(panel, interfaces, edge_index, inserted)
         summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
     elif action == "edge.extend":
         panel_id = _resolve(panels, _panel_ref(args["panel"]))
@@ -226,8 +245,13 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
         after = float(args.get("distance_after_mm", before))
         first = _lerp(current, previous, before / _distance(current, previous))
         second = _lerp(current, following, after / _distance(current, following))
+        old_edges = panel["edges"]
         vertices[vertex_index : vertex_index + 1] = [first, second]
-        panel["edges"] = _panel_edges(vertices)
+        new_edges = _panel_edges(vertices)
+        for index, old_edge in enumerate(old_edges):
+            mapped = index if index < vertex_index else index + 1
+            _copy_edge_identity(new_edges[mapped], old_edge)
+        panel["edges"] = new_edges
         summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
     elif action == "dart.insert":
         panel_id = _resolve(panels, _panel_ref(args["panel"]))
@@ -246,9 +270,7 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
         leg_a = [center[index] - unit[index] * intake / 2 for index in range(2)]
         apex = [center[index] + normal[index] * depth for index in range(2)]
         leg_b = [center[index] + unit[index] * intake / 2 for index in range(2)]
-        insertion_index = edge_index + 1
-        panel["vertices_mm"][insertion_index:insertion_index] = [leg_a, apex, leg_b]
-        panel["edges"] = _panel_edges(panel["vertices_mm"])
+        _replace_edge(panel, interfaces, edge_index, [leg_a, apex, leg_b])
         summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
     elif action == "component.define":
         alias = str(args["alias"])
@@ -487,6 +509,38 @@ def preview_assembly(
                 summary.measurements["garmentcode.stitches"] = float(
                     len(diagnostics.get("stitches", {}))
                 )
+                for alias, panel in diagnostics.get("panels", {}).items():
+                    if not panel.get("closed") or not panel.get("chained"):
+                        summary.issues.append(
+                            ValidationIssue(
+                                severity="error",
+                                code="garmentcode_open_panel",
+                                message=f"Native GarmentCode panel {alias} is not a closed chain",
+                                details=panel,
+                            )
+                        )
+                    if panel.get("self_intersecting"):
+                        summary.issues.append(
+                            ValidationIssue(
+                                severity="error",
+                                code="garmentcode_self_intersection",
+                                message=f"Native GarmentCode panel {alias} self-intersects",
+                                details=panel,
+                            )
+                        )
+                for alias, stitch in diagnostics.get("stitches", {}).items():
+                    summary.measurements[f"stitch.{alias}.length_difference_mm"] = float(
+                        stitch.get("length_difference_mm", 0.0)
+                    )
+                    if not stitch.get("native_matching"):
+                        summary.issues.append(
+                            ValidationIssue(
+                                severity="error",
+                                code="garmentcode_incompatible_stitch",
+                                message=f"Native GarmentCode cannot match stitch {alias}",
+                                details=stitch,
+                            )
+                        )
                 if not diagnostics.get("roundtrip_ok"):
                     summary.issues.append(
                         ValidationIssue(

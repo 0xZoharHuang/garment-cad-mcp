@@ -199,6 +199,11 @@
       "title": "Operations",
       "type": "array"
     },
+    "preview_content_hash": {
+      "default": "",
+      "title": "Preview Content Hash",
+      "type": "string"
+    },
     "preview_resources": {
       "items": {
         "type": "string"

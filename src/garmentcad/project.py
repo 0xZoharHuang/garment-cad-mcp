@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.assembly import preview_assembly, thumbnail_svg
 from garmentcad.backends import NativeCommandRouter, ProjectMetadataBackend, merge_summaries
-from garmentcad.errors import ChangeSetNotFoundError, ProjectNotFoundError, StaleRevisionError
+from garmentcad.errors import (
+    ChangeSetIntegrityError,
+    ChangeSetNotFoundError,
+    ProjectNotFoundError,
+    StaleRevisionError,
+)
 from garmentcad.locking import ProjectLock
 from garmentcad.models import (
     ChangeSet,
@@ -252,6 +259,7 @@ class Project:
         ):
             change_set.preview_resources.append(thumbnail_uri)
         change_set.summary = merge_summaries(summaries)
+        change_set.preview_content_hash = self._tree_content_hash(preview_directory)
         atomic_write_json(
             self.root / f".garmentcad/changesets/{change_set.id}.json",
             change_set.model_dump(mode="json"),
@@ -273,9 +281,18 @@ class Project:
         if raw is None:
             raise ChangeSetNotFoundError(preview_token)
         change_set = ChangeSet.model_validate(raw)
+        if change_set.status != "preview":
+            raise ChangeSetIntegrityError(
+                f"Change-set {preview_token} is already {change_set.status}"
+            )
         if any(issue.severity == "error" for issue in change_set.summary.issues):
             raise ValueError("Cannot commit a preview with validation errors")
         with ProjectLock(self.root / ".garmentcad/project.lock"):
+            preview_directory = self.root / f".garmentcad/changesets/{change_set.id}"
+            if self._tree_content_hash(preview_directory) != change_set.preview_content_hash:
+                raise ChangeSetIntegrityError(
+                    "Preview candidate changed after validation; create a new preview"
+                )
             manifest = self.manifest
             if manifest.current_revision != change_set.base_revision:
                 raise StaleRevisionError(
@@ -291,6 +308,9 @@ class Project:
             next_revision = manifest.current_revision + 1
             snapshot = self._snapshot(next_revision)
             artifact_resources: list[str] = []
+            revision_path = self.root / f".garmentcad/revisions/{next_revision}.json"
+            event_path = self.root / ".garmentcad/events.jsonl"
+            event_size = event_path.stat().st_size if event_path.exists() else 0
             try:
                 domains = {operation.domain for operation in change_set.operations}
                 for domain in domains:
@@ -351,31 +371,35 @@ class Project:
                                     },
                                 )
                             )
+                change_set.status = "committed"
+                manifest.current_revision = next_revision
+                manifest.updated_at = utc_now()
+                atomic_write_json(self.manifest_path, manifest.model_dump(mode="json"))
+                revision = Revision(
+                    number=next_revision,
+                    parent=next_revision - 1,
+                    change_set_id=change_set.id,
+                    author=change_set.author,
+                    message=change_set.message,
+                    content_hash=self._content_hash_static(self.root),
+                )
+                atomic_write_json(revision_path, revision.model_dump(mode="json"))
+                atomic_write_json(change_path, change_set.model_dump(mode="json"))
+                with event_path.open("a", encoding="utf-8") as stream:
+                    stream.write(
+                        json.dumps(revision.model_dump(mode="json"), ensure_ascii=False) + "\n"
+                    )
+                    stream.flush()
+                    os.fsync(stream.fileno())
             except Exception:
                 self._restore_snapshot(snapshot)
+                revision_path.unlink(missing_ok=True)
+                if event_path.exists():
+                    with event_path.open("r+b") as stream:
+                        stream.truncate(event_size)
+                atomic_write_json(change_path, raw)
                 shutil.rmtree(snapshot)
                 raise
-            change_set.status = "committed"
-            manifest.current_revision = next_revision
-            manifest.updated_at = utc_now()
-            atomic_write_json(self.manifest_path, manifest.model_dump(mode="json"))
-            revision = Revision(
-                number=next_revision,
-                parent=next_revision - 1,
-                change_set_id=change_set.id,
-                author=change_set.author,
-                message=change_set.message,
-                content_hash=self._content_hash_static(self.root),
-            )
-            atomic_write_json(
-                self.root / f".garmentcad/revisions/{next_revision}.json",
-                revision.model_dump(mode="json"),
-            )
-            atomic_write_json(change_path, change_set.model_dump(mode="json"))
-            with (self.root / ".garmentcad/events.jsonl").open("a", encoding="utf-8") as stream:
-                stream.write(
-                    json.dumps(revision.model_dump(mode="json"), ensure_ascii=False) + "\n"
-                )
         self.clear()
         return ToolResult(
             ok=True,
@@ -401,6 +425,17 @@ class Project:
                 shutil.copytree(source, snapshot / relative)
         return snapshot
 
+    @staticmethod
+    def _tree_content_hash(root: Path) -> str:
+        files = []
+        if root.is_dir():
+            files = [
+                (str(path.relative_to(root)), sha256_file(path))
+                for path in root.rglob("*")
+                if path.is_file()
+            ]
+        return sha256_bytes(canonical_json(sorted(files)))
+
     def _restore_snapshot(self, snapshot: Path) -> None:
         for relative in ("pattern", "measurements", "layout", "assembly", "simulation"):
             destination = self.root / relative
@@ -413,6 +448,88 @@ class Project:
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
 
+    def record_gui_revision(
+        self,
+        *,
+        preimage: Path,
+        base_revision: int,
+        base_content_hash: str,
+        application: str,
+    ) -> ToolResult:
+        """Record files saved by a repository-launched GUI while its writer lock is held."""
+        manifest = self.manifest
+        if manifest.current_revision != base_revision:
+            raise StaleRevisionError("Project revision changed during the GUI session")
+        current_hash = self._content_hash_static(self.root)
+        if current_hash == base_content_hash:
+            shutil.rmtree(preimage)
+            return ToolResult(
+                ok=True,
+                project_id=manifest.project_id,
+                revision=base_revision,
+                message="GUI session made no project changes",
+            )
+        next_revision = base_revision + 1
+        if preimage != self.root / f".garmentcad/snapshots/{next_revision}":
+            raise ValueError("GUI preimage does not match the next revision")
+        change_set = ChangeSet(
+            id=f"gui-{uuid4()}",
+            project_id=manifest.project_id,
+            base_revision=base_revision,
+            base_content_hash=base_content_hash,
+            author="gui",
+            message=f"{application} GUI save",
+            operations=[
+                Operation(
+                    domain=OperationDomain.PROJECT,
+                    action="project.gui_save",
+                    arguments={"application": application},
+                )
+            ],
+            status="committed",
+        )
+        change_path = self.root / f".garmentcad/changesets/{change_set.id}.json"
+        revision_path = self.root / f".garmentcad/revisions/{next_revision}.json"
+        event_path = self.root / ".garmentcad/events.jsonl"
+        event_size = event_path.stat().st_size if event_path.exists() else 0
+        old_manifest = manifest.model_dump(mode="json")
+        try:
+            manifest.current_revision = next_revision
+            manifest.updated_at = utc_now()
+            atomic_write_json(self.manifest_path, manifest.model_dump(mode="json"))
+            revision = Revision(
+                number=next_revision,
+                parent=base_revision,
+                change_set_id=change_set.id,
+                author="gui",
+                message=change_set.message,
+                content_hash=self._content_hash_static(self.root),
+            )
+            atomic_write_json(change_path, change_set.model_dump(mode="json"))
+            atomic_write_json(revision_path, revision.model_dump(mode="json"))
+            with event_path.open("a", encoding="utf-8") as stream:
+                stream.write(
+                    json.dumps(revision.model_dump(mode="json"), ensure_ascii=False) + "\n"
+                )
+                stream.flush()
+                os.fsync(stream.fileno())
+        except Exception:
+            # Roll back only metadata. GUI-authored pattern/layout/measurement files are preserved.
+            atomic_write_json(self.manifest_path, old_manifest)
+            change_path.unlink(missing_ok=True)
+            revision_path.unlink(missing_ok=True)
+            if event_path.exists():
+                with event_path.open("r+b") as stream:
+                    stream.truncate(event_size)
+            raise
+        return ToolResult(
+            ok=True,
+            project_id=manifest.project_id,
+            revision=next_revision,
+            summary=change_set.summary,
+            message=f"{application} GUI save recorded as revision {next_revision}",
+        )
+
     def revert(self, revision: int, *, author: str = "agent", message: str = "") -> ToolResult:
         snapshot = self.root / f".garmentcad/snapshots/{revision}"
         if not snapshot.exists():
@@ -420,6 +537,9 @@ class Project:
         with ProjectLock(self.root / ".garmentcad/project.lock"):
             current = self.manifest.current_revision
             safety_snapshot = self._snapshot(current + 1)
+            revision_path = self.root / f".garmentcad/revisions/{current + 1}.json"
+            event_path = self.root / ".garmentcad/events.jsonl"
+            event_size = event_path.stat().st_size if event_path.exists() else 0
             try:
                 self._restore_snapshot(snapshot)
                 manifest = self.manifest
@@ -435,12 +555,20 @@ class Project:
                     content_hash=self._content_hash_static(self.root),
                     reverse_of=revision,
                 )
-                atomic_write_json(
-                    self.root / f".garmentcad/revisions/{record.number}.json",
-                    record.model_dump(mode="json"),
-                )
+                atomic_write_json(revision_path, record.model_dump(mode="json"))
+                with event_path.open("a", encoding="utf-8") as stream:
+                    stream.write(
+                        json.dumps(record.model_dump(mode="json"), ensure_ascii=False) + "\n"
+                    )
+                    stream.flush()
+                    os.fsync(stream.fileno())
             except Exception:
                 self._restore_snapshot(safety_snapshot)
+                revision_path.unlink(missing_ok=True)
+                if event_path.exists():
+                    with event_path.open("r+b") as stream:
+                        stream.truncate(event_size)
+                shutil.rmtree(safety_snapshot)
                 raise
         return ToolResult(
             ok=True,

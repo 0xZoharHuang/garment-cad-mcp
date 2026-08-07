@@ -207,3 +207,15 @@ def test_every_valentina_tool_enum_is_constructible_or_explained():
     records = coverage(Path(header))
     assert set(records) == set(tools)
     assert not {name for name, record in records.items() if record["status"] == "unmapped"}
+
+
+def test_every_valentina_catalog_action_has_native_replay_coverage():
+    from pathlib import Path
+
+    replay_sources = "\n".join(
+        (Path("tests") / filename).read_text(encoding="utf-8")
+        for filename in ("test_native_valentina.py", "test_native_puzzle.py")
+    )
+    assert not {
+        spec.action for spec in VALENTINA_TOOLS if spec.action not in replay_sources
+    }

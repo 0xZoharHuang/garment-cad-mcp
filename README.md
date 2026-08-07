@@ -35,7 +35,7 @@ Quick start:
 ```bash
 ./scripts/bootstrap-macos.sh
 uv run garmentcad create ./projects/sample
-uv run pytest
+./scripts/test.sh
 ```
 
 Read [the architecture](docs/ARCHITECTURE.md), [setup guide](docs/SETUP.md), and
