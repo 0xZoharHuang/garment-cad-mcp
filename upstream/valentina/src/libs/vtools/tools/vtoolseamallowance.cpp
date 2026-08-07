@@ -527,6 +527,13 @@ VToolSeamAllowance::~VToolSeamAllowance()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+auto VToolSeamAllowance::PrepareNodesForCommand(const VPiecePath &path, VMainGraphicsScene *scene,
+                                                VAbstractPattern *doc, VContainer *data) -> QVector<VPieceNode>
+{
+    return PrepareNodes(path, scene, doc, data);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 auto VToolSeamAllowance::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *scene, VAbstractPattern *doc,
                                 VContainer *data) -> VToolSeamAllowance *
 {

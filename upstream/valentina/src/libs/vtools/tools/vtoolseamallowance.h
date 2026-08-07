@@ -80,6 +80,8 @@ public:
     static auto Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *scene, VAbstractPattern *doc,
                        VContainer *data) -> VToolSeamAllowance *;
     static auto Create(VToolSeamAllowanceInitData &initData) -> VToolSeamAllowance *;
+    static auto PrepareNodesForCommand(const VPiecePath &path, VMainGraphicsScene *scene, VAbstractPattern *doc,
+                                       VContainer *data) -> QVector<VPieceNode>;
     static auto Duplicate(const QPointer<DialogTool> &dialog, VMainGraphicsScene *scene, VAbstractPattern *doc)
         -> VToolSeamAllowance *;
     static auto Duplicate(VToolSeamAllowanceInitData &initData) -> VToolSeamAllowance *;

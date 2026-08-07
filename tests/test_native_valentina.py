@@ -1003,6 +1003,80 @@ def test_native_transformations_register_reopenable_destinations(tmp_path):
     assert followup.ok
 
 
+def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
+    project = Project.create(tmp_path / "piece")
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "length_mm": 100,
+                "angle_deg": 0,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "length_mm": 150,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "D",
+                "base_point": {"alias": "B"},
+                "length_mm": 150,
+                "angle_deg": 90,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.piece",
+            arguments={
+                "alias": "front.panel",
+                "name": "Front panel",
+                "short_name": "Front",
+                "seam_allowance": True,
+                "seam_allowance_mm": 10,
+                "nodes": [
+                    {"object": {"alias": alias}, "type": "point"}
+                    for alias in ("A", "B", "D", "C")
+                ],
+            },
+        ),
+    ]
+    preview = project.preview(operations=operations)
+    assert preview.ok
+    assert preview.summary.created[-1].alias == "front.panel"
+    project.commit(preview.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert 'name="Front panel"' in pattern
+    assert 'shortName="Front"' in pattern
+    assert 'seamAllowance="true"' in pattern
+    assert pattern.count('type="NodePoint"') >= 4
+
+    reopened = Project.open(project.root)
+    followup = reopened.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.object_get",
+                target={"alias": "front.panel"},
+            )
+        ]
+    )
+    assert followup.ok
+    assert followup.summary.changed[0].alias == "front.panel"
+    assert followup.summary.changed[0].uuid
+
+
 def test_native_update_delete_and_alias_survive_reopen(tmp_path):
     project = Project.create(tmp_path / "lifecycle")
     created = project.preview(

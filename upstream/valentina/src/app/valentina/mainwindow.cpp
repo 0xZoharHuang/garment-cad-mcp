@@ -3082,6 +3082,8 @@ auto MainWindow::SavePatternAs(const QString &fileName) -> bool
 auto MainWindow::FullParsePattern() -> bool
 {
     QFuture<void> futureTestUniqueId;
+    const bool synchronousIdCheck = qEnvironmentVariableIsSet("GARMENTCAD_COMMAND_MODE");
+    const char *parseStage = "initialization";
 
     auto WaitForFutureFinish = [](QFuture<void> &futureTestUniqueId)
     {
@@ -3113,15 +3115,30 @@ auto MainWindow::FullParsePattern() -> bool
     {
         if (VAbstractValApplication::VApp()->getOpeningPattern())
         {
-            futureTestUniqueId = QtConcurrent::run([this]() { doc->TestUniqueId(); });
+            parseStage = "unique-id validation";
+            // The command host must report deterministic parse errors to its JSON caller. QtConcurrent wraps
+            // non-QException failures in QUnhandledException (whose what() is only "std::exception"), losing
+            // VExceptionWrongId diagnostics. It also needlessly reads the QDom tree concurrently with the full
+            // parser for small, short-lived command-host requests.
+            if (synchronousIdCheck)
+            {
+                doc->TestUniqueId();
+            }
+            else
+            {
+                futureTestUniqueId = QtConcurrent::run([this]() { doc->TestUniqueId(); });
+            }
         }
 
         SetEnabledGUI(true);
+        parseStage = "pattern document parse";
         doc->Parse(Document::FullParse);
+        parseStage = "background-image parse";
         ParseBackgroundImages();
 
-        if (VAbstractValApplication::VApp()->getOpeningPattern())
+        if (VAbstractValApplication::VApp()->getOpeningPattern() && !synchronousIdCheck)
         {
+            parseStage = "unique-id validation completion";
             futureTestUniqueId.waitForFinished();
         }
     }
@@ -3188,6 +3205,19 @@ auto MainWindow::FullParsePattern() -> bool
     catch (const std::bad_alloc &)
     {
         qCCritical(vMainWindow, "%s", qUtf8Printable(tr("Error parsing file (std::bad_alloc).")));
+        HandleError(futureTestUniqueId);
+        return false;
+    }
+    catch (const std::exception &error)
+    {
+        if (synchronousIdCheck)
+        {
+            throw std::runtime_error(
+                QStringLiteral("FullParsePattern failed during %1: %2")
+                    .arg(QString::fromLatin1(parseStage), QString::fromUtf8(error.what()))
+                    .toStdString());
+        }
+        qCCritical(vMainWindow, "Error parsing file during %s: %s", parseStage, error.what());
         HandleError(futureTestUniqueId);
         return false;
     }
@@ -6941,12 +6971,27 @@ auto MainWindow::LoadPattern(QString fileName, const QString &customMeasureFile)
         }
     }
 
-    QFuture<VPatternConverter *> const futureConverter = QtConcurrent::run(
-        [fileName]()
-        {
-            auto converter = std::make_unique<VPatternConverter>(fileName);
-            return converter.release();
-        });
+    const bool commandMode = qEnvironmentVariableIsSet("GARMENTCAD_COMMAND_MODE");
+    QFuture<VPatternConverter *> futureConverter;
+    std::unique_ptr<VPatternConverter> commandConverter;
+    if (commandMode)
+    {
+        // Keep converter exceptions on this thread so the command protocol can preserve VException diagnostics.
+        commandConverter = std::make_unique<VPatternConverter>(fileName);
+    }
+    else
+    {
+        futureConverter = QtConcurrent::run(
+            [fileName]()
+            {
+                auto converter = std::make_unique<VPatternConverter>(fileName);
+                return converter.release();
+            });
+    }
+    auto TakeConverter = [&]() -> VPatternConverter *
+    {
+        return commandMode ? commandConverter.release() : futureConverter.result();
+    };
 
     // We have unsaved changes or load more then one file per time
     if (OpenNewValentina(fileName))
@@ -7061,7 +7106,7 @@ auto MainWindow::LoadPattern(QString fileName, const QString &customMeasureFile)
         if (currentFormatVersion != VPatternConverter::PatternMaxVer)
         { // Because we rely on the fact that we know where is path to measurements optimization available only for
           // the latest format version
-            QScopedPointer<VPatternConverter> const converter(futureConverter.result());
+            QScopedPointer<VPatternConverter> const converter(TakeConverter());
             m_curFileFormatVersion = converter->GetCurrentFormatVersion();
             m_curFileFormatVersionStr = converter->GetFormatVersionStr();
             doc->setXMLContent(converter->Convert());
@@ -7161,7 +7206,7 @@ auto MainWindow::LoadPattern(QString fileName, const QString &customMeasureFile)
         if (currentFormatVersion == VPatternConverter::PatternMaxVer)
         {
             // Real read
-            QScopedPointer<VPatternConverter> const converter(futureConverter.result());
+            QScopedPointer<VPatternConverter> const converter(TakeConverter());
             m_curFileFormatVersion = converter->GetCurrentFormatVersion();
             m_curFileFormatVersionStr = converter->GetFormatVersionStr();
             doc->setXMLContent(converter->Convert());
@@ -7200,7 +7245,21 @@ auto MainWindow::LoadPattern(QString fileName, const QString &customMeasureFile)
 #endif
 
     doc->SetGBBackupFilePath(fileName);
-    FullParseFile();
+    try
+    {
+        FullParseFile();
+    }
+    catch (const std::exception &error)
+    {
+        if (qEnvironmentVariableIsSet("GARMENTCAD_COMMAND_MODE"))
+        {
+            throw std::runtime_error(
+                QStringLiteral("LoadPattern failed during FullParseFile: %1")
+                    .arg(QString::fromUtf8(error.what()))
+                    .toStdString());
+        }
+        throw;
+    }
 
     m_progressBar->setVisible(false);
 #if defined(Q_OS_WIN32) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)

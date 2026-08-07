@@ -53,8 +53,11 @@
 #include "../vtools/tools/drawTools/toolpoint/tooldoublepoint/vtooltruedarts.h"
 #include "../vtools/tools/drawTools/vtoolline.h"
 #include "../vtools/tools/vinteractivetool.h"
+#include "../vtools/tools/vtoolseamallowance.h"
 #include "../vgeometry/vcubicbezier.h"
 #include "../vgeometry/vcubicbezierpath.h"
+#include "../vpatterndb/vpiecenode.h"
+#include "../vpatterndb/vpiecepath.h"
 
 #include <QDir>
 #include <QCryptographicHash>
@@ -146,6 +149,31 @@ auto NativeObjectName(const QJsonObject &arguments, const QString &aliasField = 
         QCryptographicHash::hash(requested.toUtf8(), QCryptographicHash::Sha256).toHex().left(8));
     return sanitized + QLatin1Char('_') + digest;
 }
+
+auto PieceNodeTool(const QString &type) -> Tool
+{
+    if (type == QStringLiteral("point"))
+    {
+        return Tool::NodePoint;
+    }
+    if (type == QStringLiteral("arc"))
+    {
+        return Tool::NodeArc;
+    }
+    if (type == QStringLiteral("elliptical_arc"))
+    {
+        return Tool::NodeElArc;
+    }
+    if (type == QStringLiteral("spline"))
+    {
+        return Tool::NodeSpline;
+    }
+    if (type == QStringLiteral("spline_path"))
+    {
+        return Tool::NodeSplinePath;
+    }
+    throw std::invalid_argument(QStringLiteral("Unsupported piece node type: %1").arg(type).toStdString());
+}
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -185,6 +213,15 @@ auto VCommandService::RunOnce() -> int
         }
         response = Dispatch(document.object());
         response.insert(QStringLiteral("ok"), true);
+    }
+    catch (const VException &error)
+    {
+        response = {{QStringLiteral("ok"), false},
+                    {QStringLiteral("error"),
+                     QJsonObject{{QStringLiteral("code"), QStringLiteral("valentina_error")},
+                                 {QStringLiteral("message"), error.ErrorMessage()},
+                                 {QStringLiteral("details"), error.DetailedInformation()}}}};
+        exitCode = 1;
     }
     catch (const std::exception &error)
     {
@@ -243,7 +280,7 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("pattern.graduated_curve"), QStringLiteral("pattern.true_darts"),
                             QStringLiteral("pattern.move"), QStringLiteral("pattern.rotation"),
                             QStringLiteral("pattern.flipping_by_line"),
-                            QStringLiteral("pattern.flipping_by_axis")}}};
+                            QStringLiteral("pattern.flipping_by_axis"), QStringLiteral("pattern.piece")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -464,11 +501,42 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
 
     if (action == QStringLiteral("pattern.object_get"))
     {
-        const quint32 nativeId = ResolveObject(operation.value(QStringLiteral("target")).toObject(), aliases);
-        const auto object = m_window->pattern->GetGObject(nativeId);
+        const QJsonObject reference = operation.value(QStringLiteral("target")).toObject();
+        const quint32 nativeId = ResolveObject(reference, aliases);
+        QString semanticAlias = reference.value(QStringLiteral("alias")).toString();
+        QString uuid = reference.value(QStringLiteral("uuid")).toString();
+        QString kind;
+        const QJsonObject objects = aliases.value(QStringLiteral("objects")).toObject();
+        for (auto iterator = objects.constBegin(); iterator != objects.constEnd(); ++iterator)
+        {
+            const QJsonObject record = iterator.value().toObject();
+            if (!record.value(QStringLiteral("deleted")).toBool() &&
+                static_cast<quint32>(record.value(QStringLiteral("native_id")).toInteger()) == nativeId)
+            {
+                uuid = iterator.key();
+                semanticAlias = record.value(QStringLiteral("alias")).toString();
+                kind = record.value(QStringLiteral("kind")).toString();
+                break;
+            }
+        }
+
+        // Pieces and piece paths live in dedicated VContainer maps rather than the geometric-object map.
+        if (kind == QStringLiteral("Piece"))
+        {
+            static_cast<void>(m_window->pattern->GetPiece(nativeId));
+        }
+        else if (kind == QStringLiteral("PiecePath"))
+        {
+            static_cast<void>(m_window->pattern->GetPiecePath(nativeId));
+        }
+        else
+        {
+            static_cast<void>(m_window->pattern->GetGObject(nativeId));
+        }
         QJsonArray changed = summary.value(QStringLiteral("changed")).toArray();
-        changed.append(QJsonObject{{QStringLiteral("uuid"), QJsonValue::Null},
-                                   {QStringLiteral("alias"), object->name()}});
+        changed.append(QJsonObject{{QStringLiteral("uuid"), uuid.isEmpty() ? QJsonValue(QJsonValue::Null)
+                                                                           : QJsonValue(uuid)},
+                                   {QStringLiteral("alias"), semanticAlias}});
         summary.insert(QStringLiteral("changed"), changed);
         return;
     }
@@ -1018,6 +1086,71 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         auto *tool = VToolGraduatedCurve::Create(initData);
         RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("GraduatedCurve"),
                        tool->getId(), aliases, summary);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.piece"))
+    {
+        const QJsonArray nodeValues = arguments.value(QStringLiteral("nodes")).toArray();
+        if (nodeValues.size() < 3)
+        {
+            throw std::invalid_argument("piece requires at least three path nodes");
+        }
+
+        VPiecePath path(PiecePathType::PiecePath);
+        for (const QJsonValue value : nodeValues)
+        {
+            const QJsonObject item = value.toObject();
+            VPieceNode node(ResolveObject(item.value(QStringLiteral("object")).toObject(), aliases),
+                            PieceNodeTool(item.value(QStringLiteral("type")).toString(QStringLiteral("point"))),
+                            item.value(QStringLiteral("reverse")).toBool());
+            node.SetExcluded(item.value(QStringLiteral("excluded")).toBool());
+            node.SetPassmark(item.value(QStringLiteral("passmark")).toBool());
+            if (item.contains(QStringLiteral("seam_before_formula")))
+            {
+                node.SetFormulaSABefore(RequiredString(item, QStringLiteral("seam_before_formula")));
+            }
+            if (item.contains(QStringLiteral("seam_after_formula")))
+            {
+                node.SetFormulaSAAfter(RequiredString(item, QStringLiteral("seam_after_formula")));
+            }
+            path.Append(node);
+        }
+
+        const QString width = arguments.contains(QStringLiteral("seam_allowance_formula"))
+                                  ? RequiredString(arguments, QStringLiteral("seam_allowance_formula"))
+                                  : NativeFormulaForMillimetres(
+                                        arguments.value(QStringLiteral("seam_allowance_mm")).toDouble());
+        QString checkedWidth = width;
+        const qreal calculatedWidth = VAbstractTool::CheckFormula(NULL_ID, checkedWidth, m_window->pattern);
+
+        VPiece piece;
+        piece.SetName(arguments.value(QStringLiteral("name")).toString(
+            RequiredString(arguments, QStringLiteral("alias"))));
+        piece.SetShortName(arguments.value(QStringLiteral("short_name")).toString());
+        piece.SetUUID(QUuid::createUuid());
+        piece.SetPath(path);
+        piece.SetSeamAllowance(arguments.value(QStringLiteral("seam_allowance")).toBool(true));
+        piece.SetSeamAllowanceBuiltIn(
+            arguments.value(QStringLiteral("seam_allowance_built_in")).toBool(false));
+        piece.SetFormulaSAWidth(checkedWidth, calculatedWidth);
+        piece.SetForbidFlipping(arguments.value(QStringLiteral("forbid_flipping")).toBool(false));
+        piece.SetFollowGrainline(arguments.value(QStringLiteral("follow_grainline")).toBool(false));
+        piece.GetPath().SetNodes(
+            VToolSeamAllowance::PrepareNodesForCommand(piece.GetPath(), m_window->m_sceneDetails, m_window->doc,
+                                                       m_window->pattern));
+
+        VToolSeamAllowanceInitData initData;
+        initData.scene = m_window->m_sceneDetails;
+        initData.doc = m_window->doc;
+        initData.data = m_window->pattern;
+        initData.parse = Document::FullParse;
+        initData.typeCreation = Source::FromGui;
+        initData.detail = piece;
+        initData.width = checkedWidth;
+        auto *tool = VToolSeamAllowance::Create(initData);
+        RegisterObject(RequiredString(arguments, QStringLiteral("alias")), QStringLiteral("Piece"), tool->getId(),
+                       aliases, summary);
         return;
     }
 
