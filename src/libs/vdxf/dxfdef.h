@@ -1,0 +1,81 @@
+/************************************************************************
+ **
+ **  @file   dxfdef.h
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   31 8, 2015
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2015 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#ifndef DXFDEF_H
+#define DXFDEF_H
+
+#include <QtCore/qcontainerfwd.h>
+#include <QtGlobal>
+
+enum class VarMeasurement : quint8
+{
+    English = 0,
+    Metric = 1
+};
+
+// Default drawing units for AutoCAD DesignCenter blocks:
+enum class VarInsunits : quint8
+{
+    Inches = 1,
+    Millimeters = 4,
+    Centimeters = 5
+};
+
+enum class DXFApparelCompatibility : qint8
+{
+    STANDARD = 0, // According to specification AAMA/ASTM
+    RPCADV08 = 1, // Richpeace CAD V8
+    RPCADV09 = 2, // Richpeace CAD V9
+    RPCADV10 = 3, // Richpeace CAD V10
+    CLO3D = 4,    // Clo3D
+    COUNT = 5     // Use only for validation
+};
+
+// Helps mark end of string. See VDxfEngine::drawTextItem for more details
+extern const QString endStringPlaceholder;
+
+Q_REQUIRED_RESULT static inline auto DL_FuzzyComparePossibleNulls(double p1, double p2) -> bool;
+static inline auto DL_FuzzyComparePossibleNulls(double p1, double p2) -> bool
+{
+    if (qFuzzyIsNull(p1))
+    {
+        return qFuzzyIsNull(p2);
+    }
+    if (qFuzzyIsNull(p2))
+    {
+        return false;
+    }
+    else
+    {
+        return qFuzzyCompare(p1, p2);
+    }
+}
+
+auto LocaleMap() -> QMap<QString, QString>;
+
+#endif // DXFDEF_H

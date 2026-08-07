@@ -1,0 +1,232 @@
+/************************************************************************
+ **
+ **  @file   vtoolplacelabel.cpp
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   15 10, 2017
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2017 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#include "vtoolplacelabel.h"
+#include "../../dialogs/tools/piece/dialogplacelabel.h"
+#include "../../undocommands/savepieceoptions.h"
+#include "../ifc/xml/vpatternblockmapper.h"
+#include "../ifc/xml/vpatterngraph.h"
+#include "../vgeometry/vplacelabelitem.h"
+#include "../vgeometry/vpointf.h"
+#include "../vtoolseamallowance.h"
+
+const QString VToolPlaceLabel::ToolType = QStringLiteral("placeLabel");
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolPlaceLabel::Create(const QPointer<DialogTool> &dialog, VAbstractPattern *doc, VContainer *data)
+    -> VToolPlaceLabel *
+{
+    SCASSERT(not dialog.isNull());
+    const QPointer<DialogPlaceLabel> dialogTool = qobject_cast<DialogPlaceLabel *>(dialog);
+    SCASSERT(not dialogTool.isNull())
+
+    VToolPlaceLabelInitData initData;
+    initData.width = dialogTool->GetWidth();
+    initData.height = dialogTool->GetHeight();
+    initData.angle = dialogTool->GetAngle();
+    initData.visibilityTrigger = dialogTool->GetFormulaVisible();
+    initData.notMirrored = dialogTool->IsNotMirrored();
+    initData.type = dialogTool->GetLabelType();
+    initData.centerPoint = dialogTool->GetCenterPoint();
+    initData.idObject = dialogTool->GetPieceId();
+    initData.doc = doc;
+    initData.data = data;
+    initData.parse = Document::FullParse;
+    initData.typeCreation = Source::FromGui;
+
+    return Create(initData);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolPlaceLabel::Create(VToolPlaceLabelInitData &initData) -> VToolPlaceLabel *
+{
+    QSharedPointer<VPointF> centerPoint;
+    try
+    {
+        centerPoint = initData.data->GeometricObject<VPointF>(initData.centerPoint);
+    }
+    catch (const VExceptionBadId &e)
+    { // Possible case. Parent was deleted, but the node object is still here.
+        Q_UNUSED(e)
+        if (initData.typeCreation != Source::FromGui)
+        {
+            initData.data->UpdateId(initData.id);
+        }
+        return nullptr; // Just ignore
+    }
+
+    const qreal w = qAbs(
+        VAbstractValApplication::VApp()->toPixel(CheckFormula(initData.id, initData.width, initData.data)));
+    const qreal h =
+        qAbs(VAbstractValApplication::VApp()->toPixel(CheckFormula(initData.id, initData.height, initData.data)));
+    const qreal a = CheckFormula(initData.id, initData.angle, initData.data);
+    const qreal v = CheckFormula(initData.id, initData.visibilityTrigger, initData.data);
+
+    QSharedPointer<VPlaceLabelItem> const node(new VPlaceLabelItem());
+    node->SetWidth(w, initData.width);
+    node->SetHeight(h, initData.height);
+    node->SetAngle(a, initData.angle);
+    node->SetVisibilityTrigger(v, initData.visibilityTrigger);
+    node->SetLabelType(initData.type);
+    node->SetCenterPoint(initData.centerPoint);
+    node->SetNotMirrored(initData.notMirrored);
+    node->setName(centerPoint->name());
+    node->setX(centerPoint->x());
+    node->setY(centerPoint->y());
+    node->setMx(centerPoint->mx());
+    node->setMy(centerPoint->my());
+
+    if (initData.typeCreation == Source::FromGui)
+    {
+        initData.id = initData.data->AddGObject(node);
+    }
+    else
+    {
+        if (initData.idTool != NULL_ID)
+        {
+            QSharedPointer<VPlaceLabelItem> const label = qSharedPointerDynamicCast<VPlaceLabelItem>(centerPoint);
+            SCASSERT(label.isNull() == false)
+
+            node->SetCorrectionAngle(label->GetCorrectionAngle());
+        }
+
+        initData.data->UpdateGObject(initData.id, node);
+    }
+
+    VPatternGraph *patternGraph = initData.doc->PatternGraph();
+    SCASSERT(patternGraph != nullptr)
+
+    patternGraph->AddVertex(initData.id, VNodeType::MODELING_OBJECT, initData.doc->PatternBlockMapper()->GetActiveId());
+
+    const auto varData = initData.data->DataDependencyVariables();
+    initData.doc->FindFormulaDependencies(initData.width, initData.id, varData);
+    initData.doc->FindFormulaDependencies(initData.height, initData.id, varData);
+    initData.doc->FindFormulaDependencies(initData.angle, initData.id, varData);
+    initData.doc->FindFormulaDependencies(initData.visibilityTrigger, initData.id, varData);
+
+    patternGraph->AddEdge(initData.centerPoint, initData.id);
+
+    if (initData.typeCreation != Source::FromGui && initData.parse != Document::FullParse)
+    {
+        initData.doc->UpdateToolData(initData.id, initData.data);
+    }
+
+    VAbstractTool::AddRecord(initData.id, Tool::PlaceLabel, initData.doc);
+
+    if (initData.parse == Document::FullParse)
+    {
+        auto *point = new VToolPlaceLabel(initData);
+
+        VAbstractPattern::AddTool(initData.id, point);
+        if (initData.idTool != NULL_ID)
+        {
+            // Some nodes we don't show on scene. Tool that creates this nodes must free memory.
+            VDataTool *tool = VAbstractPattern::getTool(initData.idTool);
+            SCASSERT(tool != nullptr)
+            point->setParent(tool); // Adopted by a tool
+        }
+        else
+        {
+            // Help to delete the node before each FullParse
+            initData.doc->AddToolOnRemove(point);
+        }
+    }
+    return nullptr;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolPlaceLabel::getTagName() const -> QString
+{
+    return VAbstractPattern::TagPoint;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VToolPlaceLabel::AddAttributes(VAbstractPattern *doc, QDomElement &domElement, quint32 id,
+                                    const VPlaceLabelItem &label)
+{
+    doc->SetAttribute(domElement, VDomDocument::AttrId, id);
+    doc->SetAttribute(domElement, AttrType, ToolType);
+    doc->SetAttribute(domElement, AttrIdObject, label.GetCenterPoint());
+    doc->SetAttribute(domElement, AttrWidth, label.GetWidthFormula());
+    doc->SetAttribute(domElement, AttrHeight, label.GetHeightFormula());
+    doc->SetAttribute(domElement, AttrAngle, label.GetAngleFormula());
+    doc->SetAttribute(domElement, VAbstractPattern::AttrVisible, label.GetVisibilityTrigger());
+    doc->SetAttribute(domElement, AttrPlaceLabelType, static_cast<int>(label.GetLabelType()));
+    doc->SetAttributeOrRemoveIf<bool>(domElement,
+                                      AttrNotMirrored,
+                                      label.IsNotMirrored(),
+                                      [](bool value) noexcept -> bool { return not value; });
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VToolPlaceLabel::AllowHover(bool enabled)
+{
+    Q_UNUSED(enabled)
+    // do nothing
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VToolPlaceLabel::AllowSelecting(bool enabled)
+{
+    Q_UNUSED(enabled)
+    // do nothing
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VToolPlaceLabel::AddToFile()
+{
+    auto label = VAbstractTool::data.GeometricObject<VPlaceLabelItem>(m_id);
+
+    QDomElement domElement = doc->createElement(getTagName());
+
+    AddAttributes(doc, domElement, m_id, *label);
+    if (idTool != NULL_ID)
+    {
+        doc->SetAttribute(domElement, AttrIdTool, idTool);
+    }
+
+    AddToModeling(domElement);
+
+    if (m_pieceId > NULL_ID)
+    {
+        const VPiece oldDet = VAbstractTool::data.GetPiece(m_pieceId);
+        VPiece newDet = oldDet;
+
+        newDet.GetPlaceLabels().append(m_id);
+        VAbstractApplication::VApp()->getUndoStack()->push(new SavePieceOptions(oldDet, newDet, doc, m_pieceId));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+VToolPlaceLabel::VToolPlaceLabel(const VToolPlaceLabelInitData &initData, QObject *qoParent)
+  : VAbstractNode(initData.doc, initData.data, initData.id, initData.centerPoint, initData.drawName, initData.idTool,
+                  qoParent),
+    m_pieceId(initData.idObject)
+{
+    ToolCreation(initData.typeCreation);
+}

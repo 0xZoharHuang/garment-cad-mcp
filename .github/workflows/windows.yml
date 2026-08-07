@@ -1,0 +1,340 @@
+name: Windows build
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'develop'
+  pull_request:
+    branches:
+      - 'master'
+      - 'develop'
+
+defaults:
+  run:
+    shell: cmd
+
+env:
+  SOURCE_DIR: ${{ github.workspace }}
+  QBS_VERSION: 3.1.1
+  INNOSETUP_VERSION: 6.7.1
+  VALENTINA_VERSION: 1_1_0
+  ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+  # Set the URL as an environment variable for the cache key
+  SIMPLYSIGN_URL: 'https://files.certum.eu/software/SimplySignDesktop/Windows/9.4.3.90/SimplySignDesktop-9.4.3.90-64-bit-en.msi'
+
+jobs:
+  changes:
+    name: Detect changed files
+    runs-on: ubuntu-latest
+    outputs:
+      qbs: ${{ steps.filter.outputs.qbs }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            qbs:
+              - '.github/workflows/windows.yml'
+              - 'scripts/upload_symbols.py'
+              - '**/*.h'
+              - '**/*.hpp'
+              - '**/*.cpp'
+              - '**/*.tpp'
+              - '**/*.c'
+              - '**/*.ts'
+              - '**/*.ui'
+              - '**/*.png'
+              - '**/*.qbs'
+              - '**/*.js'
+              - '**/*.svg'
+
+  build:
+    name: Windows Qt ${{ matrix.qt.install }} (MSVC x64)
+    needs: changes
+    if: needs.changes.outputs.qbs == 'true'
+    runs-on: windows-2022
+
+    strategy:
+      matrix:
+        qt:
+          - install: 6.10.3
+            label: Qt6_10
+            run_tests: 'true'
+            with_icu: 'True'
+            with_iconv: 'False'
+            withBigCodecs: 'False'
+            deploy: 'true'
+            sign: true 
+          - install: 6.10.3
+            label: Qt6_10
+            run_tests: 'true'
+            with_icu: 'False'
+            with_iconv: 'True'
+            with_big_codecs: 'True'
+            deploy: 'false'
+            sign: false
+
+    env:
+      DEPLOY: ${{ matrix.qt.deploy }}
+      SIGN: ${{ matrix.qt.sign }}
+      RUN_TESTS: ${{ matrix.qt.run_tests }}
+      WITH_CRASH_REPORTING: 'True'
+      WITH_ICU: ${{ matrix.qt.with_icu }}
+      WITH_ICONV: ${{ matrix.qt.with_iconv }}
+      WITH_BIG_CODECS: ${{ matrix.qt.with_big_codecs }}
+      INSTALL_QT: ${{ matrix.qt.install }}
+      QT_VERSION: ${{ matrix.qt.label }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Fetch tags
+        run: git fetch --prune --unshallow --tags
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+          architecture: "x64"
+          cache: 'pip'
+          cache-dependency-path: 'share/ci/requirements-ci.txt'
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version:      ${{ env.INSTALL_QT }}
+          host:         'windows'
+          target:       'desktop'
+          arch:         win64_msvc2022_64
+          dir:          ${{ runner.temp }}
+          modules:      'qtimageformats'
+          cache:        true
+          tools:        'tools_opensslv3_x64'
+          setup-python: false
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+
+      - name: Set up Visual Studio shell
+        uses: egor-tensin/vs-shell@v2
+        with:
+          arch: x64
+
+      - name: Install Python dependencies
+        run: |
+          python --version
+          python -m pip install --upgrade setuptools
+          python -m pip install -r share/ci/requirements-ci.txt
+
+      - name: Cache Chocolatey
+        uses: actions/cache@v5
+        with:
+          path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
+          # This caches the cache, no need to make sure that this is invalidated
+          # chocolatey will do that for us.
+          key: chocolatey-cache
+
+      - name: Install Chocolatey dependencies
+        run: |
+          choco install qbs -y --version=${{ env.QBS_VERSION }}
+          choco install innosetup -y --version=${{ env.INNOSETUP_VERSION }}
+          qbs --version
+
+      - name: Find cl.exe
+        id: cl-path
+        shell: pwsh
+        run: |
+          function Locate-VSWhere {
+              $path = Get-Command 'vswhere' -ErrorAction SilentlyContinue
+              if ($path) {
+                  $path.Path
+              } else {
+                  Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio' 'Installer' 'vswhere'
+              }
+          }
+
+          function Locate-VS {
+              # vswhere doesn't search for Build Tools by default, God knows why.
+              # https://github.com/microsoft/vswhere/issues/22
+              $products = 'Community','Professional','Enterprise','BuildTools' | %{ "Microsoft.VisualStudio.Product.$_" }
+              $vswhere = Locate-VSWhere
+              & $vswhere -products $products -latest -format json | ConvertFrom-Json
+          }
+
+          function Locate-CLPath {
+              $vsInfo = Locate-VS
+              if ($vsInfo) {
+                  $vsInstallPath = $vsInfo[0].installationPath
+                  $clPath = Join-Path $vsInstallPath 'VC\Tools\MSVC'
+                  $latestVersion = (Get-ChildItem -Path $clPath | Where-Object { $_.PSIsContainer } | Sort-Object -Property Name -Descending)[0].Name
+                  $clPath = Join-Path $clPath $latestVersion
+                  $clPath = Join-Path $clPath 'bin\Hostx64\x64\cl.exe'
+                  return $clPath
+              } else {
+                  Write-Output "Visual Studio not found."
+                  return $null
+              }
+          }
+
+          $clPath = Locate-CLPath
+          echo "Found Cl at $clPath"
+          echo "cl-path=$clPath" >> $env:GITHUB_OUTPUT
+
+      - name: Setup path to Conan home folder
+        shell: bash
+        run: echo "CONAN_HOME=${{ runner.temp }}/.conan2" >> $GITHUB_ENV
+
+      - name: Cache Conan packages (Conan 2.x)
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.CONAN_HOME }}/p
+          key: conan2-packages-${{ runner.os }}-v1-${{ hashFiles('**/conanfile.py') }}
+          restore-keys: conan2-packages-${{ runner.os }}-
+
+      - name: Before build
+        run: |
+          git fetch --tags
+          qbs-setup-toolchains --detect
+          qbs-setup-qt %QT_ROOT_DIR%\bin\qmake.exe qt6
+          qbs-config defaultProfile qt6
+          qbs-setup-toolchains.exe --type msvc "${{ steps.cl-path.outputs.cl-path }}" msvc
+          qbs-config.exe profiles.qt6.baseProfile msvc
+          qbs-config --list profiles
+
+      - name: Build Conan dependencies
+        shell: bash
+        run: conan install . --build=missing -o '&:with_crash_reporting=${{ env.WITH_CRASH_REPORTING }}' -o '&:with_xerces=True' -o '&:with_icu=${{ env.WITH_ICU }}' -o '&:with_iconv=${{ env.WITH_ICONV }}' -pr:a=share/ci/conan/profiles/windows
+
+      - name: Cache SimplySign Installer
+        if: ${{ matrix.qt.sign == true }}
+        uses: actions/cache@v5
+        with:
+          # This is the path where the installer will be saved by the action
+          path: SimplySignDesktop.msi
+          # The key ensures we get a new download if the URL changes
+          key: simplysign-msi-${{ env.SIMPLYSIGN_URL }}
+
+      - name: Setup Certum SimplySign environment
+        if: ${{ matrix.qt.sign == true }}
+        uses: dismine/windows-app-signing-setup-action@v1
+        with:
+          certum-username: ${{ secrets.CERTUM_USERNAME }}
+          certum-otp-uri: ${{ secrets.CERTUM_OTP_URI }}
+          certum-key-id: ${{ secrets.CERTUM_KEY_ID }}
+          simplysign-url: ${{ env.SIMPLYSIGN_URL }}
+
+      - name: Add SignTool to PATH
+        if: ${{ matrix.qt.sign == true }}
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\" -Filter signtool.exe -Recurse | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          
+          if ($signtool) {
+              $signtoolDir = Split-Path $signtool.FullName
+              Write-Host "✅ Adding SignTool to PATH: $signtoolDir"
+              echo "$signtoolDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          } else {
+              Write-Error "❌ SignTool.exe not found in Windows SDK folders."
+              exit 1
+          }
+
+      - name: Set up common Qbs args
+        shell: bash
+        run: >
+          echo "COMMON_QBS_ARGS=
+          -f valentina.qbs
+          -d \"$RUNNER_TEMP/build\"
+          config:release
+          qbs.installRoot:\"$RUNNER_TEMP/build/release/install-root/valentina\"
+          profile:qt6
+          project.enableSigning:${{ env.SIGN }}
+          modules.buildconfig.signingThumbprint:${{ secrets.CERTUM_KEY_ID }}
+          project.enableConan:true
+          project.conanWithCrashReporting:${{ env.WITH_CRASH_REPORTING }}
+          project.conanWithXerces:true
+          project.conanWithICU:${{ env.WITH_ICU }}
+          project.conanWithICONV:${{ env.WITH_ICONV }}
+          project.conanProfiles:share/ci/conan/profiles/windows
+          project.withICUCodecs:${{ env.WITH_ICU }}
+          project.withICONVCodecs:${{ env.WITH_ICONV }}
+          project.withBigCodecs:${{ env.WITH_BIG_CODECS }}
+          modules.buildconfig.enablePCH:true
+          modules.windeployqt.compilerRuntime:true
+          modules.windeployqt.noCompilerRuntime:false" >> $GITHUB_ENV
+
+      - name: Build Valentina
+        shell: bash
+        run: qbs build ${{ env.COMMON_QBS_ARGS }}
+
+      - name: Deploy symbols
+        if: env.WITH_CRASH_REPORTING == 'True'
+        shell: pwsh
+        env:
+          BUGSPLAT_DATABASE: "valentina"
+          SYMBOL_UPLOAD_CLIENT_ID: ${{ secrets.SYMBOL_UPLOAD_CLIENT_ID }}
+          SYMBOL_UPLOAD_CLIENT_SECRET: ${{ secrets.SYMBOL_UPLOAD_CLIENT_SECRET }}
+        run: |
+          # Download symbol-upload
+          Invoke-WebRequest -Uri "https://app.bugsplat.com/download/symbol-upload-windows.exe" `
+            -OutFile "${{ runner.temp }}\symbol-upload-windows.exe"
+
+          # Build version components
+          $qtVersion = (& "$env:QT_ROOT_DIR\bin\qmake.exe" -query QT_VERSION) `
+            -replace '(\d+)\.(\d+).*', 'Qt_$1_$2'
+          $shortSha  = git log --pretty=format:%h -n 1
+
+          # Add symbol-upload to PATH for this step
+          $env:PATH = "${{ runner.temp }};$env:PATH"
+
+          # Rename so the script can call it as 'symbol-upload'
+          Rename-Item "${{ runner.temp }}\symbol-upload-windows.exe" "symbol-upload.exe"
+
+          python ./scripts/upload_symbols.py `
+            --build-dir   "${{ runner.temp }}\build\release\install-root\valentina" `
+            --app-version $env:VALENTINA_VERSION `
+            --git-hash    "g$shortSha" `
+            --qt-version  $qtVersion
+
+      - name: Tests
+        if: env.RUN_TESTS == 'true'
+        shell: bash
+        run: qbs -p autotest-runner ${{ env.COMMON_QBS_ARGS }}
+
+      - name: Sign binaries
+        if: github.event_name != 'pull_request' && env.DEPLOY == 'true' && env.SIGN == 'true'
+        shell: pwsh
+        env:
+          CERTUM_KEY_ID: ${{ secrets.CERTUM_KEY_ID }}
+        run: |
+          & "./scripts/sign-binaries.ps1" `
+            -InstallRoot "$env:RUNNER_TEMP\build\release\install-root\valentina" `
+            -CertumKeyId $env:CERTUM_KEY_ID  
+
+      - name: Create installer
+        if: github.event_name != 'pull_request' && env.DEPLOY == 'true'
+        shell: bash
+        run: qbs build -p ValentinaSetup ${{ env.COMMON_QBS_ARGS }}
+
+      - name: Commit hash
+        id: commit
+        if: github.event_name != 'pull_request' && env.DEPLOY == 'true'
+        uses: prompt/actions-commit-hash@v4
+
+      - name: Deploy
+        if: github.event_name != 'pull_request' && env.DEPLOY == 'true'
+        shell: pwsh
+        env:
+          VALENTINA_BUILD_FOLDER: ${{ runner.temp }}\build
+          APPVEYOR_BUILD_FOLDER: ${{ env.SOURCE_DIR }}
+          APPVEYOR_REPO_BRANCH: ${{ github.base_ref || github.ref_name }}
+          APPVEYOR_REPO_COMMIT: ${{ steps.commit.outputs.hash }}
+          PYTHON: ${{ env.Python3_ROOT_DIR }}
+          TARGET_PLATFORM: "Windows10+"
+          ARCH: x64
+          COMPILER: msvc
+        run: ./scripts/appveyor-deploy.ps1

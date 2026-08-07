@@ -1,0 +1,62 @@
+/************************************************************************
+ **
+ **  @file
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   16 9, 2016
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2016 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#ifndef VABSTRACTFLIPPING_H
+#define VABSTRACTFLIPPING_H
+
+#include <QtGlobal>
+
+#include "../vabstractoperation.h"
+
+class VAbstractFlipping : public VAbstractOperation
+{
+    Q_OBJECT // NOLINT
+public:
+    ~VAbstractFlipping() override = default;
+
+protected:
+    explicit VAbstractFlipping(const VAbstractOperationInitData &initData, QGraphicsItem *parent = nullptr);
+
+    static void CreateDestination(VAbstractOperationInitData &initData, const QPointF &fPoint, const QPointF &sPoint);
+
+    static auto CreateDestinationObject(quint32 id,
+                                        const SourceItem &object,
+                                        GOType type,
+                                        const QPointF &fPoint,
+                                        const QPointF &sPoint,
+                                        VContainer *data) -> DestinationItem;
+
+private:
+    Q_DISABLE_COPY_MOVE(VAbstractFlipping) // NOLINT
+
+    static void CreateDestinationObjects(VAbstractOperationInitData &initData,
+                                         const QPointF &fPoint,
+                                         const QPointF &sPoint);
+};
+
+#endif // VABSTRACTFLIPPING_H

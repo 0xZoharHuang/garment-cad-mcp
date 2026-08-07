@@ -1,0 +1,893 @@
+# Valentina 1.1.1 (unreleased)
+
+# Valentina 1.1.0 June 27, 2026
+- [Tape app] The measurement database dialog now refreshes the diagram immediately when an image's size scale changes.
+- [Valentina app] Faster size switching in Detail mode. Pieces now refresh immediately instead of after a fixed delay, their geometry is recomputed in parallel across all pieces, the gradation combo boxes are no longer rebuilt redundantly, bursts of parses are coalesced by a single debounce timer, the dependency graph is no longer rebuilt on reparses that only change values (size switch, measurement sync), and compiled tool formulas are cached so reparsing re-evaluates them without recompiling.
+- [Valentina app] Fixed crash when syncing a multisize measurement file fails (e.g. user cancels the missing-measurements dialog): measurement pointer was nulled out but dimension comboboxes remained connected, causing a null dereference on the next dimension change event.
+- [Valentina app] Fixed draw scene labels showing wrong color at startup and on theme switch when a custom theme is opposite the system theme.
+- [Valentina app] Add canvas visualization for the Union Details tool.
+- [Valentina app] Fixed accessibility warning on macOS when a QTableWidget had no selection.
+- [Valentina app] Fixed crash on Windows when closing the application while a draw tool dialog (e.g. Rotation) was active. On Windows, owned popup HWNDs (Qt::Popup color picker) could be destroyed by the OS before Qt finished deleting child widgets, leaving a dangling pointer; dialog destructors then triggered a settings signal that called into the freed popup, causing an access violation.
+- [Valentina app] Fixed crash when closing a Pin dialog after undo/redo of piece operations. Deleting a piece undo command freed its modeling node tools (VNodePoint, VNodeArc, etc.) as QObject children, leaving dangling pointers in the tools map. The next LiteParseTree call would then write through those pointers, causing an access violation in VContainer::operator=.
+- [Valentina app] Tool Normal. Fixed formula values were not saved.
+- [Valentina app / Puzzle app] New feature. True zero seam allowance width.
+- [Valentina app / Tape app] UI. Simplified measurement loading workflow.
+- [Valentina app] New option "curveApproximationScale" to override the global curve approximation scale setting from the application preferences.
+- [Valentina app] Added import/export increments from Table of variables.
+- [Valentina app] New action Reload labels.
+- [Valentina app] New action Install single line font.
+- [Valentina app] Tool Segment Arc now supports an elliptical arc.
+- [Valentina app] Added Global object color and default pen style properties.
+- [Valentina app] New tool Elliptical arc with length.
+- [Puzzle app] Show number of sheet in brackets to separate them from sheet name.
+- [Valentina app] New tool Parallel curve.
+- [Valentina app] New tool Graduated curve.
+- [Valentina app / Puzzle app] Fix calculation of seam allowance for symmetrical piece.
+- [Valentina app] Dependency graph.
+- [Misc] End of support for Windows versions below 10.
+- [Valentina app / Puzzle app] New option to disable mirroring a notch.
+- [Valentina app] Improved control over notch visibility.
+- [Valentina app] Editing group operations.
+- [Valentina app] Added filterable lists.
+- [Valentina app] Segment visualization.
+- [Valentina app] Darken the inactive pattern piece.
+- [Puzzle app] New option Print text as paths.
+- [Valentina app] New action Auto-arrange labels (Ctrl+Shift+A). Automatically repositions point labels in Draw and Details mode to reduce overlaps.
+
+# Valentina 1.0.5 (unreleased)
+- [Valentina app] Fixed the Hide labels option and label font size changes not taking effect until the next zoom, including stale label state on the other scene after switching to it.
+
+# Valentina 1.0.4 June 26, 2026
+- [Valentina app] Fixed scene points (including spline control points) showing at the wrong size until the next zoom, e.g. after undo.
+- [Valentina app] Fixed point hover highlight no longer appearing; hovering a point's name label now highlights the point as well.
+
+# Valentina 1.0.3 June 23, 2026
+- [Valentina app] Ask for confirmation before overwriting an existing file when exporting font corrections.
+- [Valentina app] Fixed the node option tool buttons (passmark, reverse, excluded, etc.) in the Seam Allowance and Piece Path dialogs not refreshing the notch list and visualization until the dialog was reopened.
+- [Tape app] Fixed crash from concurrent access to the known measurements database while it was being refreshed in the background.
+- [Tape app] Fixed a crash when the known-measurements database synced while a measurement refresh was already running, caused by re-entrant rebuilding of the measurement data.
+- [Valentina app] Fixed crash when closing the History dialog after the pattern history changed while the dialog was open.
+- [Valentina app] Fixed a notch ignoring its manual angle when the notch axis met the seam allowance near a corner.
+- [Valentina app] Fixed the second notch on the seam line ignoring the manual passmark angle.
+- [Misc] Fixed crash when evaluating a malformed if-then-else formula (e.g. a ternary branch with a missing operand).
+- [Valentina app] Fixed crash when pressing undo/redo while a tool options dialog is open, caused by the resulting full reparse destroying the tool and its geometry before the dialog was accepted.
+- [Tape app] Fixed sluggish image size scale control in the known measurements editor by no longer rebuilding the whole image list on every value change.
+- [Tape app] Fixed image list in the known measurements editor showing a single column until the Images tab was activated or the image size value was changed.
+- [Tape app] Fixed wrong diagram image shown for the selected measurement after opening the known measurements editor.
+- [Valentina app] Fixed crash on shutdown while sending the application close statistic, caused by a nested event loop running during application teardown.
+- [Valentina app] Fixed crash when syncing a multisize measurement file fails (e.g. user cancels the missing-measurements dialog): measurement pointer was nulled out but dimension comboboxes remained connected, causing a null dereference on the next dimension change event.
+
+# Valentina 1.0.2 June 3, 2026
+- [Valentina app] Fixed draw scene labels showing wrong color at startup and on theme switch when a custom theme is opposite the system theme.
+- [Valentina app] Fixed crash during pattern parsing when a modeling node object has an unexpected type, caused by SCASSERT being compiled away in release builds.
+- [Valentina app] Fixed crash when loading old-format pattern files containing piece elements without a version attribute.
+- [Valentina app] Fixed crash when undoing a piece path operation while a dialog is open.
+- [Valentina app] Fixed accessibility warning on macOS when a QTableWidget had no selection.
+- [Valentina app] Fixed crash when inserting nodes after undo/redo of piece operations.
+- [Tape app] Fix crash in SyncKnownMeasurements caused by wrong deletion order in TMainWindow destructor.
+- [Valentina app] Fixed crash on Windows when undoing or redoing tool addition with the property browser open.
+
+# Valentina 1.0.1 May 16, 2026
+- [Valentina app] Tool Normal. Fixed formula values were not saved.
+- [Tape app] Corrected support for multisize tables when using inch units.
+- [Tape app] Corrected showing of full circumference dimension values.
+- [Misc] Correct application status of Windows installer.
+- [Puzzle app] Show mirror line option has no effect.
+- [Misc] Fixed incorrect reseting foreground color of text fields.
+- [Misc] Hide error: GOAWAY invalid stream.
+- [Misc] Fix incorrect codepage when export DXF files on Windows.
+- [Valentina app / Puzzle app] Fixed crash while export a font corrections.
+- [Puzzle app] Fixed duplication of notches.
+- [Misc] Improved custom Dark/Light theme styles.
+- [Valentina app / Puzzle app] Fix calculation notch on seam allowance.
+- [Valentina app] Added missing pen style control in property browser for elliptical arc.
+- [Puzzle app] Show number of sheet in brackets to separate them from sheet name.
+- [Valentina app] Fix incorrect inclusion of custom seam allowance.
+- [Valentina app / Puzzle app] Fix calculation of seam allowance for symmetrical piece.
+- [Misc] Fix popup menu style for tool button on MacOS.
+- [Valentina app] Fix crash on multi monitor systems.
+- [Tape app] Fixed showing and saving a measurement image from database of known measurements.
+- [Valentina app] Fixed generation duplicate curve names.
+- [Puzzle app] Fix blank first page when printing to PDF.
+- [Valentina app] Block curve move when select with tool.
+- [Puzzle app] Fix empty second blank page when printing tiled layout.
+- [Puzzle app] Adjust macOS font scaling to fix oversized text in print mode.
+- [Valentina app] Fixed arc transformations.
+
+# Valentina 1.0.0 July 21, 2025
+- Fix Puzzle app crash when application closing.
+- Dialog Table of variables. Added button Close.
+- Fix incorrect seam allowance.
+- Duplicate controls for main path nodes.
+- Fix compatibility with macOS 12+.
+- Fix regression. Formula wizard dialog doesn't show item alias in a list.
+- Fix parsing SVG fonts.
+- Add "Twin Sans" single stroke font.
+- Fixed generation of mirror side of piece based on fold line. 
+- Puzzle app. Piece rotation with step 15 degrees by holding Ctrl key.
+- Fix export of turn points.
+- Remove legacy build system.
+- Tape and Puzzle crash when check for update.
+- Improvements for Windows installer. Automatically install latest Microsoft Visual C++ Redistributable Version if build with MSVC.
+- Fix position of fold line.
+- Fix an incorrect symmetrical seam line.
+- Fix incorrect position of Tape app menu items on Mac OS.
+- Change minimal dimension value and minimal step for multisize measurements table.
+- Fix a notch on mirror line.
+- Fix seam allowance. Prong shape case.
+- Added PLT export format as a container for HPGL.
+- Fix saving a notch manual angle value.
+- Fix creation of invalid variable names.
+- Divide the list of export file formats into two.
+- Valentina app. Add _1 suffix only when number of sheets bigger than 1.
+- Fix orientation of fabric grainline.
+- New option Symmetrical copy.
+- Renaming a piece name from piece list.
+- Tool color picker.
+- Valentina app. Added support for drag and drop of pattern files.
+- Tape app. Save and restore the column width of a table between sessions.
+- Fix boundary together with notches. Case with notch on mirror line.
+- Fix applying changes to increments when close the dialog.
+- Duplicate a curve inside Seam allowance tool dialog.
+- Fix broken seam allowance.
+- Added Croatian, Hungarian, Portuguese and Japanese languages.
+- Fix incorrect label language in pattern properties.
+- Remember last selected manual layout separately from last export path.
+- Increase precision for multisize table's dimensions to hold converted values from inches.
+- Fix error in VPiece::CuttingPathPoints. It must return full piece path if the piece mirrored.
+- Optimize image scaling in database of known measurements.
+- Allow user to select another measurements file if current doesn't provide necessary list of measurements.
+- Fix calculation of label position for layout piece.
+- Tape app. Enable adding multiple images at once.
+- Tape app. Adding measurement image in known measurement database by drag and drop.
+- Fixed validation of Label language. Missed support for Czech alphabet.
+- [smart-pattern/valentina#223] Incorrect calculation of the intersection point of segments.
+- Puzzle app. Export PDF tiles. Make the ruler optional.
+- DXF AAMA/ASTM. Compatibility export with Clo3D.
+- Puzzle app. Optimization tile PDFs for pen plotter.
+- Measurement value alias.
+- Sync fold line position to grainline orientation.
+- Valentina app. Fix incorrect color of PDF tile's foot notes.
+- Improve handling color schema switch on Linux.
+- Fix a circular dependency with the CurrentSeamAllowance variable.
+
+# Valentina 0.7.53 June 25, 2024
+- Fix layout sheet export with empty name.
+- Fix visualization for tool Point from circle and tangent.
+- Fix loading background image.
+- [smart-pattern/valentina#187] Puzzle: message "Invalid version: Max supported version 0.1.2" when opening 0.1.1 file in Val 0.7.52.
+- Fix export measurement separator to CSV.
+- Fix option Hide labels.
+- Improve segmenting a curve for calculating a piece path. 
+- [smart-pattern/valentina#184] Fix incorrect seam allowance.
+- Export area of piece in Final measurements.
+- New option Show accuracy radius. 
+- New option Interactive tools.
+- Improve error messages while import CSV data.
+- [smart-pattern/valentina#189] Fix regression in dialog Known measurements.
+- New option. Default piece label template for new pieces.
+- Shortcut to quickly enable/disable Interactive tools mode.
+- Improve labels for V notch.
+- Fix QT issue on MacOS version 11.0 "Big Sur".
+- Fix excluding objects in internal path.
+- Fix float-point accuracy issue in multisize measurements dimensions.
+- Fix compatibility with Richpeace DXF-AAMA/ASTM R12.
+- Fix seam allowance. Loose requirements to case with prong.
+- Fix list of dimension popup list. Make sure it will always has enough space for values.
+- New grainline type: Four way.
+- [smart-pattern/valentina#163] Show/hide grainline when export.
+- Improve calculating notches.
+- Simplify number of versions for DXF AAMA/ASTM.
+- New notch type - Check Notch.
+- Control a notch width and angle with formulas.
+- Independent translation for piece labels.
+- Piece labels line break.
+- Support for single-line fonts.
+- Export to HP-GL format.
+- Fix crash after using tool Union of details.
+- Tool box redesign.
+- Increased requirement for minimal Qt version.
+- Support for Dark mode.
+- Fix issue with passing incorrect number of dimension to Tape.
+- New option: Pointer mode.
+- Fix GUI freezing while nesting.
+- New option: Use Tool Groups.
+- Redesign notch context menu to allow quick selection of the notch type.
+- Redesign standard path system.
+- New option: Translate formula.
+- Fix filling piece label data.
+- New piece option Follow grainline.
+- Validate sheet and layout names before proposing file name.
+- Puzzle app. Fix piece position move when update layout data.
+- Puzzle app. Fix losing selection by piece.
+- Puzzle app. Fix updating layout when file already opened.
+- Tape app. Custom measurement name.
+- Tape app. Show variables in order they were added.
+- Shortcuts manager.
+- Support for custom known measurements.
+- Allow negative values.
+- Tape app. New feature: Always keep on top.
+- [smart-pattern/valentina#188] Label %mFileName% file name punctuation.
+- Adding removing nodes of curved path.
+- New tools: Arc start point, Arc end point.
+- Optimize U-notch shape.
+- New feature. Boundary together with notches.
+- Puzzle app. Horizontal piece flipping.
+- Mirror line.
+- Fold line.
+- Minimal Qt version increased to Qt 5.15. Minimal C++ standard to C++17.
+- Updated Windows installer.
+- Automatic crash reports.
+- Improve compatibility with Richpeace CAD.
+- New warning "Piece gape position".
+- New feature. Hide/Show enabled grainline.
+
+# Valentina 0.7.52 September 12, 2022
+- Fix crash when default locale is ru.
+- Puzzle app. Fix incorrect update of a layout piece.
+- Fix visualization for tool Point of intersection line and axis.
+- Improved curve segment warnings.
+- Tape app. Add action Add separator to menu.
+- Tape app. Fix crash after switching language.
+- Fix Valentina app crash after canceling a tool.
+- Puzzle app. Fix reading a piece name.
+- Fix warning while segmenting flipped arc.
+- Tape app. "Export from existing ..." now supports multisize measurements.
+- Fix main path validation. False positive double curve.
+- Fix Setup multisize measurements dialog. Improved handling Height dimension.
+- Fix updating dimension labels in Valentina app.
+- Fix menu on Mac OS X.
+- Add function's argument template with name in the Formula Wizard.
+- Unit type for increments.
+- Support for options Force Flipping and Forbid Flipping in Puzzle.
+- Remember selected dimension values.
+- Fix segmenting a simple curve.
+- Fix export tiled pdf on Mac OS.
+- Improve visualization for tools.
+- Fix calculating an elliptical arc.
+- Enable Approximation scale option for Elliptical arc.
+- Fix bug in seam allowance.
+- Allow resizing Spline path dialog.
+- Improve highlighting file in file browser for Linux.
+
+# Valentina 0.7.51 April 18, 2022
+- Z value change for a layout piece.
+- Fix issue with Custom template.
+- Fix issue with tile font size.
+- [smart-pattern/valentina#171] System identifies two of the same curve.
+- [smart-pattern/valentina#170] Incorrect work with curves.
+- Suspend use of qt_ntfs_permission_lookup. QTBUG-101168
+- Remove support for russian language.
+- Improve CLI. Better handle printer margins.
+- Improve file format conversion.
+- Improve handling gradation change.
+
+# Valentina 0.7.50 February 14, 2022
+- Fix regression. Minimal seam allowance width is less than the point accuracy values.
+- Call autosave only in GUI mode.
+- Warn about stale layout only in GUI mode.
+- Fix regression. Set default value for detail labels size and grainline length to 10 cm.
+- [smart-pattern/valentina#136] 2 decimals for entering values in multi measurements tables.
+- New warnings. Warn a user about incorrect cut curve segment length.
+- Fix finding point of intersection curve and axis. Case when the axis's point lies on the curve.
+- Fix visualization for tool point of intersection line and axis. Case when the axis's point lies on the line.
+- Table of variables is available in Details mode.
+- Fix incorrect comparison of the global length of passmark to minimal allowed value.
+- Make an increment name valid after user selected it from a completion list.
+- [smart-pattern/valentina#145] Fix Seam allowance not correct at intersection curve and axis.
+- Show tooltip about defined user material in the label placeholder list.
+- Fix reading tiled page margins in console mode.
+- Fix handling numeric values passed in console mode.
+- Add Don't ask again for Stale layout question dialog.
+- Help user to select default GUI language.
+- Improve validation grainline position.
+- Increased the limit for the Letter field.
+- Fix double call of a main path context menu.
+- Improve storing visibility group items. Don't store duplicate information.
+- Remove tool from all visibility groups it in.
+- Option to disable the automatic search for updates.
+- [smart-pattern/valentina#153] To add text search bar in History window.
+- Improve for a search bar.
+- Backport fix vulnerability CVE-2021-21900.
+- Improved main path validations.
+- New path validation Invalid segment.
+- [smart-pattern/valentina#43] Background image.
+- Fix alias for tool Cut Arc.
+- Fix infinite loop in tool cut spline.
+- Added scroll area to layout settings dialog.
+- Allow size to have values from 1 to 100 if not a circumference.
+- Fix tool True darts notes.
+- New measurement type separator.
+- Improve creation by mouse for tool Spline.
+- Fix incorrect translation of known measurements.
+- Adjust combobox to fit a dimension label length.
+- Dimension custom name.
+
+# Valentina 0.7.49 July 1, 2021
+- Fix crash.
+- Add tooltip for Export draw feature.
+
+# Valentina 0.7.48 June 29, 2021
+- [smart-pattern/valentina#129] Incorrect behavior of empty arc and elliptical arc.
+- Parsing formulas with not canonical math symbols.
+- [smart-pattern/valentina#133] Incorrect seam allowance.
+- Fix regression. Fix correct handle export format for exporting details in the Detail mode.
+- [smart-pattern/valentina#83] Export the Draw mode.
+
+# Version 0.7.47 May 13, 2021
+- [smart-pattern/valentina#118] Incorrect seam allowance.
+- [smart-pattern/valentina#119] Improve tool Point of intersection curves.
+- [smart-pattern/valentina#120] Incorrect seam allowance.
+- Fix export to DXF AAMA/ASTM.
+- [smart-pattern/valentina#121] Incorrect elliptical arc end angle.
+- [smart-pattern/valentina#122] Extend piece bounding rect.
+- Remember last selected export format.
+- [smart-pattern/valentina#123] Error inside Save layout dialog.
+- Improve error handling for the dxf export.
+- Fix correct handle a final measurement formula error when exporting a pattern recipe.
+- Fix regression. Incorrect data caching.
+- Improve tool tooltip. Show segment names and aliases.
+- Alias support for tools Point of intersection curve and axis and Point of intersection curves.
+- [smart-pattern/valentina#124] Standard passmarks length for all pieces.
+
+# Version 0.7.46 Mar 31, 2021
+- Fix incorrect calculation of value for multisize measurements in Valentina.
+- [smart-pattern/valentina#109] Pattern label template placeholder with dimension label value.
+- Incorrect duplication of a piece. Missing restoring pins.
+- [smart-pattern/valentina#112] Incorrect seam allowance.
+- [smart-pattern/valentina#113] Incorrect seam allowance.
+- [smart-pattern/valentina#114] Incorrect seam allowance.
+- Fixed bugs.
+- Updated translations.
+
+# Version 0.7.45 Feb 26, 2021
+- Fix incorrect seam allowance for angle type second edge right angle.
+- Fix regression with country flags.
+- Fix bug in seam allowance.
+- [smart-pattern/valentina#99] Incorrect fix of seam allowance distortion.
+- Enabling Show Curve Details option causes constant redraw.
+
+# Version 0.7.44 Feb 9, 2021
+- Placeholder %size% has incorrect value.
+- Values for waist and hip swapped for individual measurements. 
+- Fix crash when edit a group operation notes.
+- Fix bug. Undo Union details hide piece node points.
+
+# Version 0.7.43 Jan 31, 2021
+- Improve Windows installer. Avoid crashing on checking if a program is still running.
+- Fix regression. Changing dimension value caused an infinite loop.
+- Fix regression. Export to tiled PDF has no suffix.
+- Fix warning about missing EUDC font om Wondows.
+- Fix regression in Pattern properties dialog. Tab Security is disabled for pattern with individual measurements.
+- Don't warn about a file format update after Save as.
+
+# Version 0.7.42 Jan 26, 2021
+- Fix export of pattern recipe.
+- Update translations.
+- Fix a regression in tool Segment a spline path. 
+- Fix invalid visualization for tool Point of intersection circles.
+- New warning. Warn about empty measurements dimension value when preparing placeholders.
+- New option "Don't use the native file dialog".
+- Improve the layout option "Auto crop unused width".
+- Improve multisize measurements format. Allow decimal step 0.5.
+- Improve restrict dimension dialog. Disable not available combinations.
+- Improve multisize measurements format. Allow excluding combinations inside min/max range.
+- New warning. Grainline is not valid.
+- [smart-pattern/valentina#87] Add support for TIFF format.
+- [smart-pattern/valentina#88] Allow insertion of multiple nodes by setting their number.
+- [smart-pattern/valentina#85] Final measurement printout on pattern piece.
+
+# Version 0.7.41 Dec 4, 2020
+- Bug fixes.
+- Improve canceling nesting.
+- Fix incorrect nesting status for valid cases.
+- Improve crossing check for the layout algorithm.
+- Fix crash after creating an elliptical arc.
+- New option Reset label position.
+
+# Version 0.7.40 Nov 23, 2020
+- New function Warning.
+- [smart-pattern/valentina#80] Allow insertion of multiple nodes.
+- [smart-pattern/valentina#81] Tape crash on opening.
+- Bug fixes.
+
+# Version 0.7.39 Nov 17, 2020
+- Fix crash for Line tool notes.
+- Restored support for Mac OS 10.11+.
+- Updated translations.
+
+# Version 0.7.38 Nov 12, 2020
+- Bug fixes.
+
+# Version 0.7.37 Nov 11, 2020
+- Fix Tape crash on Mac OS X.
+- Fix issue in VAbstractCurve::CurveIntersectAxis.
+- Improve editing a spline path through control points for locked angles.
+- [smart-pattern/valentina#73] Notes for tools.
+- Fix crash while synchronize measurements.
+- Object alias.
+- Change value for an uninitialized local variable to NAN.
+- Independent pen style and color after a group operation. 
+
+# Version 0.7.36 October 24, 2020
+- [#892] Show tooltip for piece node point.
+- [#894] Quick way to disable a passmark.
+- [#895] Improve path validation. Do not allow repeat the same curve twice.
+- Improve UI. Make placeholder menu scrollable.
+- [#651] Improve feature: Layout orientation according to grainline.
+- New command line option --landscapeOrientation.
+- Added ability to search measurements by regex.
+- [#927] Freeze prefix language on pattern/project creation.
+- [#929] New variable type: Separator.
+- Speed optimization for switching "In layout" state.
+- [#932] 2nd version V passmarks.
+- [#936] Improve list of predefined paper size formats for layout export. Added format Tabloid.
+- Extend Label language to support Czech alphabet.
+- [#916] Improve layout generation. 
+- [#965] Control passmark length with formula.
+- New placelabel shape Circle.
+- Two new passmark types: U and Box.
+- [#969] Fix length to label after soom.
+- [#725] Improve labels on drawing.
+- Move Tool options and Group menu to Window section.
+- Raise the minimum value for curve approximation to 0.2.
+- Make piece labels transparent.
+- New layout option --nestQuantity.
+- New feature Pattern recipe.
+- New options to hide all/show all visibility groups.
+- New feature "Hide piece's main path".
+- Allow controlling priority selecting pieces in layout.
+- No scissors on tiled PDF bottom row.
+- All intersections are now treaded as a loop.
+- [#558] New export: Export pattern as step-by-step text.
+- Added options to control passmark angle type and passmark mark type.
+- Improve for recent files list. Show duplicate file names with unique path section.
+- New command line option --cropWidth. Helps to crop unused width of paper.
+- New feature Pattern Messages.
+- [#984] Special variable "CurrentLength" for tools Cut Arc, Cut Spline and Cut Spline Path.
+- Added a ruler at the bottom of a tiled PDF document.
+- Export tiled PDF with watermark.
+- [#984] Issue with up to date list of unique names.
+- Tracking changes/prevent "OK" recalculation after "Apply".
+- Change behavior for menu Pattern piece -> Show main path. Now it has an influence on export as well.
+- Call Piece Options and Delete Piece from the piece list context menu.
+- Change default values for grainline length and pattern label size to 10 cm.
+- Tool Point at distance and angle now allows negative length.
+- Export pattern to DXF-ASTM.
+- [smart-pattern/valentina#18] Auto-created Visibility Group for group operation.
+- Setting scale factor for export and print.
+- New layout generator option: Prefer one sheet solution.
+- [smart-pattern/valentina#15] Organization of groups - groups categories
+- Improve the property browser. Show full arc name.
+- [smart-pattern/valentina#45] Optimize tool box position for big screen resolutions.
+- [smart-pattern/valentina#40] Invalid name of arc in modeling mode.
+- New warning. Error calculating segment of curve.
+- Improve searching lost measurements. Additional case with underscores instead of regular spaces.
+- Redesign multisize measurements.
+- [smart-pattern/valentina#5] New versioning schema.
+
+# Version 0.6.2 (unreleased)
+- [#903] Bug in tool Cut Spline path.
+- [#905] Valentina crashes with error: This id is not unique.
+- [#909] Valentina produces wrong united path.
+- [#912] Labels in inactive state return to initial color.
+- [#913] Unable to save changes for piece path if it doesn't contain a point.
+- [#914] Filtering custom seam allowance paths prevent including more than one.
+- [#915] Valentina produces wrong seam allowance for acute angle.
+- [#923] Valentina produces wrong seam allowance for rollback case.
+- [#924] Valentina produces wrong passmark for rollback case.
+- [#930] Valentina doesn't update translation for variables after dynamic language switch.
+- [#931] Variable translation for Greek and Chinese are broken.
+- [#938] Dialog Seam Allowance doesn't block user from saving broken formula.
+- [#939] Calling Formula Wizard through property explorer doesn't refresh formula.
+- [#937] Wrong symmetrical seam corners on pieces.
+- [#942] Save Layout mode ignores paper format for tiled PDF.
+- [#954] Valentina produces empty rotation operation.
+- [#955] Valentina corrupts file.
+- [#956] Setting pattern unit doesn't change combobox value in Tape app.
+- [#957] Unable to cut an arc with negative length.
+- [#962] Failed to load LibEGL.
+- [#963] Bug in tool Point intersect curve and axis.
+- [#964] Assign operator crashes math parser.
+- [#966] Unable to control Approximation scale for arc with length.
+- [#967] Variable must not include new line character.
+- German translation for Inno setup script.
+- [#971] Group operation do not work with VCubicBezierPath.
+- Regression in method DialogTool::GetNodeName.
+- Fix visualization for tool Point from arc and tangent.
+- Changing settings for move and rotate tools through property browser does not take in count previous change for label point and Show label option.
+- Fix locking file after double save as.
+- Key --ignoremargins still required margins.
+- [#978] Don't show errors in History dialog.
+- Fixed translation numbers in scientific notation.
+- Fix dialog for tool Point along perpendicular. No memory of line color settings. 
+- Fix crash after uniting three pieces in sequence.
+- Incorrect conversion to newer curve format.
+- Elide a variable description in the formula wizard.
+- Fix removing a pin in the Seam Allowance tool dialog.
+- Fix label size for case with two pins.
+- Fix crash while synchronize measurements.
+- Fix incorrect filename regular expressions.
+- Enabling Show Curve Details option causes constant redraw.
+
+# Version 0.6.1 October 23, 2018
+- [#885] Regression. Broken support for multi size measurements.
+- Fixed issues with seam allowance.
+- [#890] Menu Windows->Close pattern doesn't clear "Group of visibility" list.
+- [#891] Valentina claims that file was incorrectly saved when used Save as option.
+
+# Version 0.6.0 October 1, 2018
+- [#682] New feature. Export increments to Excel .csv.
+- [#681] Enhance feature: Dashed line options for curves, arcs, etc.
+- [#684] Proposal: Add option to only show outer edges on detail.
+- [#244] New feature: Adjust line and point thickness and label size.
+- [#637] Max scene size too small to fit all objects.
+- New feature Zoom Fit Best Current pattern piece.
+- [#693] New feature: Sort workpiece "Groups" by name.
+- [#712] Default seam allowance setting.
+- [#630] Improve export: upgrade to DXF r14 format.
+- [#669] Improve export: export labels as text in DXF.
+- [#716] Command line option to create *tiled* export.
+- [#660] New export: Export details without layout.
+- [#734] Optimization. Stop increments/variables table from updating immediately.
+- [#750] Info Box Beside Mouse.
+- [#634] New feature: Fabric manager.
+- [#731] Improve tab Increments. Separate the tab on two: Increments and Preview Calculation.
+- Removed crash sending system for Windows.
+- Added new language Polish (Poland).
+- [#755] New feature. Toggle point label.
+- Fixed bug. After full parse undocommand Move labe losts connection to tool.
+- [#756] New feature. Select pieces from command line.
+- [#761] New feature. Export final measurements.
+- [#758] Intersection Passmark - select which side is shown.
+- New math parser function "r2cm". Round to up to 1 decimal.
+- Two new shortcut sequences: Ctrl+PgDown and Ctrl+PgUp to switch to next and previous pattern piece.
+- [#765] New feature. Free curve mode.
+- [#657] Improve feature: Allow more paper formats for printing tiled PDF
+- [#768] New feature. Custom curve approximation scale.
+- [#759] Add place label tool.
+- [#771] Improve tool Point at intersection of arc and line.
+- [#772] New tool Duplicate detail.
+- [#726] Improve Move tool. Add optional rotate option.
+- [#774] New feature. Matching Parentheses.
+- [#779] Add more roll paper size templates.
+- [#783] Flipping control.
+- [#790] Generate unique name for each detail.
+- [#792] New feature. Visibility trigger for internal path.
+- New internal variable RotationElArc.
+- [#794] Better control over scale value.
+- [#392] Improve feature: Show progress bar while opening pattern file.
+- [#732] Tape app. Improve Database dialog.
+- [#804] New feature. Import measurements from CSV file in Tape app.
+- [#414] Add features from Qt Windows Extras.
+- [#807] Issue with "Intersection" passmark.
+- [#667] Check for updates - Test version.
+- [#808] New feature. Global line width option.
+- [#814] Make "\" valid character.
+- [#818] Improve Piece path validation. Check uniqueness.
+- [#819] Use OpenGL as render for view.
+- [#826] New Feature. Add and remove items to groups from the context menu.
+- Mouse double click zoom fit best current pattern piece.
+- [#862] Force Valentina to immediately terminate if a pattern contains a parsing warning.
+- [#865] New feature. Dynamic Way to define Material in piece label.
+- [#867] Visibility control for place labels.
+- [#868] New feature. Connect internal path with cutting contour.
+- [#869] Pattern piece label size limited.
+- [#683] Tool Seam allowance's dialog is off screen on small resolutions.
+- [#686] Seam allowance not placed correctly.
+- [#687] Wrong seam allowance.
+- [#689] Grainline default values swapped around.
+- [#688] Difficult to enter numbers in Tape.
+- Fixed bug in Tape app. Tape showed birth date in wrong locale.
+- Fixed bug in dialog Internal Piece Path. Value from the field After rewrited data in the field Before.
+- Tab Pins moved to be second in the list after tab Paths. 
+- Added tooltip for tab Passmark. Explained meaning of check box "Show the second passmark on seam line". 
+- [#696] Wrong grainline position on layout.
+- [#697] Incomplete Internal Path for Waist Dart.
+- [#698] Problem typing in new axis point for new piece.
+- [#702] Valentina produces broken shortcut (.lnk) files on Windows.
+- Changed default behaviour if path to multisize measurements or templates doesn't exist. 
+- [#703] Valentina warns about format rewriting for unsaved files.
+- [#704] Valentina crashes if click on detail.
+- [#706] Default unit in preferences not changing new file unit.
+- Fix bug. Valentina overrids exported file even if a user said no.
+- Fix bug. Date on label doesn't obey GUI language locale.
+- Tool Seam allowance's bounding box should not include passmarks.
+- Fix grainline position on layout.
+- [#719] Valentina crashes when unite pieces.
+- Fixed Valentina crash. Used way to avoid Qt's bug QTBUG-61213.
+- Fixed behaviour on Windows. Valentina asks about synchronization measurements twice.
+- Fixed bug. Tape app saved default size value in wrong place.
+- [#737] Valentina produces corrupted file if unite two pieces with pins.
+- [#738] Bug in transformation over arc and elliptical arc.
+- [#729] Moved Bezier curves can't be rotated.
+- [#742] Valentina produces wrong seam allowance.
+- [#743] Valentina doesn't update update pattern after adding item.
+- Fix translation variables.
+- [#744] Check for Updates button produces error.
+- Remove space as thousands separator when return formula to user.
+- [#752] Valentina produces corrupted file if unite two pieces.
+- [#753] Elliptical arc tool is broken.
+- [#767] Valentina produces wrong main path.
+- Fix issue. Curves look too wavy.
+- [#773] Tool Point intersection curve and axis cannot find desired intersection point.
+- [#776] Valentina cannot recognize translated functions.
+- [#778] Calling Valentina with "-h" option opens information dialog instead of writing to console.
+- [#788] Unhardcode icon path in GNU/Linux launcher.
+- [#797] Custom seam allowance ignored in some cases.
+- [#798] Formula Wizard crashes with translated increments.
+- [#803] Bug in FancyTabBar widget. Wrongly calculated widget width.
+- [#805] Invalid regular expression for validation layout output filename mask.
+- [#823] SVG Export - seam and cutting line of one piece missing.
+- Added submenu to quick access to piece node point angle type.
+- [#880] Fix broken seam allowance angle type.
+- [#882] VContainer class doesn't support multi document mode.
+
+# Version 0.5.0 May 9, 2017
+- [#581] User can now filter input lists by keyword in function wizard.
+- [#24] User can now add labels with different information on the detail
+- [#505] New installer script based on Inno Setup 5.
+- Size of preferences dialog in both Valentina and Tape app is now preserved between sessions
+- [#479] Preferences dialog is now extendable and when it is opened again, it will be resized to its previous size.
+- [#508] Settings saved to INI files in different folders.
+- [#193] Undeletable zombie arc objects.
+- New feature. Groups.
+- Tool "Curve intersect axis" store data about subpaths. 
+- [#444] Length along Path seems not valid.
+- Added new curve path segment variables. 
+- Toggle ScrollHandDrag mode by clicking a middle mouse button.
+- Added horizontal scrolling by pressiong Shift + mouse wheel.
+- [#366] Update 'Point from Distance and Angle' tool to read distance and angle between points.
+- [#395] Create Curve tool which uses point as control handle.
+- pdftops updated to version 3.04.
+- [#306] Layout generator optimization. Divide into strips.
+- Fixed case with duplicate names of curves if they connect same points.
+- [#216] Better powerful way creation curved path.
+- Improved exporting to dxf. QPainterPath export as Polyline.
+- Show additional message dialog if measurements was changed. Related to issue [#440].
+- [#132] Intersect Curves.
+- Added new languages Chinese (China), Portuguese (Brazil) and Greek (Greece).
+- New icon for VAL file. Updated Tape logo. Updated ico for standard measurements.
+- [#325] Check pattern for inverse compatibility.
+- [#385] Add 'Open Recent' option in Tape.exe, 'File' dropdown menu.
+- [#471] Add a 'Show/Hide' button for measurement diagram in Tape.
+- [#478] Rename 'Print preview tiled' to 'Preview Tiled PDF'.
+- [#472] Add 'Full Name' column to Formula dialog.
+- [#487] True dart point always goes to origin when the label is moved.
+- [#128] New Tool: Slash and Spread.
+- [#409] New feature: Export measurement file to Excel .csv.
+- [#180] New feature: Search field in tape app and dialog Increments.
+- [#514] Read only setting not working properly.
+- [#480] New tool: Midpoint between two points.
+- [#496] Selector for selecting which pieces to print.
+- [#520] Improve Union tool. An option to select about original pieces.
+- [#262] Automatic Update notification.
+- [#424] Improve Formula Wizard dialog.
+- Added "All/None" menu in detail list area for easier handling of many parts.
+- [#560] Flipped pattern pieces in Layout.
+- [#138] New tool: 'Mirror Point' or 'Symmetric Point'.
+- [#573] New tool: 'Move Point'.
+- [#577] 10 new colors added for the lines
+- [#570] Tiled PDF : Margin values correctly taken into account
+- [#580] Extend the list of heights.
+- [#582] Issue with standard path to shared data on Linux.
+- [#595] GapWidth affecting to the margins.
+- [#589] Valentina lock up if not enough space for label.
+- [#606] Mac OS X. Can’t type in measurements due to digit count limitation.
+- [#612] Valentina crashes when network is disabled on Linux.
+- [#406] New feature: Seam allowance tool -> Preview.
+- [#88] New feature: Variable width seam allowances.
+- [#280] New tool: 'Hem' in Detail mode.
+- [#509] Improve feature: Support internal Paths in Detail tool.
+- [#619] Non writable directory prevents opening.
+- [#620] Detail path not correct. Previous curve also should cut segment.
+- [#157] New feature: Passmarks tool.
+- [#679] Second control point at beginning of curved path - bug.
+
+# Version 0.4.5 October 15, 2016
+- [#435] Valentina doesn't change the cursor.
+- [#473] Tape 'Preferences' cause loss of focus.
+- [#485] Error when drawing a curved path.
+- [#491] Valentina doesn't update fractional separator.
+- [#492] Valentina crashes when add an increment.
+- [#493] Error in seam allowance drawing.
+- [#468] Error - Tape 'Save As' should set 'Read Only' to false.
+- [#501] Rename Window->Close Window to Window->Close pattern.
+- [#515] Seam allowance wrong way.
+- [#494] Printing is not working.
+- [#516] Valentina crashes when use "Point intersect line and axis" instrument.
+- [#483] File lost.
+- Fixed Bisector tool bug. The tool created internal variable for wrong segment.  
+- [#526] Dialog Detail is not on top after selection second object on Mac.
+- [#532] Unexpected error occurs when zoom out image.
+- [#537] Valentina crashes when use undo command.
+- [#544] Error: Color Lines are black until touched.
+- [#543] Detail loses details.
+- [#548] Bug Detail tool. Case when seam allowance is wrong.
+- Called the main app in console mode doesn't show opening file error in some cases.
+- [#553] Tape.exe crash. Issue with the Search field.
+- [#569] Tape app. Options that open new file open new instance even if a user doesn't want this.
+- [#539] Infinite alert loop "Gradation doesn't support inches" when loading standard table.
+- [#572] Issue with thousand separator during a formula translations to user.
+
+# Version 0.4.4 April 12, 2016
+- Updated measurement templates with all measurements. Added new template Aldrich/Women measurements.
+- Updated description measurements N06 and N07. Add new measurements A23 and J10.
+- Fixed GUI issue. After full parse some widgets was incorrectly reseted.
+- [#464] Crash. Issue with modeling node objects.
+- [#463] Wrong export to DXF format.
+- Fixed issue with deleting detail nodes.
+- [#458] Issue with segment of curve.
+- Fixed disappearing curve if start and finish points of a segment are equal.
+- Fixed bug case where an open equidistant point is too far from a main path.
+- [#462] Error while creating Detail/Seam Allowance using points made with True Dart tool.
+
+# Version 0.4.3 March 6, 2016
+- [#456] Crash: broken formula + clicking on the f(x) symbol.
+- [#454] Crash: using CRTL+Z while using line tool
+- Fixed broken saving pattern description.
+- Fixed UI bug. Release a dialog size for deploying a formula field.
+- Fixed broken formula when for system locale thousand separator is a space.
+- Using QGraphicsScene instead of VMainGraphicsScene caused a crash.
+- Fixed bug disabling tool True darts.
+- Fixed wrong calculation tool True darts.
+- [#405] Fixed crash after deleting first pattern piece in the list.
+- [#421] Fixed warning: unable to set geometry.
+
+# Version 0.4.2 February 17, 2016
+- Measurement Diagram is not shown on Mac OS X.
+- In dialog 'tool Spline Path' fixed broken selecting new point into the list of points.
+- Regesign dialogs tool 'Spline' and 'Spline Path' for avoiding text squeeze.
+- Fixed getting correct reversed segment for single in the list curve.
+- Fixed triggering validation a detail. Two new cases: has been changed Reverse option and the list 
+has been scrolled. Fixed validation when the list conatains only curve.
+- Fixed broken path to measurements after using Save As option.
+- Tool line. Block selecting the same point twice.
+- [#443] Not valid dxf file. libdxf updated to version 3.12.2.0. Fixed drawing subpaths.
+- Fixed combobox width in Dialog "Tool True Dart point".
+- [#441] Broken reference incrementation for tool "True Dart point".
+- [#439] Widen Formula Dialog.
+- Fixed broken tool dialogs "Intersection arcs" and "Point from arc and tangent".
+- [#442] 'Broken Formula' error when using Intersect Circles tool.
+
+# Version 0.4.1 January 29, 2016
+- [#438] Broken switching pattern pieces.
+- Fixed wrong title for dialog "New pattern".
+
+# Version 0.4.0 January 27, 2016
+- [#209] New tool for Point from arc and tangent (Draw)
+- [#232] Intersection of Arcs (Draw)
+- [#246] Arc with Given Length (Draw)
+- [#259] Draw free curve path point at distance (Draw)
+- [#301] True darts (Draw)
+- [#73] Seam Allowance - Width
+- [#329] Add ScrollUp/ScrollDown Button in Detail view
+- [#179] Export to DXF
+- [#202] Posterazor feature
+- [#277] Add 'Letter' and 'Legal' to paper size selection
+- [#334] Command Line Support
+- [#290] Add paper type 'Roll - 36" & 'Roll - 44" to 'Create Layout' paper size
+- [#172] Search field for dialog measurements
+- [#181] Better measurements standard
+- [#314] New measurement structure
+- [#275] Add 'Show Curve Details' icon on top menu bar to show/hide control points and curve direction
+- [#282] Add dialog for File/New, update Create Pattern Piece dialog
+- [#284] Remove History icon from work menu, add to top menu
+- [#285] Remove Table of Variables icon from work menu
+- [#286] Add 'Mode' menu picklist to top menu, create enable/disable for design workflow
+
+# Version 0.3.3 Released May 20, 2015
+- [#297] Scaling Error - Print.
+- [#304] Layout appears different than my pattern.
+
+# Version 0.3.2 Released May 15, 2015
+- [#298] Segmented Curve isn't selected in Seam Allowance tool.
+- [#299] Error when opening .val file.
+- [#302] Error when creating layout.
+
+# Version 0.3.1 Released April 24, 2015
+- [#263] Regression. Union tool doesn't work.
+- For tool Curve intersect axis fixed wrong calculation point in case with too small scene rect size.
+- Fixed crash if a seam allowance doesn't contain 0 points.
+- [#267] Error in the creation of obj files.
+- QMuParser. Bugfix for Bulkmode: Expressions with like "a=b, b*10" did not compute properly.
+- QMuParser. Fix for ParserTokenReader::ExtractOperatorToken incorrectly uses ValidInfixOprtChars().
+- Example of file name in dialog Save Layout appears only after user change format.
+- Fixed regression with removing loops in seam allowance.
+- Removed transparent field for a layout png file.
+
+# Version 0.3.0 Released March 23, 2015
+- Fixed creation equidistant if points less than 4.
+- [#203], [#89], [#90] New Layout Editor.
+- To File/Preferences/Paths added path to export a layout.
+- [#223] Fixed removing stale lock file on Windows.
+- [#222], [#204], [#207], [#205], [#212], [#218], [#210], [#219], [#220], [#248] Minor changes in GUI.
+- [#230] Fixed hangs if curve path has not unique points.
+- [#196] Fixed crash Detail dialog.
+- [#208] Vertical bar for tool "Point from X and Y".
+- Fixed package (.dmg) for Mac OSX.
+- [#171] Show images for pen styles instead of just names.
+- [#74] Fold Line in pattern piece. Pattern format updated to version 0.1.3.
+- [#242] Tool Dialogs: Label at bottom doesn't update for empty lists.
+- [#217] Bug with mouse cursor.
+- Dynamic update tool property browser after applying options changes.
+- [#215] Drag a curve to edit it.
+- [#184] Delete button "Equal" in dialogs.
+- [#183] Message "Changes saved" in dialog Increments.
+- [#234] Fixed problem with formula editing in vtooloptionspropertybrowser and "," decimal separator .
+- Continue improving log system.
+- Close property browser when reset window.
+- [#241] Repeat last used tool.
+- [#253] Show detail information about standard measurements file in dialog Increments.
+- [#249] Set default base height and base size according base values in standard measurements file.
+- New localization language - Spanish.
+- Fixed bug with About Valentina dialog on Windows.
+- [#235] Delete point without confirmation / configurable.
+- Version for Mac OS support export to .ps, .eps.
+- New localization language - Finnish.
+
+# Version 0.2.9 Released January 1, 2015
+- Export a layout to Wavefront .obj format.
+- New validation rules for point labels
+- Export layout in two new formats .ps and .eps.
+- Fixed support .svg format.
+- Support individual measurements.
+- Support mm, cm and inch units in patterns.
+- New math parser. 
+- Support language independent measurements.
+- Apply button in tool dialog.
+- Multi lines formula fields.
+- Recent file list.
+- Support local separator for numbers in formulas.
+- Support Clang.
+- Support Undo/Redo.
+- Optimization parsing pattern file.
+- New logo.
+- Support zoom to original scaling and Zoom Fit Best.
+- Use Zoom Fit Best for pattern piece after selection.
+- Open patterns from list of command line arguments. File association with pattern file format (.val).
+- Additional chackings in tool dialog.
+- Visualization for draw tools.
+- Allow user fix broken formula.
+- All point labels must be unique.
+- Support gradation options (only for standard measurements).
+- Fix special line that join point and label.
+- Show path direction when selected.
+- Show tools buttons in two columns instead of three.
+- Show cursor if item can be moved.
+- Second way edit tool property.
+- Zoom under mouse pointer.
+- Auto creation label.
+- Show in tooltip parser error message.
+- Show curve foot if only curve is selected.
+- Option hide unused measurements in list.
+- New tool line intersect axis.
+- New tool arc(curve) intersect axis.
+- Save and restore last window position and size.
+- User manual.
+- Propose reopen files after crash.
+- Use form layout in tool dialog.
+- Support delete action if you select tool from label.
+- Button "Stop using tool".
+- Value for angle also can be formula.
+- Fixed disabling GUI after error.
+- Don't set scroll bars to minimum after creation layout.
+- Menu Help->Report Bug...
+- Option "Standard table" in dialog changed to better "Measurements".
+- Fixed tool cut curved path.
+- Menu Window->Close window.
+- Support creation and sending crash reports. Only for Windows and Mingw compiler.
+
+# Version 0.2.2 Released February 11, 2014
+- Macros Q_DECL_NOEXCEPT_EXPR don't work in gcc 4.6.
+- Change in build dependency for deb package. Add new architecture for deb file.
+- Added spec file for rpm package.
+- Fix valentina.desktop.
+
+# Version 0.2.1 Released December 8, 2013
+- Problem with compilation in console on Ubuntu.
+- Problem with compilation on windows with msvc.
+
+# Version 0.2.0 Released October 29, 2013
+- First public release.
+

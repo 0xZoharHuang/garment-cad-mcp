@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2025 Roman Telezhynskyi dismine@gmail.com -->
+<component type="desktop">
+ <id>ua.com.smart-pattern.valentina.desktop</id>
+ <launchable type="desktop-id">ua.com.smart-pattern.valentina.desktop</launchable>
+ <name>Valentina</name>
+ <summary>Provides a cross-platform patternmaking program which allows designers to create and model patterns of clothing</summary>
+ <metadata_license>CC0-1.0</metadata_license>
+ <project_license>GPL-3.0-or-later</project_license>
+ <description>
+  <p>
+   Valentina is a cross-platform patternmaking program which allows designers 
+   to create and model patterns of clothing. This software allows pattern 
+   creation, using either standard sizing tables or an individual’s set of 
+   measurements. It blends new technologies with traditional methods to create 
+   a unique pattern making tool.
+  </p>
+ </description>
+ <categories>
+  <category>Graphics</category>
+ </categories> 
+ <url type="homepage">https://smart-pattern.com.ua/valentina/download/</url>
+ <url type="bugtracker">https://gitlab.com/smart-pattern/valentina/-/issues</url>
+ <url type="translate">https://explore.transifex.com/valentina/valentina-project/</url> 
+ <url type="contact">https://smart-pattern.com.ua/contact/</url> 
+ <url type="vcs-browser">https://gitlab.com/smart-pattern/valentina</url> 
+ <url type="contribute">https://smart-pattern.com.ua/valentina/contribute/</url> 
+ <developer_name>Roman Telezhynskyi</developer_name>
+ <update_contact>contact@smart-pattern.com.ua</update_contact>
+ <content_rating type="oars-1.1" />
+ <releases>
+  <release version="1.1.0" type="development">
+    <description>
+      <p>
+        This is a edge release in the 1.1 series.
+      </p>
+      <ul>
+        <li>Valentina app / Puzzle app. New feature. True zero seam allowance width.</li>
+        <li>Valentina app. New tool Parallel curve.</li>
+        <li>Valentina app. New tool Graduated curve.</li>
+        <li>Valentina app. New tool Elliptical arc with length.</li>
+        <li>Valentina app. Tool Segment Arc now supports an elliptical arc.</li>
+        <li>Valentina app. New action Auto-arrange labels (Ctrl+Shift+A) to reduce overlapping point labels in Draw and Details mode.</li>
+        <li>Valentina app. New action Reload labels.</li>
+        <li>Valentina app. New action Install single line font.</li>
+        <li>Valentina app. Added import/export increments from Table of variables.</li>
+        <li>Valentina app. Added Global object color and default pen style properties.</li>
+        <li>Valentina app. New option "curveApproximationScale" to override the global curve approximation scale.</li>
+        <li>Valentina app. Improved control over notch visibility.</li>
+        <li>Valentina app / Puzzle app. New option to disable mirroring a notch.</li>
+        <li>Valentina app. Editing group operations.</li>
+        <li>Valentina app. Added filterable lists.</li>
+        <li>Valentina app. Segment visualization.</li>
+        <li>Valentina app. Add canvas visualization for the Union Details tool.</li>
+        <li>Valentina app. Darken the inactive pattern piece.</li>
+        <li>Valentina app. Dependency graph.</li>
+        <li>Valentina app. Faster size switching in Detail mode.</li>
+        <li>Valentina app / Tape app. UI. Simplified measurement loading workflow.</li>
+        <li>Tape app. The measurement database dialog now refreshes the diagram immediately when an image's size scale changes.</li>
+        <li>Puzzle app. Show number of sheet in brackets to separate them from sheet name.</li>
+        <li>Puzzle app. New option Print text as paths.</li>
+        <li>Misc. End of support for Windows versions below 10.</li>
+        <li>Valentina app / Puzzle app. Fix calculation of seam allowance for symmetrical piece.</li>
+        <li>Valentina app. Tool Normal. Fixed formula values were not saved.</li>
+        <li>Valentina app. Fixed draw scene labels showing wrong color at startup and on theme switch.</li>
+        <li>Valentina app. Fixed crash when syncing a multisize measurement file fails.</li>
+        <li>Valentina app. Fixed crash on Windows when closing the application while a draw tool dialog was active.</li>
+        <li>Valentina app. Fixed crash when closing a Pin dialog after undo/redo of piece operations.</li>
+        <li>Valentina app. Fixed accessibility warning on macOS when a QTableWidget had no selection.</li>
+      </ul>
+    </description>
+    <issues>
+      <issue url="https://gitlab.com/smart-pattern/valentina/-/issues/223">valentina#223</issue>
+    </issues>
+  </release>
+  <release version="1.0.0" type="stable">
+    <description>
+      <p>
+        This is a stable release in the 1.0 series.
+      </p>
+      <ul>
+        <li>Fix Puzzle app crash when application closing.</li>
+        <li>Dialog Table of variables. Added button Close.</li>
+        <li>Fix incorrect seam allowance.</li>
+        <li>Duplicate controls for main path nodes.</li>
+        <li>Fix compatibility with macOS 12+.</li>
+        <li>Fix regression. Formula wizard dialog doesn't show item alias in a list.</li>
+        <li>Fix parsing SVG fonts.</li>
+        <li>Add "Twin Sans" single stroke font.</li>
+        <li>Fixed generation of mirror side of piece based on fold line.</li>
+        <li>Puzzle app. Piece rotation with step 15 degrees by holding Ctrl key.</li>
+        <li>Fix export of turn points.</li>
+        <li>Remove legacy build system.</li>
+        <li>Tape and Puzzle crash when check for update.</li>
+        <li>Improvements for Windows installer. Automatically install latest Microsoft Visual C++ Redistributable Version if build with MSVC.</li>
+        <li>Fix position of fold line.</li>
+        <li>Fix an incorrect symmetrical seam line.</li>
+        <li>Fix incorrect position of Tape app menu items on Mac OS.</li>
+        <li>Change minimal dimension value and minimal step for multisize measurements table.</li>
+        <li>Fix a notch on mirror line.</li>
+        <li>Fix seam allowance. Prong shape case.</li>
+        <li>Added PLT export format as a container for HPGL.</li>
+        <li>Fix saving a notch manual angle value.</li>
+        <li>Fix creation of invalid variable names.</li>
+        <li>Divide the list of export file formats into two.</li>
+        <li>Valentina app. Add _1 suffix only when number of sheets bigger than 1.</li>
+        <li>Fix orientation of fabric grainline.</li>
+        <li>New option Symmetrical copy.</li>
+        <li>Renaming a piece name from piece list.</li>
+        <li>Tool color picker.</li>
+        <li>Valentina app. Added support for drag and drop of pattern files.</li>
+        <li>Tape app. Save and restore the column width of a table between sessions.</li>
+        <li>Fix boundary together with notches. Case with notch on mirror line.</li>
+        <li>Fix applying changes to increments when close the dialog.</li>
+        <li>Duplicate a curve inside Seam allowance tool dialog.</li>
+        <li>Fix broken seam allowance.</li>
+        <li>Added Croatian, Hungarian, Portuguese and Japanese languages.</li>
+        <li>Fix incorrect label language in pattern properties.</li>
+        <li>Remember last selected manual layout separately from last export path.</li>
+        <li>Increase precision for multisize table's dimensions to hold converted values from inches.</li>
+        <li>Fix error in VPiece::CuttingPathPoints. It must return full piece path if the piece mirrored.</li>
+        <li>Optimize image scaling in database of known measurements.</li>
+        <li>Allow user to select another measurements file if current doesn't provide necessary list of measurements.</li>
+        <li>Fix calculation of label position for layout piece.</li>
+        <li>Tape app. Enable adding multiple images at once.</li>
+        <li>Tape app. Adding measurement image in known measurement database by drag and drop.</li>
+        <li>Fixed validation of Label language. Missed support for Czech alphabet.</li>
+        <li>Incorrect calculation of the intersection point of segments.</li>
+        <li>Puzzle app. Export PDF tiles. Make the ruler optional.</li>
+        <li>DXF AAMA/ASTM. Compatibility export with Clo3D.</li>
+        <li>Puzzle app. Optimization tile PDFs for pen plotter.</li>
+        <li>Measurement value alias.</li>
+        <li>Sync fold line position to grainline orientation.</li>
+        <li>Valentina app. Fix incorrect color of PDF tile's foot notes.</li>
+        <li>Improve handling color schema switch on Linux.</li>
+        <li>Fix a circular dependency with the CurrentSeamAllowance variable.</li>
+      </ul>
+    </description>
+    <issues>
+      <issue url="https://gitlab.com/smart-pattern/valentina/-/issues/223">valentina#223</issue>
+    </issues>
+  </release>
+  <release version="0.7.53" type="development" date="2024-06-25">
+      <description>
+        <p>
+          This is a development release in the 0.7 series.
+        </p>
+        <ul>
+          <li>Fix layout sheet export with empty name.</li>
+          <li>Fix visualization for tool Point from circle and tangent.</li>
+          <li>Fix loading background image.</li>
+          <li>Puzzle: message "Invalid version: Max supported version 0.1.2" when opening 0.1.1 file in Val 0.7.52.</li>
+          <li>Fix export measurement separator to CSV.</li>
+          <li>Fix option Hide labels.</li>
+          <li>Improve segmenting a curve for calculating a piece path.</li>
+          <li>Fix incorrect seam allowance.</li>
+          <li>Export area of piece in Final measurements.</li>
+          <li>New option Show accuracy radius.</li> 
+          <li>New option Interactive tools.</li>
+          <li>Improve error messages while import CSV data.</li>
+          <li>Fix regression in dialog Known measurements.</li>
+          <li>New option. Default piece label template for new pieces.</li>
+          <li>Shortcut to quickly enable/disable Interactive tools mode.</li>
+          <li>Improve labels for V notch.</li>
+          <li>Fix QT issue on MacOS version 11.0 "Big Sur".</li>
+          <li>Fix excluding objects in internal path.</li>
+          <li>Fix float-point accuracy issue in multisize measurements dimensions.</li>
+          <li>Fix compatibility with Richpeace DXF-AAMA/ASTM R12.</li>
+          <li>Fix seam allowance. Loose requirements to case with prong.</li>
+          <li>Fix list of dimension popup list. Make sure it will always has enough space for values.</li>
+          <li>New grainline type: Four way.</li>
+          <li>Show/hide grainline when export.</li>
+          <li>Improve calculating notches.</li>
+          <li>Simplify number of versions for DXF AAMA/ASTM.</li>
+          <li>New notch type - Check Notch.</li>
+          <li>Control a notch width and angle with formulas.</li>
+          <li>Independent translation for piece labels.</li>
+          <li>Piece labels line break.</li>
+          <li>Support for single-line fonts.</li>
+          <li>Export to HP-GL format.</li>
+          <li>Fix crash after using tool Union of details.</li>
+          <li>Tool box redesign.</li>
+          <li>Increased requirement for minimal Qt version.</li>
+          <li>Support for Dark mode.</li>
+          <li>Fix issue with passing incorrect number of dimension to Tape.</li>
+          <li>New option: Pointer mode.</li>
+          <li>Fix GUI freezing while nesting.</li>
+          <li>New option: Use Tool Groups.</li>
+          <li>Redesign notch context menu to allow quick selection of the notch type.</li>
+          <li>Redesign standard path system.</li>
+          <li>New option: Translate formula.</li>
+          <li>Fix filling piece label data.</li>
+          <li>New piece option Follow grainline.</li>
+          <li>Validate sheet and layout names before proposing file name.</li>
+          <li>Puzzle app. Fix piece position move when update layout data.</li>
+          <li>Puzzle app. Fix losing selection by piece.</li>
+          <li>Puzzle app. Fix updating layout when file already opened.</li>
+          <li>Tape app. Custom measurement name.</li>
+          <li>Tape app. Show variables in order they were added.</li>
+          <li>Shortcuts manager.</li>
+          <li>Support for custom known measurements.</li>
+          <li>Allow negative values.</li>
+          <li>Tape app. New feature: Always keep on top.</li>
+          <li>Label %mFileName% file name punctuation.</li>
+          <li>Adding removing nodes of curved path.</li>
+          <li>New tools: Arc start point, Arc end point.</li>
+          <li>Optimize U-notch shape.</li>
+          <li>New feature. Boundary together with notches.</li>
+          <li>Puzzle app. Horizontal piece flipping.</li>
+          <li>Mirror line.</li>
+          <li>Fold line.</li>
+          <li>Minimal Qt version increased to Qt 5.15. Minimal C++ standard to C++17.</li>
+          <li>Updated Windows installer.</li>
+          <li>Automatic crash reports.</li>
+          <li>Improve compatibility with Richpeace CAD.</li>
+          <li>New warning "Piece gape position".</li>
+          <li>New feature. Hide/Show enabled grainline.</li>
+        </ul>
+      </description>
+      <issues>
+      <issue url="https://gitlab.com/smart-pattern/valentina/-/issues/187">valentina#187</issue>
+      <issue url="https://gitlab.com/smart-pattern/valentina/-/issues/189">valentina#189</issue>
+      <issue url="https://gitlab.com/smart-pattern/valentina/-/issues/163">valentina#163</issue>
+      <issue url="https://gitlab.com/smart-pattern/valentina/-/issues/188">valentina#188</issue>
+    </issues>
+    </release>
+  <release version="0.7.52" type="development" date="2020-09-12">
+      <url type="details">https://smart-pattern.com.ua/blog/2022/09/17/release-valentina-0752/</url>
+      <description>
+        <p>
+          This is a development release in the 0.7 series.
+        </p>
+        <ul>
+          <li>Fix crash when default locale is ru.</li>
+          <li>Puzzle app. Fix incorrect update of a layout piece.</li>
+          <li>Fix visualization for tool Point of intersection line and axis.</li>
+          <li>Improved curve segment warnings.</li>
+          <li>Tape app. Add action Add separator to menu.</li>
+          <li>Tape app. Fix crash after switching language.</li>
+          <li>Fix Valentina app crash after canceling a tool.</li>
+          <li>Puzzle app. Fix reading a piece name.</li>
+          <li>Fix warning while segmenting flipped arc.</li>
+          <li>Tape app. "Export from existing ..." now supports multisize measurements.</li>
+          <li>Fix main path validation. False positive double curve.</li>
+          <li>Fix Setup multisize measurements dialog. Improved handling Height dimension.</li>
+          <li>Fix updating dimension labels in Valentina app.</li>
+          <li>Fix menu on Mac OS X.</li>
+          <li>Add function's argument template with name in the Formula Wizard.</li>
+          <li>Unit type for increments.</li>
+          <li>Support for options Force Flipping and Forbid Flipping in Puzzle.</li>
+          <li>Remember selected dimension values.</li>
+          <li>Fix segmenting a simple curve.</li>
+          <li>Fix export tiled pdf on Mac OS.</li>
+          <li>Improve visualization for tools.</li>
+          <li>Fix calculating an elliptical arc.</li>
+          <li>Enable Approximation scale option for Elliptical arc.</li>
+          <li>Fix bug in seam allowance.</li>
+          <li>Allow resizing Spline path dialog.</li>
+          <li>Improve highlighting file in file browser for Linux.</li>
+        </ul>
+      </description>
+    </release>
+ </releases>
+</component>

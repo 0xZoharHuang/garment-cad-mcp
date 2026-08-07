@@ -1,0 +1,95 @@
+/************************************************************************
+ **
+ **  @file   qttestmainlambda.cpp
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   31 3, 2015
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2015 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#include <QtTest>
+
+#include <span>
+#include <vector>
+
+#include "tst_buitinregexp.h"
+#include "tst_qmuparsererrormsg.h"
+#include "tst_tslocaletranslation.h"
+#include "tst_tstranslation.h"
+
+#include "../vmisc/def.h"
+#include "../vmisc/testvapplication.h"
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 4, 0)
+#include "../vmisc/compatibility.h"
+#endif
+
+using namespace Qt::Literals::StringLiterals;
+
+auto main(int argc, char **argv) -> int
+{
+    TestVApplication const app(argc, argv); // For QPrinter
+
+    // Collect -locale <value> / -locale <v1,v2,...> arguments and strip them
+    // from the argv forwarded to QTest::qExec so Qt Test does not reject them.
+    const auto args = std::span(argv, static_cast<std::size_t>(argc));
+
+    QStringList localeFilter;
+    std::vector<const char *> filteredArgv;
+    filteredArgv.reserve(args.size());
+    filteredArgv.push_back(args[0]);
+
+    for (std::size_t i = 1; i < args.size(); ++i)
+    {
+        if (QByteArray(args[i]) == "-locale" && i + 1 < args.size())
+        {
+            ++i;
+            localeFilter += QString::fromLocal8Bit(args[i]).split(u',', Qt::SkipEmptyParts);
+        }
+        else
+        {
+            filteredArgv.push_back(args[i]);
+        }
+    }
+
+    auto filteredArgc = static_cast<int>(filteredArgv.size());
+
+    int status = 0;
+    auto ASSERT_TEST = [&status, &filteredArgc, &filteredArgv](QObject *obj) -> void
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+        status |= QTest::qExec(obj, filteredArgc, const_cast<char **>(filteredArgv.data()));
+        delete obj;
+    };
+
+    ASSERT_TEST(new TST_TSTranslation());
+
+    const QStringList locales = localeFilter.isEmpty() ? SupportedLocales() : localeFilter;
+    for (const auto &locale : locales)
+    {
+        ASSERT_TEST(new TST_TSLocaleTranslation(locale));
+        ASSERT_TEST(new TST_BuitInRegExp(locale));
+        ASSERT_TEST(new TST_QmuParserErrorMsg(locale));
+    }
+
+    return status;
+}

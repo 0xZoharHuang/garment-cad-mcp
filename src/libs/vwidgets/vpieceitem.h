@@ -1,0 +1,95 @@
+/************************************************************************
+ **
+ **  @file
+ **  @author Roman Telezhynskyi <dismine(at)gmail.com>
+ **  @date   18 1, 2017
+ **
+ **  @brief
+ **  @copyright
+ **  This source code is part of the Valentina project, a pattern making
+ **  program, whose allow create and modeling patterns of clothing.
+ **  Copyright (C) 2017 Valentina project
+ **  <https://gitlab.com/smart-pattern/valentina> All Rights Reserved.
+ **
+ **  Valentina is free software: you can redistribute it and/or modify
+ **  it under the terms of the GNU General Public License as published by
+ **  the Free Software Foundation, either version 3 of the License, or
+ **  (at your option) any later version.
+ **
+ **  Valentina is distributed in the hope that it will be useful,
+ **  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ **  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ **  GNU General Public License for more details.
+ **
+ **  You should have received a copy of the GNU General Public License
+ **  along with Valentina.  If not, see <http://www.gnu.org/licenses/>.
+ **
+ *************************************************************************/
+
+#ifndef VPIECEITEM_H
+#define VPIECEITEM_H
+
+#include <QtCore/qglobal.h>
+#include <QGraphicsObject>
+
+#include "../vmisc/def.h"
+
+class VPieceItem : public QGraphicsObject
+{
+    Q_OBJECT // NOLINT
+public:
+    enum MoveType
+    {
+        NotMovable = 0x0,
+        IsRotatable = 0x1, // 0001
+        IsResizable = 0x2, // 0010
+        IsMovable = 0x4,   // 0100
+        AllModifications = IsRotatable | IsResizable | IsMovable,
+        Error = 0x8        // 1000
+    };
+    Q_DECLARE_FLAGS(MoveTypes, MoveType)
+
+    explicit VPieceItem(QGraphicsItem* pParent = nullptr);
+    virtual ~VPieceItem();
+
+    virtual auto boundingRect() const -> QRectF override;
+
+    virtual void Update() =0;
+
+    void Reset();
+    auto IsIdle() const -> bool;
+
+    auto GetMoveType() const -> VPieceItem::MoveTypes;
+    void                  SetMoveType(const VPieceItem::MoveTypes &moveType);
+
+    virtual auto type() const -> int override { return Type; }
+    enum { Type = UserType + static_cast<int>(Vis::PieceItem)};
+
+signals:
+    void SignalMoved(const QPointF &ptPos);
+
+protected:
+    enum Mode
+    {
+        mNormal,
+        mMove,
+        mResize,
+        mRotate
+    };
+    QRectF                m_rectBoundingBox;
+    Mode                  m_eMode;
+    bool                  m_bReleased;
+    QPointF               m_ptRotCenter;
+    VPieceItem::MoveTypes m_moveType;
+
+    qreal m_inactiveZ;
+
+    virtual auto GetAngle(const QPointF &pt) const -> double;
+
+private:
+    Q_DISABLE_COPY_MOVE(VPieceItem) // NOLINT
+};
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(VPieceItem::MoveTypes)
+
+#endif // VPIECEITEM_H
