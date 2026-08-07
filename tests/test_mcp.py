@@ -7,6 +7,7 @@ import pytest
 from mcp.types import ImageContent, TextContent
 
 from garmentcad.catalog import GARMENTCODE_TOOLS, VALENTINA_TOOLS
+from garmentcad.generated.atomic_commands import ARGUMENT_SCHEMAS, AtomicCommands
 from garmentcad.mcp.garmentcode import mcp as garmentcode_mcp
 from garmentcad.mcp.valentina import mcp as valentina_mcp
 from garmentcad.models import Operation, OperationDomain
@@ -50,11 +51,27 @@ async def test_valentina_mcp_starts_with_only_five_core_tools_and_loads_on_searc
         "resource_read",
         "changeset_commit",
     }
-    await valentina_mcp._tool_manager.call_tool(
+    search = await valentina_mcp._tool_manager.call_tool(
         "catalog_search", {"query": "pattern line", "load": True}
     )
     loaded = {tool.name for tool in valentina_mcp._tool_manager.list_tools()}
     assert "pattern_line" in loaded
+    assert search["matches"][0]["arguments_schema"]["properties"]
+
+    along_line = next(spec for spec in VALENTINA_TOOLS if spec.action == "pattern.along_line")
+    if valentina_mcp._tool_manager.get_tool(along_line.name) is None:
+        await valentina_mcp._tool_manager.call_tool(
+            "catalog_search", {"query": "along line", "load": True}
+        )
+    schema = valentina_mcp._tool_manager.get_tool(along_line.name).parameters
+    arguments = schema["properties"]["arguments"]["anyOf"][0]
+    assert {"alias", "first_point", "second_point", "length_mm"} <= set(arguments["properties"])
+    assert {"alias", "first_point", "second_point"} <= set(arguments["required"])
+
+
+def test_every_valentina_action_has_generated_schema_and_typed_recipe_method():
+    assert set(ARGUMENT_SCHEMAS) == {spec.action for spec in VALENTINA_TOOLS}
+    assert all(hasattr(AtomicCommands, spec.name) for spec in VALENTINA_TOOLS)
 
 
 @pytest.mark.asyncio
@@ -147,6 +164,13 @@ def test_generated_schemas_are_current():
         text=True,
     )
     assert process.returncode == 0, process.stderr
+    atomic_process = subprocess.run(
+        ["uv", "run", "scripts/generate-atomic-contracts.py", "--check"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert atomic_process.returncode == 0, atomic_process.stderr
     schema = json.loads(open("schemas/changeset.schema.json", encoding="utf-8").read())
     assert "base_content_hash" in schema["properties"]
 

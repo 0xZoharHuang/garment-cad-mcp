@@ -7,6 +7,7 @@ from mcp.server.fastmcp import FastMCP, Image
 
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.catalog import ToolSpec
+from garmentcad.generated.atomic_commands import ARGUMENT_SCHEMAS
 from garmentcad.models import OperationDomain
 from garmentcad.project import Project
 from garmentcad.sdk import execute_atomic
@@ -50,7 +51,15 @@ def add_core_tools(
             lazy_loader(names - loaded)
             loaded.update(names)
         return {
-            "matches": [spec.__dict__ for spec in matches],
+            "matches": [
+                spec.__dict__
+                | (
+                    {"arguments_schema": ARGUMENT_SCHEMAS[spec.action]}
+                    if spec.action in ARGUMENT_SCHEMAS
+                    else {}
+                )
+                for spec in matches
+            ],
             "loaded": sorted(names) if load else [],
             "message": "Refresh the MCP tool list after loading before calling an atomic tool.",
         }
@@ -90,8 +99,10 @@ def add_core_tools(
             if filename.endswith(".json"):
                 return {"media_type": "application/json", "data": read_json(path)}
             media_type = "image/png" if filename.endswith(".png") else "image/svg+xml"
-            image = Image(path=path) if media_type == "image/png" else Image(
-                data=path.read_bytes(), format="svg+xml"
+            image = (
+                Image(path=path)
+                if media_type == "image/png"
+                else Image(data=path.read_bytes(), format="svg+xml")
             )
             return [
                 {
@@ -145,3 +156,22 @@ def register_atomic(server: FastMCP, spec: ToolSpec, domain: OperationDomain) ->
         spec.description + " Defaults to preview-only; commit requires explicit true."
     )
     server.tool(name=spec.name)(atomic_tool)
+    tool = server._tool_manager.get_tool(spec.name)
+    argument_schema = ARGUMENT_SCHEMAS.get(spec.action)
+    if tool is not None and argument_schema is not None:
+        tool.parameters["properties"]["arguments"] = {
+            "anyOf": [argument_schema, {"type": "null"}],
+            "default": None,
+            "title": "Arguments",
+        }
+        tool.parameters["$defs"] = {
+            "objectReference": {
+                "type": "object",
+                "properties": {
+                    "uuid": {"type": "string"},
+                    "alias": {"type": "string"},
+                },
+                "anyOf": [{"required": ["uuid"]}, {"required": ["alias"]}],
+                "additionalProperties": False,
+            }
+        }

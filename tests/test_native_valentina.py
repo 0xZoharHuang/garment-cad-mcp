@@ -10,6 +10,7 @@ import pytest
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.models import Operation, OperationDomain
 from garmentcad.project import Project
+from garmentcad.sdk import GarmentSDK
 from garmentcad.storage import read_json
 
 NATIVE_COMMAND = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
@@ -71,6 +72,28 @@ def test_native_preview_commit_and_uuid_sidecar(tmp_path):
     records = read_json(project.root / ".garmentcad/aliases.json")["objects"]
     assert {record["alias"] for record in records.values()} == {"construction.guide", "B"}
     assert all(record["uuid"] == object_id for object_id, record in records.items())
+
+
+def test_schema_generated_typed_recipe_calls_native_host(tmp_path):
+    project = Project.create(tmp_path / "typed-recipe")
+    fixture = (
+        Path(__file__).parents[1]
+        / "upstream/valentina/src/test/CollectionTest/tst_valentina/issue_372.val"
+    )
+    shutil.copy2(fixture, project.root / "pattern/main.val")
+
+    preview = GarmentSDK(project.root).commands.pattern_along_line(
+        alias="typed.B",
+        first_point={"alias": "A"},
+        second_point={"alias": "A1"},
+        length_mm=20,
+    )
+    assert preview.ok
+    assert [item.alias for item in preview.summary.created] == ["typed.B"]
+    committed = project.commit(preview.token)
+    assert committed.revision == 1
+    aliases = read_json(project.root / ".garmentcad/aliases.json")["objects"]
+    assert "typed.B" in {record["alias"] for record in aliases.values()}
 
 
 def test_unsupported_native_action_fails_closed(tmp_path):

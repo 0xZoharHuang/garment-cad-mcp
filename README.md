@@ -18,6 +18,18 @@ preview = cad.panel_create(
 # garmentcad commit <preview.preview_token> --path ./projects/sample
 ```
 
+Valentina, Tape, and Puzzle recipes use the schema-generated typed atomic surface. The same
+contracts are embedded in lazily loaded MCP tool schemas:
+
+```python
+preview = cad.commands.pattern_along_line(
+    alias="front.armhole.guide",
+    first_point={"alias": "front.shoulder"},
+    second_point={"alias": "front.underarm"},
+    length_mm=35,
+)
+```
+
 Quick start:
 
 ```bash
@@ -35,10 +47,9 @@ commits and licenses.
 - GarmentCode panel/interface/stitch transactions, SDK, and MCP: implemented and tested.
 - Remote worker upload, serial execution, cache, polling, artifacts, and screenshot enforcement:
   implemented; deployment supplies the pinned Warp runner and GPU assets.
-- Valentina/Tape/Puzzle MCP catalog and process adapter: implemented.
-- Native Valentina C++ command host: preview/commit, UUID sidecar, object read, base point, line,
-  end-line, along-line/midpoint, line intersection, arc, and spline handlers are implemented through
-  native `InitData/Create`; remaining catalog actions fail closed until their handlers land.
+- Valentina/Tape/Puzzle native command services, MCP catalog, and schema-generated typed recipes:
+  implemented with complete reviewed handler coverage.
+- Native previews include compact image resources; full coordinates, change-sets, assembly data,
+  exports, and simulation logs remain URI-addressable on demand.
 
-That boundary remains explicit: this project never edits `.val` XML behind Valentina's back, and it
-does not claim native parity for catalog actions whose C++ handlers are still pending.
+The boundary remains explicit: this project never edits `.val` XML behind Valentina's back.

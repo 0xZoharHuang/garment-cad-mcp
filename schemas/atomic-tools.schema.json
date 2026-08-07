@@ -1,0 +1,2260 @@
+{
+  "$defs": {
+    "export_layout": {
+      "additionalProperties": true,
+      "properties": {
+        "copy_number": {
+          "type": "integer"
+        },
+        "format": {
+          "type": "string"
+        },
+        "output_path": {
+          "type": "string"
+        },
+        "piece": {
+          "type": "string"
+        },
+        "piece_id": {
+          "type": "string"
+        },
+        "sheet": {
+          "type": "string"
+        },
+        "sheet_index": {
+          "type": "integer"
+        },
+        "sheet_uuid": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "export_pattern": {
+      "additionalProperties": true,
+      "properties": {
+        "binary_dxf": {
+          "type": "boolean"
+        },
+        "details_only": {
+          "type": "boolean"
+        },
+        "format": {
+          "type": "string"
+        },
+        "output_path": {
+          "type": "string"
+        },
+        "show_grainline": {
+          "type": "boolean"
+        },
+        "text_as_paths": {
+          "type": "boolean"
+        },
+        "timeout_ms": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "layout_flip_piece": {
+      "additionalProperties": true,
+      "properties": {
+        "axis": {
+          "type": "string"
+        },
+        "copy_number": {
+          "type": "integer"
+        },
+        "piece": {
+          "type": "string"
+        },
+        "piece_id": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "layout_generate": {
+      "additionalProperties": true,
+      "properties": {
+        "allow_rotation": {
+          "type": "boolean"
+        },
+        "auto_arrange": {
+          "type": "boolean"
+        },
+        "auto_crop_length": {
+          "type": "boolean"
+        },
+        "auto_crop_width": {
+          "type": "boolean"
+        },
+        "follow_grainline": {
+          "type": "boolean"
+        },
+        "piece_gap_mm": {
+          "type": "number"
+        },
+        "prefer_one_sheet": {
+          "type": "boolean"
+        },
+        "raw_layout_path": {
+          "type": "string"
+        },
+        "rotation_count": {
+          "type": "integer"
+        },
+        "sheet_height_mm": {
+          "type": "number"
+        },
+        "sheet_width_mm": {
+          "type": "number"
+        },
+        "timeout_ms": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "raw_layout_path"
+      ],
+      "type": "object"
+    },
+    "layout_move_piece": {
+      "additionalProperties": true,
+      "properties": {
+        "copy_number": {
+          "type": "integer"
+        },
+        "dx_mm": {
+          "type": "number"
+        },
+        "dy_mm": {
+          "type": "number"
+        },
+        "piece": {
+          "type": "string"
+        },
+        "piece_id": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "layout_place": {
+      "additionalProperties": true,
+      "properties": {
+        "copy_number": {
+          "type": "integer"
+        },
+        "piece": {
+          "type": "string"
+        },
+        "piece_id": {
+          "type": "string"
+        },
+        "sheet": {
+          "type": "string"
+        },
+        "sheet_index": {
+          "type": "integer"
+        },
+        "sheet_uuid": {
+          "type": "string"
+        },
+        "x_mm": {
+          "type": "number"
+        },
+        "y_mm": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "layout_print": {
+      "additionalProperties": true,
+      "properties": {
+        "copy_number": {
+          "type": "integer"
+        },
+        "output_path": {
+          "type": "string"
+        },
+        "piece": {
+          "type": "string"
+        },
+        "piece_id": {
+          "type": "string"
+        },
+        "sheet": {
+          "type": "string"
+        },
+        "sheet_index": {
+          "type": "integer"
+        },
+        "sheet_uuid": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "layout_rotate_piece": {
+      "additionalProperties": true,
+      "properties": {
+        "angle_deg": {
+          "type": "number"
+        },
+        "copy_number": {
+          "type": "integer"
+        },
+        "piece": {
+          "type": "string"
+        },
+        "piece_id": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "layout_settings_update": {
+      "additionalProperties": true,
+      "properties": {
+        "boundary_with_notches": {
+          "type": "boolean"
+        },
+        "cut_on_fold": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "follow_grainline": {
+          "type": "boolean"
+        },
+        "horizontal_scale": {
+          "type": "number"
+        },
+        "piece_gap_mm": {
+          "type": "number"
+        },
+        "sticky_edges": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        },
+        "vertical_scale": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "layout_sheet_add": {
+      "additionalProperties": true,
+      "properties": {
+        "height_mm": {
+          "type": "number"
+        },
+        "margin_bottom_mm": {
+          "type": "number"
+        },
+        "margin_left_mm": {
+          "type": "number"
+        },
+        "margin_right_mm": {
+          "type": "number"
+        },
+        "margin_top_mm": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "width_mm": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "layout_sheet_update": {
+      "additionalProperties": true,
+      "properties": {
+        "height_mm": {
+          "type": "number"
+        },
+        "ignore_margins": {
+          "type": "boolean"
+        },
+        "margin_bottom_mm": {
+          "type": "number"
+        },
+        "margin_left_mm": {
+          "type": "number"
+        },
+        "margin_right_mm": {
+          "type": "number"
+        },
+        "margin_top_mm": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sheet": {
+          "type": "string"
+        },
+        "sheet_index": {
+          "type": "integer"
+        },
+        "sheet_uuid": {
+          "type": "string"
+        },
+        "width_mm": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "measurement_dimension_set": {
+      "additionalProperties": true,
+      "properties": {
+        "axis": {
+          "type": "string"
+        },
+        "base_mm": {
+          "type": "number"
+        },
+        "body_measurement": {
+          "type": "boolean"
+        },
+        "max_mm": {
+          "type": "number"
+        },
+        "min_mm": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "step_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "axis"
+      ],
+      "type": "object"
+    },
+    "measurement_export_csv": {
+      "additionalProperties": true,
+      "properties": {
+        "output_path": {
+          "type": "string"
+        },
+        "separator": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "measurement_file_create": {
+      "additionalProperties": true,
+      "properties": {
+        "dimensions": {
+          "items": {},
+          "type": "array"
+        },
+        "full_circumference": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "measurement_file_open": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "source_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_path"
+      ],
+      "type": "object"
+    },
+    "measurement_file_save": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "measurement_final_measurement_set": {
+      "additionalProperties": true,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "formula",
+        "name"
+      ],
+      "type": "object"
+    },
+    "measurement_increment_remove": {
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "measurement_increment_set": {
+      "additionalProperties": true,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "special_units": {
+          "type": "boolean"
+        },
+        "value_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "measurement_remove": {
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "measurement_rename": {
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "new_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "new_name"
+      ],
+      "type": "object"
+    },
+    "measurement_set": {
+      "additionalProperties": true,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "shift_a_mm": {
+          "type": "number"
+        },
+        "shift_b_mm": {
+          "type": "number"
+        },
+        "shift_c_mm": {
+          "type": "number"
+        },
+        "value_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "objectReference": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "uuid"
+          ]
+        },
+        {
+          "required": [
+            "alias"
+          ]
+        }
+      ],
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "pattern_along_line": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "second_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_point",
+        "second_point"
+      ],
+      "type": "object"
+    },
+    "pattern_arc": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "end_angle_deg": {
+          "type": "number"
+        },
+        "formula_end_angle": {
+          "type": "string"
+        },
+        "formula_radius": {
+          "type": "string"
+        },
+        "formula_start_angle": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "radius_mm": {
+          "type": "number"
+        },
+        "start_angle_deg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center"
+      ],
+      "type": "object"
+    },
+    "pattern_arc_end": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "end_angle_deg": {
+          "type": "number"
+        },
+        "formula_end_angle": {
+          "type": "string"
+        },
+        "formula_radius": {
+          "type": "string"
+        },
+        "formula_start_angle": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "radius_mm": {
+          "type": "number"
+        },
+        "start_angle_deg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center"
+      ],
+      "type": "object"
+    },
+    "pattern_arc_intersect_axis": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number"
+        },
+        "base_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_angle": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "base_point",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "pattern_arc_start": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "end_angle_deg": {
+          "type": "number"
+        },
+        "formula_end_angle": {
+          "type": "string"
+        },
+        "formula_radius": {
+          "type": "string"
+        },
+        "formula_start_angle": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "radius_mm": {
+          "type": "number"
+        },
+        "start_angle_deg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center"
+      ],
+      "type": "object"
+    },
+    "pattern_arc_with_length": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "formula_radius": {
+          "type": "string"
+        },
+        "formula_start_angle": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "radius_mm": {
+          "type": "number"
+        },
+        "start_angle_deg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center"
+      ],
+      "type": "object"
+    },
+    "pattern_base_point": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "x_mm": {
+          "type": "number"
+        },
+        "y_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias"
+      ],
+      "type": "object"
+    },
+    "pattern_bisector": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "third_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "vertex": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_point",
+        "third_point",
+        "vertex"
+      ],
+      "type": "object"
+    },
+    "pattern_cubic_bezier": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "point1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "point2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "point3": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "point4": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "point1",
+        "point2",
+        "point3",
+        "point4"
+      ],
+      "type": "object"
+    },
+    "pattern_cubic_bezier_path": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "points": {
+          "items": {},
+          "type": "array"
+        }
+      },
+      "required": [
+        "alias"
+      ],
+      "type": "object"
+    },
+    "pattern_curve_intersect_axis": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number"
+        },
+        "base_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_angle": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "base_point",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "pattern_cut_arc": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "pattern_cut_spline": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "pattern_cut_spline_path": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "pattern_dependency_query": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "pattern_duplicate_detail": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "offset_x_mm": {
+          "type": "number"
+        },
+        "offset_y_mm": {
+          "type": "number"
+        },
+        "piece": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "short_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "piece"
+      ],
+      "type": "object"
+    },
+    "pattern_elliptical_arc": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "end_angle_deg": {
+          "type": "number"
+        },
+        "formula_end_angle": {
+          "type": "string"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "formula_radius1": {
+          "type": "string"
+        },
+        "formula_radius2": {
+          "type": "string"
+        },
+        "formula_rotation_angle": {
+          "type": "string"
+        },
+        "formula_start_angle": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "radius1_mm": {
+          "type": "number"
+        },
+        "radius2_mm": {
+          "type": "number"
+        },
+        "rotation_angle_deg": {
+          "type": "number"
+        },
+        "start_angle_deg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center"
+      ],
+      "type": "object"
+    },
+    "pattern_elliptical_arc_with_length": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "end_angle_deg": {
+          "type": "number"
+        },
+        "formula_end_angle": {
+          "type": "string"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "formula_radius1": {
+          "type": "string"
+        },
+        "formula_radius2": {
+          "type": "string"
+        },
+        "formula_rotation_angle": {
+          "type": "string"
+        },
+        "formula_start_angle": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "radius1_mm": {
+          "type": "number"
+        },
+        "radius2_mm": {
+          "type": "number"
+        },
+        "rotation_angle_deg": {
+          "type": "number"
+        },
+        "start_angle_deg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center"
+      ],
+      "type": "object"
+    },
+    "pattern_end_line": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number"
+        },
+        "base_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_angle": {
+          "type": "string"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "base_point"
+      ],
+      "type": "object"
+    },
+    "pattern_flipping_by_axis": {
+      "additionalProperties": true,
+      "properties": {
+        "axis": {
+          "type": "string"
+        },
+        "objects": {
+          "items": {},
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "objects",
+        "origin"
+      ],
+      "type": "object"
+    },
+    "pattern_flipping_by_line": {
+      "additionalProperties": true,
+      "properties": {
+        "line_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "objects": {
+          "items": {},
+          "type": "array"
+        }
+      },
+      "required": [
+        "line_p1",
+        "line_p2",
+        "objects"
+      ],
+      "type": "object"
+    },
+    "pattern_formula_evaluate": {
+      "additionalProperties": true,
+      "properties": {
+        "formula": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "formula"
+      ],
+      "type": "object"
+    },
+    "pattern_graduated_curve": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "offsets": {
+          "items": {},
+          "type": "array"
+        }
+      },
+      "required": [
+        "alias",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "pattern_group": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "objects": {
+          "items": {},
+          "type": "array"
+        },
+        "tags": {
+          "items": {},
+          "type": "array"
+        }
+      },
+      "required": [
+        "alias",
+        "objects"
+      ],
+      "type": "object"
+    },
+    "pattern_height": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "base_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "base_point",
+        "line_p1",
+        "line_p2"
+      ],
+      "type": "object"
+    },
+    "pattern_insert_node": {
+      "additionalProperties": true,
+      "properties": {
+        "nodes": {
+          "items": {},
+          "type": "array"
+        },
+        "piece": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "piece"
+      ],
+      "type": "object"
+    },
+    "pattern_line": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "second_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_point",
+        "second_point"
+      ],
+      "type": "object"
+    },
+    "pattern_line_intersect": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "line1_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line1_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line2_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line2_p2": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "line1_p1",
+        "line1_p2",
+        "line2_p1",
+        "line2_p2"
+      ],
+      "type": "object"
+    },
+    "pattern_line_intersect_axis": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number"
+        },
+        "base_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_angle": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "base_point",
+        "line_p1",
+        "line_p2"
+      ],
+      "type": "object"
+    },
+    "pattern_midpoint": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "second_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_point",
+        "second_point"
+      ],
+      "type": "object"
+    },
+    "pattern_move": {
+      "additionalProperties": true,
+      "properties": {
+        "angle_deg": {
+          "type": "number"
+        },
+        "formula_angle": {
+          "type": "string"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "formula_rotation_angle": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "objects": {
+          "items": {},
+          "type": "array"
+        },
+        "rotation_angle_deg": {
+          "type": "number"
+        },
+        "rotation_origin": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "objects",
+        "rotation_origin"
+      ],
+      "type": "object"
+    },
+    "pattern_normal": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number"
+        },
+        "first_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "second_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_point",
+        "second_point"
+      ],
+      "type": "object"
+    },
+    "pattern_object_delete": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "pattern_object_duplicate": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number"
+        },
+        "formula_angle": {
+          "type": "string"
+        },
+        "formula_length": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rotation_origin": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "source": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias"
+      ],
+      "type": "object"
+    },
+    "pattern_object_get": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "pattern_object_update": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "x_mm": {
+          "type": "number"
+        },
+        "y_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias"
+      ],
+      "type": "object"
+    },
+    "pattern_parallel_curve": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_width": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "width_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "curve"
+      ],
+      "type": "object"
+    },
+    "pattern_piece": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "follow_grainline": {
+          "type": "boolean"
+        },
+        "forbid_flipping": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nodes": {
+          "items": {},
+          "type": "array"
+        },
+        "seam_allowance": {
+          "type": "boolean"
+        },
+        "seam_allowance_built_in": {
+          "type": "boolean"
+        },
+        "seam_allowance_formula": {
+          "type": "string"
+        },
+        "seam_allowance_mm": {
+          "type": "number"
+        },
+        "short_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "pattern_piece_path": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "cut": {
+          "type": "boolean"
+        },
+        "first_to_contour": {
+          "type": "boolean"
+        },
+        "last_to_contour": {
+          "type": "boolean"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nodes": {
+          "items": {},
+          "type": "array"
+        },
+        "not_mirrored": {
+          "type": "boolean"
+        },
+        "piece": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "type": {
+          "type": "string"
+        },
+        "visibility_formula": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "nodes",
+        "piece"
+      ],
+      "type": "object"
+    },
+    "pattern_pin": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "piece": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "piece",
+        "point"
+      ],
+      "type": "object"
+    },
+    "pattern_place_label": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number"
+        },
+        "center_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "height_formula": {
+          "type": "string"
+        },
+        "height_mm": {
+          "type": "number"
+        },
+        "not_mirrored": {
+          "type": "boolean"
+        },
+        "piece": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "type": {
+          "type": "string"
+        },
+        "visibility_formula": {
+          "type": "string"
+        },
+        "width_formula": {
+          "type": "string"
+        },
+        "width_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center_point",
+        "piece"
+      ],
+      "type": "object"
+    },
+    "pattern_point_from_arc_and_tangent": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "arc": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "tangent_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "arc",
+        "tangent_point"
+      ],
+      "type": "object"
+    },
+    "pattern_point_from_circle_and_tangent": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "radius_formula": {
+          "type": "string"
+        },
+        "radius_mm": {
+          "type": "number"
+        },
+        "tangent_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "center",
+        "tangent_point"
+      ],
+      "type": "object"
+    },
+    "pattern_point_of_contact": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "formula_radius": {
+          "type": "string"
+        },
+        "line_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "radius_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "center",
+        "line_p1",
+        "line_p2"
+      ],
+      "type": "object"
+    },
+    "pattern_point_of_intersection": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "second_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_point",
+        "second_point"
+      ],
+      "type": "object"
+    },
+    "pattern_point_of_intersection_arcs": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_arc": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "second_arc": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_arc",
+        "second_arc"
+      ],
+      "type": "object"
+    },
+    "pattern_point_of_intersection_circles": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "first_radius_formula": {
+          "type": "string"
+        },
+        "first_radius_mm": {
+          "type": "number"
+        },
+        "second_center": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "second_radius_formula": {
+          "type": "string"
+        },
+        "second_radius_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "first_center",
+        "second_center"
+      ],
+      "type": "object"
+    },
+    "pattern_point_of_intersection_curves": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "first_curve": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "second_curve": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "first_curve",
+        "second_curve"
+      ],
+      "type": "object"
+    },
+    "pattern_rotation": {
+      "additionalProperties": true,
+      "properties": {
+        "angle_deg": {
+          "type": "number"
+        },
+        "formula_angle": {
+          "type": "string"
+        },
+        "objects": {
+          "items": {},
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "objects",
+        "origin"
+      ],
+      "type": "object"
+    },
+    "pattern_shoulder_point": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "shoulder_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "line_p1",
+        "line_p2",
+        "shoulder_point"
+      ],
+      "type": "object"
+    },
+    "pattern_spline": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "angle1_deg": {
+          "type": "number"
+        },
+        "angle2_deg": {
+          "type": "number"
+        },
+        "formula_angle1": {
+          "type": "string"
+        },
+        "formula_angle2": {
+          "type": "string"
+        },
+        "formula_length1": {
+          "type": "string"
+        },
+        "formula_length2": {
+          "type": "string"
+        },
+        "length1_mm": {
+          "type": "number"
+        },
+        "length2_mm": {
+          "type": "number"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "point1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "point4": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "point1",
+        "point4"
+      ],
+      "type": "object"
+    },
+    "pattern_spline_path": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "line_color": {
+          "type": "string"
+        },
+        "line_type": {
+          "type": "string"
+        },
+        "native_alias_suffix": {
+          "type": "string"
+        },
+        "points": {
+          "items": {},
+          "type": "array"
+        }
+      },
+      "required": [
+        "alias"
+      ],
+      "type": "object"
+    },
+    "pattern_triangle": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "axis_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "axis_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "first_point": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "second_point": {
+          "$ref": "#/$defs/objectReference"
+        }
+      },
+      "required": [
+        "alias",
+        "axis_p1",
+        "axis_p2",
+        "first_point",
+        "second_point"
+      ],
+      "type": "object"
+    },
+    "pattern_true_darts": {
+      "additionalProperties": true,
+      "properties": {
+        "base_line_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "base_line_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "dart_p1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "dart_p2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "dart_p3": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "first_alias": {
+          "type": "string"
+        },
+        "second_alias": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_line_p1",
+        "base_line_p2",
+        "dart_p1",
+        "dart_p2",
+        "dart_p3"
+      ],
+      "type": "object"
+    },
+    "pattern_union_details": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "edge_index1": {
+          "type": "integer"
+        },
+        "edge_index2": {
+          "type": "integer"
+        },
+        "piece1": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "piece2": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "retain_pieces": {
+          "type": "boolean"
+        },
+        "retained_alias1": {
+          "type": "string"
+        },
+        "retained_alias2": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "piece1",
+        "piece2"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/atomic-tools.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "action": {
+      "enum": [
+        "export.layout",
+        "export.pattern",
+        "layout.flip_piece",
+        "layout.generate",
+        "layout.move_piece",
+        "layout.place",
+        "layout.print",
+        "layout.rotate_piece",
+        "layout.settings_update",
+        "layout.sheet_add",
+        "layout.sheet_update",
+        "measurement.dimension_set",
+        "measurement.export_csv",
+        "measurement.file_create",
+        "measurement.file_open",
+        "measurement.file_save",
+        "measurement.final_measurement_set",
+        "measurement.increment_remove",
+        "measurement.increment_set",
+        "measurement.remove",
+        "measurement.rename",
+        "measurement.set",
+        "pattern.along_line",
+        "pattern.arc",
+        "pattern.arc_end",
+        "pattern.arc_intersect_axis",
+        "pattern.arc_start",
+        "pattern.arc_with_length",
+        "pattern.base_point",
+        "pattern.bisector",
+        "pattern.cubic_bezier",
+        "pattern.cubic_bezier_path",
+        "pattern.curve_intersect_axis",
+        "pattern.cut_arc",
+        "pattern.cut_spline",
+        "pattern.cut_spline_path",
+        "pattern.dependency_query",
+        "pattern.duplicate_detail",
+        "pattern.elliptical_arc",
+        "pattern.elliptical_arc_with_length",
+        "pattern.end_line",
+        "pattern.flipping_by_axis",
+        "pattern.flipping_by_line",
+        "pattern.formula_evaluate",
+        "pattern.graduated_curve",
+        "pattern.group",
+        "pattern.height",
+        "pattern.insert_node",
+        "pattern.line",
+        "pattern.line_intersect",
+        "pattern.line_intersect_axis",
+        "pattern.midpoint",
+        "pattern.move",
+        "pattern.normal",
+        "pattern.object_delete",
+        "pattern.object_duplicate",
+        "pattern.object_get",
+        "pattern.object_update",
+        "pattern.parallel_curve",
+        "pattern.piece",
+        "pattern.piece_path",
+        "pattern.pin",
+        "pattern.place_label",
+        "pattern.point_from_arc_and_tangent",
+        "pattern.point_from_circle_and_tangent",
+        "pattern.point_of_contact",
+        "pattern.point_of_intersection",
+        "pattern.point_of_intersection_arcs",
+        "pattern.point_of_intersection_circles",
+        "pattern.point_of_intersection_curves",
+        "pattern.rotation",
+        "pattern.shoulder_point",
+        "pattern.spline",
+        "pattern.spline_path",
+        "pattern.triangle",
+        "pattern.true_darts",
+        "pattern.union_details"
+      ]
+    },
+    "arguments": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "action",
+    "arguments"
+  ],
+  "type": "object"
+}

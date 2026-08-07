@@ -27,7 +27,8 @@ natural language + reference images + body measurements + constraints
 
 ## Why tools and code coexist
 
-Atomic tools are the best control surface for common geometric edits: their schemas constrain the
+Atomic tools are the best control surface for common geometric edits: schemas generated from the
+native handler contracts constrain the
 VLM, every action can be previewed, and failures have small blast radii. Python recipes are better
 for repetitive parametric construction, loops, and formulas. Recipes call the same typed SDK; they
 do not edit `.val` or `assembly.json` directly. This gives the agent expressive code without making
@@ -55,6 +56,10 @@ A preview records its base revision. Commit rejects it if another writer has mov
 UUIDs provide durable identity; aliases remain readable handles for agents and humans.
 New projects copy a minimal Valentina-authored seed pattern; subsequent `.val` changes only pass
 through the native command service.
+
+The checked-in `atomic-tools.schema.json` and generated `AtomicCommands` class are rebuilt from the
+pinned native handlers. CI fails if handler coverage, schemas, generated recipe types, or the lazy
+MCP input schemas drift apart.
 
 ## Boundary with GarmentCode
 

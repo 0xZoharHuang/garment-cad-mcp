@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from garmentcad.models import ObjectRef, Operation, OperationDomain, ToolResult
 from garmentcad.project import Project
+
+if TYPE_CHECKING:
+    from garmentcad.generated.atomic_commands import AtomicCommands
 
 
 def reference(value: str | None) -> ObjectRef | None:
@@ -46,6 +49,9 @@ class GarmentSDK:
 
     def __init__(self, project_path: str | Path) -> None:
         self.project_path = Path(project_path)
+        from garmentcad.generated.atomic_commands import AtomicCommands
+
+        self.commands: AtomicCommands = AtomicCommands(self.project_path)
 
     def panel_create(
         self,

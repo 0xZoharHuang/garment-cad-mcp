@@ -20,6 +20,7 @@ endif()
 
 add_custom_target(
   python-check
+  COMMAND uv run scripts/generate-atomic-contracts.py --check
   COMMAND uv run ruff check src tests scripts
   COMMAND uv run pytest
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"

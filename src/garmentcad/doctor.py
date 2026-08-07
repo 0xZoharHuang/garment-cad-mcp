@@ -21,6 +21,13 @@ def run_doctor() -> dict:
         check=False,
         capture_output=True,
     )
+    atomic_contract_check = subprocess.run(
+        ["uv", "run", "scripts/generate-atomic-contracts.py", "--check"],
+        cwd=repository,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     command = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
     if not command:
         bundled_host = repository / "scripts/valentina-command-host.sh"
@@ -47,9 +54,7 @@ def run_doctor() -> dict:
         previous = os.environ.get("GARMENTCAD_PUZZLE_COMMAND")
         os.environ["GARMENTCAD_PUZZLE_COMMAND"] = puzzle_command
         try:
-            puzzle_info = JsonLineCommandBackend(
-                "GARMENTCAD_PUZZLE_COMMAND"
-            ).service_info()
+            puzzle_info = JsonLineCommandBackend("GARMENTCAD_PUZZLE_COMMAND").service_info()
         except Exception:
             puzzle_info = None
         finally:
@@ -75,6 +80,7 @@ def run_doctor() -> dict:
             for record in revisions.values()
         ),
         "schemas_current": schema_check.returncode == 0,
+        "atomic_contracts_current": atomic_contract_check.returncode == 0,
         "valentina_command": bool(command_info and command_info.get("ok")),
         "puzzle_command": bool(puzzle_info and puzzle_info.get("ok")),
         "valentina_handler_coverage": not missing_handlers,
@@ -91,6 +97,7 @@ def run_doctor() -> dict:
         "warp_source",
         "upstream_pins",
         "schemas_current",
+        "atomic_contracts_current",
         "valentina_command",
         "puzzle_command",
         "valentina_handler_coverage",
