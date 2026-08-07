@@ -107,7 +107,15 @@ class GarmentSDK:
         )
 
     def interface_define(
-        self, alias: str, panel: str, edge_indices: list[int], *, commit: bool = False
+        self,
+        alias: str,
+        panel: str,
+        edge_indices: list[int],
+        *,
+        reverse: bool = False,
+        ruffle: float = 1.0,
+        right_wrong: bool = False,
+        commit: bool = False,
     ) -> ToolResult:
         return execute_atomic(
             self.project_path,
@@ -117,12 +125,21 @@ class GarmentSDK:
                 "alias": alias,
                 "panel": reference(panel).model_dump(exclude_none=True),
                 "edge_indices": edge_indices,
+                "reverse": reverse,
+                "ruffle": ruffle,
+                "right_wrong": right_wrong,
             },
             commit=commit,
         )
 
     def stitch_create(
-        self, alias: str, interface_a: str, interface_b: str, *, commit: bool = False
+        self,
+        alias: str,
+        interface_a: str,
+        interface_b: str,
+        *,
+        direction: str = "auto",
+        commit: bool = False,
     ) -> ToolResult:
         return execute_atomic(
             self.project_path,
@@ -132,6 +149,7 @@ class GarmentSDK:
                 "alias": alias,
                 "interface_a": reference(interface_a).model_dump(exclude_none=True),
                 "interface_b": reference(interface_b).model_dump(exclude_none=True),
+                "direction": direction,
             },
             commit=commit,
         )

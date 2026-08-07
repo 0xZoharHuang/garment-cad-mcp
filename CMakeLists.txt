@@ -23,6 +23,7 @@ add_custom_target(
   COMMAND uv run scripts/generate-atomic-contracts.py --check
   COMMAND uv run ruff check src tests scripts
   COMMAND uv run pytest
+  COMMAND "${CMAKE_SOURCE_DIR}/scripts/test-native-garmentcode.sh"
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   USES_TERMINAL
 )

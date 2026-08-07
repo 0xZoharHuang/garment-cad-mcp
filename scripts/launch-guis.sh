@@ -18,7 +18,16 @@ case "${1:-all}" in
   valentina) launch_app Valentina ;;
   tape) launch_app Tape ;;
   puzzle) launch_app Puzzle ;;
-  garmentcode) exec "$repo_dir/.conda/garmentcode/bin/python" "$repo_dir/upstream/garmentcode/gui.py" ;;
+  garmentcode)
+    garmentcode_python="$repo_dir/build/garmentcode-venv/bin/python"
+    test -x "$garmentcode_python" || {
+      echo "GarmentCode is not bootstrapped; run ./scripts/bootstrap-macos.sh" >&2
+      exit 69
+    }
+    export PYTHONPATH="$repo_dir/upstream/garmentcode:$repo_dir/upstream/nvidia-warp-garmentcode"
+    cd "$repo_dir/upstream/garmentcode"
+    exec "$garmentcode_python" gui.py
+    ;;
   all)
     launch_app Valentina
     launch_app Tape

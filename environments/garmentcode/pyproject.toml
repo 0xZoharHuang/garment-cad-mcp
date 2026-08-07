@@ -1,0 +1,22 @@
+[project]
+name = "garmentcode-compat"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "cairosvg>=2.8,<3",
+  "matplotlib>=3.10,<4",
+  "nicegui>=3.15,<4",
+  "numpy>=1.26,<2",
+  "psutil>=7,<8",
+  "pyrender>=0.1.45,<0.2",
+  "pyyaml>=6,<7",
+  "scipy>=1.15,<2",
+  "svgpathtools>=1.7,<2",
+  "svgwrite>=1.4,<2",
+  "trimesh>=4.7,<5",
+  "libigl>=2.6,<3",
+  "cgal>=6,<7",
+]
+
+[tool.uv]
+package = false

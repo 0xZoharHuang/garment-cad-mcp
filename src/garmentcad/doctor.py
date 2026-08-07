@@ -10,6 +10,7 @@ from pathlib import Path
 
 from garmentcad.backends import JsonLineCommandBackend
 from garmentcad.catalog import VALENTINA_TOOLS
+from garmentcad.garmentcode_facade import GarmentCodeFacade
 
 
 def run_doctor() -> dict:
@@ -66,6 +67,23 @@ def run_doctor() -> dict:
     actual_handlers = set(command_info.get("handlers", [])) if command_info else set()
     actual_handlers.update(puzzle_info.get("handlers", []) if puzzle_info else [])
     missing_handlers = sorted(expected_handlers - actual_handlers)
+    garmentcode_info = None
+    try:
+        garmentcode_info = GarmentCodeFacade().service_info()
+    except Exception:
+        garmentcode_info = None
+    garmentcode_python = repository / "build/garmentcode-venv/bin/python"
+    warp_library = repository / "upstream/nvidia-warp-garmentcode/warp/bin/libwarp.dylib"
+    warp_architectures: set[str] = set()
+    if warp_library.is_file() and shutil.which("lipo"):
+        lipo = subprocess.run(
+            ["lipo", "-archs", str(warp_library)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if lipo.returncode == 0:
+            warp_architectures = set(lipo.stdout.split())
     checks = {
         "python_3_12": sys.version_info[:2] == (3, 12),
         "macos_arm64": platform.system() == "Darwin" and platform.machine() == "arm64",
@@ -83,6 +101,13 @@ def run_doctor() -> dict:
         "atomic_contracts_current": atomic_contract_check.returncode == 0,
         "valentina_command": bool(command_info and command_info.get("ok")),
         "puzzle_command": bool(puzzle_info and puzzle_info.get("ok")),
+        "garmentcode_compat_python": garmentcode_python.is_file(),
+        "garmentcode_command": bool(
+            garmentcode_info
+            and garmentcode_info.get("ok")
+            and garmentcode_info.get("units") == {"public": "mm", "native": "cm"}
+        ),
+        "warp_cpu_universal": {"arm64", "x86_64"}.issubset(warp_architectures),
         "valentina_handler_coverage": not missing_handlers,
         "autodl_worker_url": bool(os.environ.get("GARMENTCAD_WORKER_URL")),
     }
@@ -100,6 +125,9 @@ def run_doctor() -> dict:
         "atomic_contracts_current",
         "valentina_command",
         "puzzle_command",
+        "garmentcode_compat_python",
+        "garmentcode_command",
+        "warp_cpu_universal",
         "valentina_handler_coverage",
     }
     return {
@@ -107,5 +135,7 @@ def run_doctor() -> dict:
         "checks": checks,
         "valentina_command_info": command_info,
         "puzzle_command_info": puzzle_info,
+        "garmentcode_command_info": garmentcode_info,
+        "warp_architectures": sorted(warp_architectures),
         "missing_valentina_handlers": missing_handlers,
     }

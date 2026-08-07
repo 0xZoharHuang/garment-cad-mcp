@@ -266,6 +266,8 @@ def interface_define(
     panel: str,
     edge_indices: list[int],
     reverse: bool = False,
+    ruffle: float = 1.0,
+    right_wrong: bool = False,
     commit: bool = False,
 ) -> dict[str, Any]:
     """Define an ordered sewing interface from edges of one panel."""
@@ -278,6 +280,8 @@ def interface_define(
             "panel": panel_ref.model_dump(exclude_none=True) if panel_ref else {},
             "edge_indices": edge_indices,
             "reverse": reverse,
+            "ruffle": ruffle,
+            "right_wrong": right_wrong,
         },
         commit=commit,
     )
@@ -293,6 +297,7 @@ def stitch_create(
     alias: str,
     interface_a: str,
     interface_b: str,
+    direction: str = "auto",
     commit: bool = False,
 ) -> dict[str, Any]:
     """Sew two interfaces; their edge partitions must currently match."""
@@ -305,6 +310,7 @@ def stitch_create(
             "alias": alias,
             "interface_a": left.model_dump(exclude_none=True) if left else {},
             "interface_b": right.model_dump(exclude_none=True) if right else {},
+            "direction": direction,
         },
         commit=commit,
     )

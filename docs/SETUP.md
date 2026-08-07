@@ -8,15 +8,26 @@ cmake --build --preset valentina-guis
 uv run garmentcad doctor
 ```
 
-The build produces Valentina, Tape, and Puzzle and runs native command replay tests. For direct SDK
-use outside MCP, set:
+Bootstrap creates the main uv environment, a separately locked GarmentCode compatibility environment,
+and the pinned universal macOS CPU Warp library. The build produces Valentina, Tape, and Puzzle and
+runs native command replay tests. For direct SDK use outside MCP, set:
 
 ```bash
 export GARMENTCAD_VALENTINA_COMMAND="$PWD/scripts/valentina-command-host.sh"
+export GARMENTCAD_GARMENTCODE_COMMAND="$PWD/scripts/garmentcode-command-host.sh"
 ```
 
 Claude Code and compatible MCP clients load the same wrapper from `.mcp.json`; commands default to
 preview-only.
+
+Launch each upstream GUI through the reproducible wrappers:
+
+```bash
+./scripts/launch-guis.sh valentina
+./scripts/launch-guis.sh tape
+./scripts/launch-guis.sh puzzle
+./scripts/launch-guis.sh garmentcode
+```
 
 ## AutoDL GPU worker
 

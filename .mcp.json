@@ -10,7 +10,10 @@
     },
     "garmentcode-cad": {
       "command": "uv",
-      "args": ["--directory", "${CLAUDE_PROJECT_DIR}", "run", "garmentcode-mcp"]
+      "args": ["--directory", "${CLAUDE_PROJECT_DIR}", "run", "garmentcode-mcp"],
+      "env": {
+        "GARMENTCAD_GARMENTCODE_COMMAND": "${CLAUDE_PROJECT_DIR}/scripts/garmentcode-command-host.sh"
+      }
     }
   }
 }

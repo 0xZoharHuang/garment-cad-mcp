@@ -280,6 +280,8 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
             "edge_indices": edge_indices,
             "edge_ids": [panels[panel_id]["edges"][index]["id"] for index in edge_indices],
             "reverse": bool(args.get("reverse", False)),
+            "ruffle": float(args.get("ruffle", 1.0)),
+            "right_wrong": bool(args.get("right_wrong", False)),
         }
         summary.created.append(ObjectRef(uuid=object_id, alias=alias))
     elif action == "interface.delete":
@@ -299,6 +301,7 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
             "alias": alias,
             "interface_a": interface_a,
             "interface_b": interface_b,
+            "direction": str(args.get("direction", "auto")),
         }
         summary.created.append(ObjectRef(uuid=object_id, alias=alias))
     elif action == "stitch.delete":
@@ -399,11 +402,12 @@ def validate_assembly(state: dict[str, Any]) -> list[ValidationIssue]:
         if len(side_a) != len(side_b):
             issues.append(
                 ValidationIssue(
-                    severity="error",
+                    severity="warning",
                     code="unmatched_interface_partition",
                     message=(
                         f"Stitch {stitch.get('alias', stitch_id)} has {len(side_a)} edges "
-                        f"on one side and {len(side_b)} on the other"
+                        f"on one side and {len(side_b)} on the other; native GarmentCode "
+                        "will match and subdivide them"
                     ),
                 )
             )
@@ -466,11 +470,53 @@ def preview_assembly(
     project_root: Path, operations: list[Operation]
 ) -> tuple[dict[str, Any], ChangeSummary]:
     source = read_json(project_root / "assembly/assembly.json", default=empty_assembly())
-    return apply_operations(source, operations)
+    state, summary = apply_operations(source, operations)
+    if not any(issue.severity == "error" for issue in summary.issues):
+        from garmentcad.garmentcode_facade import GarmentCodeFacade
+
+        facade = GarmentCodeFacade()
+        if facade.available:
+            try:
+                diagnostics = facade.validate(state)
+                summary.measurements["garmentcode.panels"] = float(
+                    len(diagnostics.get("panels", {}))
+                )
+                summary.measurements["garmentcode.interfaces"] = float(
+                    len(diagnostics.get("interfaces", {}))
+                )
+                summary.measurements["garmentcode.stitches"] = float(
+                    len(diagnostics.get("stitches", {}))
+                )
+                if not diagnostics.get("roundtrip_ok"):
+                    summary.issues.append(
+                        ValidationIssue(
+                            severity="error",
+                            code="garmentcode_roundtrip_failed",
+                            message="Pinned GarmentCode could not round-trip the assembly",
+                        )
+                    )
+            except Exception as error:
+                summary.issues.append(
+                    ValidationIssue(
+                        severity="error",
+                        code="garmentcode_native_validation_failed",
+                        message=str(error),
+                    )
+                )
+    return state, summary
 
 
 def to_garmentcode(state: dict[str, Any]) -> dict[str, Any]:
-    """Return GarmentCode-compatible JSON. Project millimetres become centimetres."""
+    """Return native GarmentCode JSON. Project millimetres become centimetres."""
+    from garmentcad.garmentcode_facade import GarmentCodeFacade
+
+    facade = GarmentCodeFacade()
+    if facade.available:
+        converted, _ = facade.convert(state)
+        return converted
+
+    # Portable fallback for schema inspection before bootstrap. Acceptance tests
+    # and production MCP use the native facade above.
     pattern_panels: dict[str, Any] = {}
     panel_names: dict[str, str] = {}
     for panel_id, panel in state.get("panels", {}).items():
@@ -481,7 +527,11 @@ def to_garmentcode(state: dict[str, Any]) -> dict[str, Any]:
             "rotation": panel.get("rotation_deg", [0, 0, 0]),
             "vertices": [[value / 10.0 for value in point] for point in panel["vertices_mm"]],
             "edges": [
-                {key: value for key, value in edge.items() if key in {"start", "end", "curvature"}}
+                {
+                    "endpoints": [edge["start"], edge["end"]],
+                    **({"curvature": edge["curve"]} if edge.get("curve") else {}),
+                    **({"label": edge["label"]} if edge.get("label") else {}),
+                }
                 for edge in panel.get("edges", [])
             ],
         }
@@ -500,7 +550,12 @@ def to_garmentcode(state: dict[str, Any]) -> dict[str, Any]:
         stitches.extend([[left, right] for left, right in zip(*sides, strict=True)])
     return {
         "pattern": {"panels": pattern_panels, "stitches": stitches},
-        "properties": {"units_in_meter": 100, "curvature_coords": "relative"},
+        "properties": {
+            "units_in_meter": 100,
+            "curvature_coords": "relative",
+            "normalize_panel_translation": False,
+            "normalized_edge_loops": True,
+        },
     }
 
 

@@ -195,6 +195,8 @@ class AssemblyInterface(BaseModel):
     edge_indices: list[int]
     edge_ids: list[str] = Field(default_factory=list)
     reverse: bool = False
+    ruffle: float = Field(default=1.0, gt=0)
+    right_wrong: bool = False
 
 
 class AssemblyStitch(BaseModel):

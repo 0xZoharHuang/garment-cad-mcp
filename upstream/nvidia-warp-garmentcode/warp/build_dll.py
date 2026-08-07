@@ -358,11 +358,12 @@ def build_dll_for_arch(dll_path, cpp_paths, cu_path, libs, mode, arch, verify_fp
 
             # Strip symbols to reduce the binary size
             if sys.platform == "darwin":
-                run_cmd(f"strip -x {dll_path}")  # Strip all local symbols
+                run_cmd(f"strip -x {quote(dll_path)}")  # Strip all local symbols
             else:  # Linux
                 # Strip all symbols except for those needed to support debugging JIT-compiled code
                 run_cmd(
-                    f"strip --strip-all --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}"
+                    "strip --strip-all --keep-symbol=__jit_debug_register_code "
+                    f"--keep-symbol=__jit_debug_descriptor {quote(dll_path)}"
                 )
 
 
@@ -374,7 +375,10 @@ def build_dll(dll_path, cpp_paths, cu_path, libs=[], mode="release", verify_fp=F
             dll_path + "-aarch64", cpp_paths, cu_path, libs, mode, "aarch64", verify_fp, fast_math, quick
         )
 
-        run_cmd(f"lipo -create -output {dll_path} {dll_path}-x86_64 {dll_path}-aarch64")
+        run_cmd(
+            f"lipo -create -output {quote(dll_path)} "
+            f"{quote(dll_path + '-x86_64')} {quote(dll_path + '-aarch64')}"
+        )
         os.remove(f"{dll_path}-x86_64")
         os.remove(f"{dll_path}-aarch64")
 

@@ -92,6 +92,17 @@
           "default": false,
           "title": "Reverse",
           "type": "boolean"
+        },
+        "right_wrong": {
+          "default": false,
+          "title": "Right Wrong",
+          "type": "boolean"
+        },
+        "ruffle": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "Ruffle",
+          "type": "number"
         }
       },
       "required": [
