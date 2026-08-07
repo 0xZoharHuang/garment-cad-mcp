@@ -201,6 +201,12 @@ class GarmentSDK:
             commit=commit,
         )
 
+    def export_garmentcode(self, formats: list[str] | None = None) -> dict[str, Any]:
+        """Create immutable JSON/OBJ/USD artifacts for the current assembly revision."""
+        from garmentcad.exports import export_garmentcode
+
+        return export_garmentcode(self.project_path, formats)
+
     def valentina(
         self,
         action: str,

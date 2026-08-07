@@ -128,6 +128,11 @@ GARMENTCODE_TOOLS = (
     ToolSpec(
         "simulation_download", "simulation.download", "Store job results as project artifacts."
     ),
+    ToolSpec(
+        "garmentcode_export",
+        "garmentcode.export",
+        "Export native JSON and placed OBJ/USD as content-addressed artifacts.",
+    ),
     ToolSpec("panel_create", "panel.create", "Create one polygonal sewing panel in millimetres."),
     ToolSpec("panel_delete", "panel.delete", "Delete one panel and dependent sewing objects."),
     ToolSpec("panel_transform", "panel.transform", "Set a panel's 3D placement."),

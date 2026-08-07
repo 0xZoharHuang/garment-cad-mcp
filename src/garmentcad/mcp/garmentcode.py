@@ -55,6 +55,15 @@ def simulation_download(
     return {"ok": True, "resources": resources}
 
 
+def garmentcode_export(
+    project_path: str, formats: list[str] | None = None
+) -> dict[str, Any]:
+    """Export native GarmentCode JSON and placed OBJ/USD as immutable artifacts."""
+    from garmentcad.exports import export_garmentcode
+
+    return export_garmentcode(project_path, formats)
+
+
 def _run(
     project_path: str,
     action: str,
@@ -331,6 +340,7 @@ LAZY_TOOLS = {
     "simulation_status": simulation_status,
     "simulation_cancel": simulation_cancel,
     "simulation_download": simulation_download,
+    "garmentcode_export": garmentcode_export,
     "panel_create": panel_create,
     "panel_delete": panel_delete,
     "panel_transform": panel_transform,

@@ -63,6 +63,14 @@ preview = GarmentSDK("./project").import_valentina_revision()
 The contracts are generated as `schemas/pattern-snapshot.schema.json` and
 `schemas/sewing-sidecar.schema.json`.
 
+Export the current assembly through the same pinned native object model. OBJ and USDA contain the
+panel initial 3D placements in millimetres; curved edges are sampled by GarmentCode before
+triangulation. Repeating an export returns the same content-addressed URIs.
+
+```python
+artifacts = GarmentSDK("./project").export_garmentcode(["json", "obj", "usd"])
+```
+
 ## AutoDL GPU worker
 
 Clone this repository on AutoDL, then:

@@ -166,6 +166,34 @@ def _convert(assembly: dict[str, Any]) -> dict[str, Any]:
     return {"garmentcode": document, "diagnostics": diagnostics}
 
 
+def _mesh(assembly: dict[str, Any]) -> dict[str, Any]:
+    component, diagnostics = _build(assembly)
+    panels = []
+    for panel in component.subs:
+        boundary_cm: list[list[float]] = []
+        for edge in panel.edges:
+            segments = edge.linearize(n_verts_inside=0 if type(edge) is Edge else 9)
+            for segment in segments:
+                point = [float(value) for value in segment.start]
+                if not boundary_cm or not np.allclose(boundary_cm[-1], point, atol=1e-9):
+                    boundary_cm.append(point)
+        if len(boundary_cm) > 1 and np.allclose(boundary_cm[0], boundary_cm[-1], atol=1e-9):
+            boundary_cm.pop()
+        vertices_3d_mm = [
+            [float(value) * 10.0 for value in panel.point_to_3D(point)]
+            for point in boundary_cm
+        ]
+        panels.append(
+            {
+                "name": panel.name,
+                "boundary_2d_mm": [[value * 10.0 for value in point] for point in boundary_cm],
+                "vertices_3d_mm": vertices_3d_mm,
+            }
+        )
+    diagnostics["mesh_panels"] = len(panels)
+    return {"panels": panels, "diagnostics": diagnostics}
+
+
 def dispatch(request: dict[str, Any]) -> dict[str, Any]:
     method = request.get("method")
     if method == "service.info":
@@ -173,7 +201,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
             "protocol_version": "1.0",
             "application": "GarmentCode",
             "units": {"public": "mm", "native": "cm"},
-            "handlers": ["assembly.convert", "assembly.validate"],
+            "handlers": ["assembly.convert", "assembly.validate", "assembly.mesh"],
             "native_classes": ["Panel", "Edge", "EdgeSequence", "Interface", "Component"],
         }
     if method in {"assembly.convert", "assembly.validate"}:
@@ -181,6 +209,8 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any]:
         return (
             converted if method == "assembly.convert" else {"diagnostics": converted["diagnostics"]}
         )
+    if method == "assembly.mesh":
+        return _mesh(request["assembly"])
     raise ValueError(f"Unknown method: {method}")
 
 

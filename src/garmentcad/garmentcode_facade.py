@@ -65,3 +65,7 @@ class GarmentCodeFacade:
 
     def validate(self, assembly: dict[str, Any]) -> dict[str, Any]:
         return self._call({"method": "assembly.validate", "assembly": assembly})["diagnostics"]
+
+    def mesh(self, assembly: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        response = self._call({"method": "assembly.mesh", "assembly": assembly})
+        return response["panels"], response["diagnostics"]
