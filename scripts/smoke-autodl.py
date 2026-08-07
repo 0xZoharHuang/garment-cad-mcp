@@ -103,6 +103,19 @@ def submit(client: httpx.Client, url: str, payload: bytes, content_hash: str) ->
     return response.json()
 
 
+def verify_completed_job(job: dict) -> set[str]:
+    if job["status"] != "succeeded":
+        raise RuntimeError(f"Official smoke job ended as {job['status']}")
+    if job.get("diagnostics", {}).get("runner") != "pinned-garmentcode-warp":
+        raise RuntimeError("Worker result was not produced by the pinned production runner")
+    required = {
+        f"artifacts/renders/{side}.png" for side in ("front", "back", "left", "right")
+    }
+    if not required <= set(job["artifacts"]):
+        raise RuntimeError(f"Official smoke job omitted renders: {sorted(required)}")
+    return required
+
+
 def main() -> int:
     options = arguments()
     url = options.worker_url.rstrip("/")
@@ -130,13 +143,7 @@ def main() -> int:
                 raise TimeoutError(f"Official smoke job did not finish: {first['id']}")
             time.sleep(2)
         print(json.dumps(job, ensure_ascii=False, indent=2))
-        if job["status"] != "succeeded":
-            return 1
-        if job.get("diagnostics", {}).get("runner") != "pinned-garmentcode-warp":
-            raise RuntimeError("Worker result was not produced by the pinned production runner")
-        required = {f"artifacts/renders/{side}.png" for side in ("front", "back", "left", "right")}
-        if not required <= set(job["artifacts"]):
-            raise RuntimeError(f"Official smoke job omitted renders: {sorted(required)}")
+        required = verify_completed_job(job)
         for relative in sorted(required):
             artifact = client.get(
                 f"{url}/v1/jobs/{job['id']}/artifacts/{relative.removeprefix('artifacts/')}"

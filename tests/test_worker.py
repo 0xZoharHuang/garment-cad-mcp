@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from shlex import quote
 
+import pytest
 from fastapi.testclient import TestClient
 
 from garmentcad.artifacts import ArtifactStore
@@ -149,6 +150,8 @@ def test_official_autodl_smoke_bundle_satisfies_worker_contract(tmp_path, monkey
         "artifacts/renders/left.png",
         "artifacts/renders/right.png",
     } <= set(completed.artifacts)
+    with pytest.raises(RuntimeError, match="pinned production runner"):
+        module.verify_completed_job(completed.model_dump(mode="json"))
     store.close()
 
 
