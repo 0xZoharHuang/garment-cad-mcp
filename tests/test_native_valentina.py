@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import struct
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,13 @@ from garmentcad.storage import read_json
 
 NATIVE_COMMAND = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
 pytestmark = pytest.mark.skipif(not NATIVE_COMMAND, reason="native Valentina host is not built")
+
+
+def _assert_preview_png(path: Path) -> None:
+    payload = path.read_bytes()
+    assert payload.startswith(b"\x89PNG\r\n\x1a\n")
+    assert struct.unpack(">II", payload[16:24]) == (512, 512)
+    assert len(payload) > 1_000
 
 
 def test_native_preview_commit_and_uuid_sidecar(tmp_path):
@@ -46,6 +54,12 @@ def test_native_preview_commit_and_uuid_sidecar(tmp_path):
     ]
     preview = project.preview(operations=operations)
     assert preview.ok
+    assert preview.thumbnails == [
+        f"garment://project/{project.manifest.project_id}/changeset/{preview.token}/thumbnail"
+    ]
+    _assert_preview_png(
+        project.root / f".garmentcad/changesets/{preview.token}/thumbnail.png"
+    )
     assert [item.alias for item in preview.summary.created] == ["construction.guide", "B"]
     candidate = project.root / f".garmentcad/changesets/{preview.token}/pattern/main.val"
     assert 'name="B"' in candidate.read_text(encoding="utf-8")

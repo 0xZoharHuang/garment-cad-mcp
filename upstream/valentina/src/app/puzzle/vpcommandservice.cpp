@@ -17,6 +17,7 @@
 #include "../vmisc/def.h"
 #include "../vmisc/vsysexits.h"
 #include "../vlayout/vlayoutgenerator.h"
+#include "../vwidgets/vmaingraphicsscene.h"
 
 #include <QDir>
 #include <QElapsedTimer>
@@ -24,6 +25,8 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QImage>
+#include <QPainter>
 #include <QSaveFile>
 #include <QTextStream>
 #include <QUndoStack>
@@ -59,6 +62,32 @@ void AddReference(QJsonObject &summary, const QString &bucket, const QJsonObject
     QJsonArray values = summary.value(bucket).toArray();
     values.append(reference);
     summary.insert(bucket, values);
+}
+
+void RenderThumbnail(const VPLayoutPtr &layout, const QString &path)
+{
+    QImage image(QSize(512, 512), QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::white);
+    const VPSheetPtr sheet = layout->GetFocusedSheet();
+    if (!sheet.isNull())
+    {
+        sheet->SceneData()->RefreshPieces();
+        QGraphicsScene *scene = sheet->SceneData()->Scene().data();
+        QRectF source = scene->itemsBoundingRect();
+        if (!source.isEmpty())
+        {
+            const qreal padding = qMax(source.width(), source.height()) * 0.04;
+            source.adjust(-padding, -padding, padding, padding);
+            QPainter painter(&image);
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            scene->render(&painter, QRectF(8, 8, 496, 496), source, Qt::KeepAspectRatio);
+        }
+    }
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    if (!image.save(path, "PNG"))
+    {
+        throw std::runtime_error("Unable to save Puzzle preview thumbnail");
+    }
 }
 } // namespace
 
@@ -156,6 +185,7 @@ auto VPCommandService::Preview(const QJsonObject &request) -> QJsonObject
     {
         throw std::runtime_error(QStringLiteral("Unable to save staged Puzzle layout: %1").arg(error).toStdString());
     }
+    RenderThumbnail(m_window->m_layout, QDir(m_candidateRoot).filePath(QStringLiteral("thumbnail.png")));
     return {{QStringLiteral("change_set_id"), changeSetId}, {QStringLiteral("summary"), summary}};
 }
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import struct
 import subprocess
 from pathlib import Path
 
@@ -100,6 +101,14 @@ def test_native_puzzle_layout_nesting_transform_export_and_reopen(tmp_path):
     assert generated.ok
     assert generated.summary.measurements["layout.efficiency"] > 0
     assert generated.summary.measurements["layout.sheets"] >= 1
+    thumbnail = (
+        project.root
+        / f".garmentcad/changesets/{generated.token}/thumbnail.png"
+    ).read_bytes()
+    assert thumbnail.startswith(b"\x89PNG\r\n\x1a\n")
+    assert struct.unpack(">II", thumbnail[16:24]) == (512, 512)
+    assert len(thumbnail) > 1_000
+    assert generated.thumbnails
     candidate = (
         project.root
         / f".garmentcad/changesets/{generated.token}/layout/main.vlt"

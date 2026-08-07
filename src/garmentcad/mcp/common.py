@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.catalog import ToolSpec
@@ -56,7 +56,7 @@ def add_core_tools(
         }
 
     @server.tool(name="resource_read")
-    def resource_read(project_path: str, uri: str) -> dict[str, Any]:
+    def resource_read(project_path: str, uri: str) -> Any:
         """Read a project change-set, preview, thumbnail, or content-addressed artifact."""
         project = Project.open(project_path)
         prefix = f"garment://project/{project.manifest.project_id}/changeset/"
@@ -70,14 +70,37 @@ def add_core_tools(
                 if value is None:
                     raise FileNotFoundError(uri)
                 return {"media_type": "application/json", "data": value}
-            allowed = {"assembly": "assembly.json", "thumbnail": "thumbnail.svg"}
-            filename = allowed.get(parts[1])
-            if filename is None:
+            resource_name = parts[1]
+            if resource_name == "assembly":
+                filename = "assembly.json"
+            elif resource_name == "thumbnail":
+                filename = next(
+                    (
+                        candidate
+                        for candidate in ("thumbnail.png", "thumbnail.svg")
+                        if (base / candidate).is_file()
+                    ),
+                    None,
+                )
+            else:
                 raise ValueError("Unsupported change-set resource")
+            if filename is None:
+                raise FileNotFoundError(uri)
             path = base / filename
             if filename.endswith(".json"):
                 return {"media_type": "application/json", "data": read_json(path)}
-            return {"media_type": "image/svg+xml", "text": path.read_text(encoding="utf-8")}
+            media_type = "image/png" if filename.endswith(".png") else "image/svg+xml"
+            image = Image(path=path) if media_type == "image/png" else Image(
+                data=path.read_bytes(), format="svg+xml"
+            )
+            return [
+                {
+                    "media_type": media_type,
+                    "byte_length": path.stat().st_size,
+                    "resource_uri": uri,
+                },
+                image,
+            ]
         artifact_prefix = "garment://artifact/sha256/"
         if uri.startswith(artifact_prefix):
             digest = uri[len(artifact_prefix) :]

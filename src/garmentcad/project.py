@@ -232,6 +232,14 @@ class Project:
             summaries.append(
                 NativeCommandRouter().preview(self.root, change_set.id, native_operations)
             )
+        thumbnail_uri = (
+            f"garment://project/{change_set.project_id}/changeset/{change_set.id}/thumbnail"
+        )
+        if any(
+            (preview_directory / filename).exists()
+            for filename in ("thumbnail.png", "thumbnail.svg")
+        ):
+            change_set.preview_resources.append(thumbnail_uri)
         change_set.summary = merge_summaries(summaries)
         atomic_write_json(
             self.root / f".garmentcad/changesets/{change_set.id}.json",
@@ -244,11 +252,7 @@ class Project:
             preview_token=change_set.id,
             summary=change_set.summary,
             resources=[f"garment://project/{change_set.project_id}/changeset/{change_set.id}"],
-            thumbnails=[
-                f"garment://project/{change_set.project_id}/changeset/{change_set.id}/thumbnail"
-            ]
-            if (preview_directory / "thumbnail.svg").exists()
-            else [],
+            thumbnails=[thumbnail_uri] if thumbnail_uri in change_set.preview_resources else [],
             message="Preview created",
         )
 

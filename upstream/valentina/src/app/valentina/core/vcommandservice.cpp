@@ -72,6 +72,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QImage>
+#include <QPainter>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QProcess>
@@ -249,6 +251,29 @@ auto CsvCell(QString value) -> QString
 {
     value.replace(QLatin1Char('"'), QStringLiteral("\"\""));
     return QLatin1Char('"') + value + QLatin1Char('"');
+}
+
+void RenderThumbnail(QGraphicsScene *scene, const QString &path)
+{
+    QImage image(QSize(512, 512), QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::white);
+    if (scene != nullptr)
+    {
+        QRectF source = scene->itemsBoundingRect();
+        if (!source.isEmpty())
+        {
+            const qreal padding = qMax(source.width(), source.height()) * 0.04;
+            source.adjust(-padding, -padding, padding, padding);
+            QPainter painter(&image);
+            painter.setRenderHint(QPainter::Antialiasing, true);
+            scene->render(&painter, QRectF(8, 8, 496, 496), source, Qt::KeepAspectRatio);
+        }
+    }
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    if (!image.save(path, "PNG"))
+    {
+        throw std::runtime_error("Unable to save Valentina preview thumbnail");
+    }
 }
 } // namespace
 
@@ -429,6 +454,7 @@ auto VCommandService::Preview(const QJsonObject &request) -> QJsonObject
     {
         throw std::runtime_error(QStringLiteral("Unable to save candidate: %1").arg(saveError).toStdString());
     }
+    RenderThumbnail(m_window->m_sceneDraw, QDir(candidateRoot).filePath(QStringLiteral("thumbnail.png")));
 
     const QString candidateAliases = QDir(candidateRoot).filePath(QStringLiteral("aliases.json"));
     WriteJsonFile(candidateAliases, aliases);
