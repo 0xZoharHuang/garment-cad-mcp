@@ -115,7 +115,7 @@ auto VToolPointFromCircleAndTangent::Create(const QPointer<DialogTool> &dialog, 
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolPointFromCircleAndTangent *point = Create(initData);
+    VToolPointFromCircleAndTangent *point = CreateToolFromCommand<VToolPointFromCircleAndTangent>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

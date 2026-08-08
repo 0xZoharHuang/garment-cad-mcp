@@ -533,7 +533,7 @@ auto VToolMove::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *s
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolMove *operation = Create(initData);
+    VToolMove *operation = CreateToolFromCommand<VToolMove>(initData, scene, doc, data);
     if (operation != nullptr)
     {
         operation->m_dialog = dialog;

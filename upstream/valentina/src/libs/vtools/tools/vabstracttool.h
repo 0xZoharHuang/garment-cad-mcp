@@ -32,6 +32,7 @@
 #include <QMap>
 #include <QMetaObject>
 #include <QObject>
+#include <QColor>
 #include <QString>
 #include <QStringList>
 #include <QtGlobal>
@@ -60,6 +61,53 @@ struct VAbstractToolInitData
     Document parse{Document::FullParse};
     Source typeCreation{Source::FromFile};
 };
+
+inline auto CanonicalToolColor(const QString &value) -> QString
+{
+    const QColor color(value);
+    return color.isValid() ? color.name() : value;
+}
+
+/**
+ * Typed, context-free command envelope shared by GUI dialogs and command hosts.
+ * Runtime document pointers and creation mode are injected only at the native
+ * Create boundary, so neither adapter can accidentally select a different path.
+ */
+template <typename InitData> struct VToolCommandData
+{
+    explicit VToolCommandData(InitData &value)
+      : payload(value)
+    {
+        payload.scene = nullptr;
+        payload.doc = nullptr;
+        payload.data = nullptr;
+        payload.parse = Document::FullParse;
+        payload.typeCreation = Source::FromFile;
+    }
+
+    InitData &payload;
+};
+
+template <typename InitData>
+auto PrepareToolCommand(InitData &commandPayload, VMainGraphicsScene *scene, VAbstractPattern *doc, VContainer *data)
+    -> VToolCommandData<InitData>
+{
+    VToolCommandData<InitData> command(commandPayload);
+    command.payload.scene = scene;
+    command.payload.doc = doc;
+    command.payload.data = data;
+    command.payload.parse = Document::FullParse;
+    command.payload.typeCreation = Source::FromGui;
+    return command;
+}
+
+template <typename Tool, typename InitData>
+auto CreateToolFromCommand(InitData &commandPayload, VMainGraphicsScene *scene, VAbstractPattern *doc,
+                           VContainer *data)
+{
+    auto command = PrepareToolCommand(commandPayload, scene, doc, data);
+    return Tool::Create(command.payload);
+}
 
 QT_WARNING_POP
 

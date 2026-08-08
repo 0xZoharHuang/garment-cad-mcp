@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import struct
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -148,6 +149,110 @@ def test_schema_generated_typed_recipe_calls_native_host(tmp_path):
     assert committed.revision == 1
     aliases = read_json(project.root / ".garmentcad/aliases.json")["objects"]
     assert "typed.B" in {record["alias"] for record in aliases.values()}
+
+
+def test_gui_dialog_and_headless_adapters_create_equivalent_native_history(tmp_path):
+    fixture = (
+        Path(__file__).parents[1]
+        / "upstream/valentina/src/test/CollectionTest/tst_valentina/empty.val"
+    )
+    operations = [
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "B",
+                "base_point": {"alias": "A"},
+                "formula_length": "100",
+                "formula_angle": "0",
+                "line_type": "dashLine",
+                "line_color": "red",
+                "notes": "shared end-line DTO",
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.end_line",
+            arguments={
+                "alias": "C",
+                "base_point": {"alias": "A"},
+                "formula_length": "100",
+                "formula_angle": "90",
+                "notes": "shared end-line DTO 2",
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.along_line",
+            arguments={
+                "alias": "D",
+                "first_point": {"alias": "B"},
+                "second_point": {"alias": "C"},
+                "formula": "50",
+                "line_type": "dotLine",
+                "line_color": "blue",
+                "notes": "shared along-line DTO",
+            },
+        ),
+        Operation(
+            domain=OperationDomain.PATTERN,
+            action="pattern.line",
+            arguments={
+                "alias": "construction.guide",
+                "first_point": {"alias": "A"},
+                "second_point": {"alias": "D"},
+                "line_type": "dashDotLine",
+                "line_color": "green",
+                "notes": "shared line DTO",
+            },
+        ),
+    ]
+
+    roots = {}
+    backend = JsonLineCommandBackend()
+    for adapter in ("native_command", "gui_dialog"):
+        project = Project.create(tmp_path / adapter)
+        shutil.copy2(fixture, project.root / "pattern/main.val")
+        change_set_id = f"adapter-{adapter}"
+        response = backend._call(
+            {
+                "method": "commands.preview",
+                "project_root": str(project.root),
+                "change_set_id": change_set_id,
+                "construction_adapter": adapter,
+                "operations": [item.model_dump(mode="json") for item in operations],
+            }
+        )
+        assert response["ok"]
+        assert [item["alias"] for item in response["summary"]["created"]] == [
+            "B",
+            "C",
+            "D",
+            "construction.guide",
+        ]
+        roots[adapter] = ET.parse(
+            project.root
+            / f".garmentcad/changesets/{change_set_id}/pattern/main.val"
+        ).getroot()
+
+    assert ET.tostring(roots["native_command"]) == ET.tostring(roots["gui_dialog"])
+
+    calculation = roots["native_command"].find("./draw/calculation")
+    assert calculation is not None
+    created = list(calculation)[-4:]
+    assert [element.tag for element in created] == ["point", "point", "point", "line"]
+    assert [element.attrib.get("type") for element in created] == [
+        "endLine",
+        "endLine",
+        "alongLine",
+        None,
+    ]
+    assert [element.attrib.get("notes") for element in created] == [
+        "shared end-line DTO",
+        "shared end-line DTO 2",
+        "shared along-line DTO",
+        "shared line DTO",
+    ]
 
 
 def test_unsupported_native_action_fails_closed(tmp_path):

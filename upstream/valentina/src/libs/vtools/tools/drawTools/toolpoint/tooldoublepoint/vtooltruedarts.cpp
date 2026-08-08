@@ -147,7 +147,7 @@ auto VToolTrueDarts::Create(const QPointer<DialogTool> &dialog, VMainGraphicsSce
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolTrueDarts *point = Create(initData);
+    VToolTrueDarts *point = CreateToolFromCommand<VToolTrueDarts>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

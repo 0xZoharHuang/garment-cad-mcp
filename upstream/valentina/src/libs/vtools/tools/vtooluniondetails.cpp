@@ -1977,7 +1977,7 @@ auto VToolUnionDetails::Create(const QPointer<DialogTool> &dialog, VMainGraphics
     initData.retainPieces = dialogTool->RetainPieces();
 
     VAbstractApplication::VApp()->getUndoStack()->beginMacro(tr("union details"));
-    VToolUnionDetails *tool = Create(initData);
+    VToolUnionDetails *tool = CreateToolFromCommand<VToolUnionDetails>(initData, scene, doc, data);
     VAbstractApplication::VApp()->getUndoStack()->endMacro();
     return tool;
 }

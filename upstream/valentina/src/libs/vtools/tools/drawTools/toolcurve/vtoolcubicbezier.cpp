@@ -91,7 +91,7 @@ auto VToolCubicBezier::Create(const QPointer<DialogTool> &dialog, VMainGraphicsS
     initData.spline = new VCubicBezier(dialogTool->GetSpline());
     initData.notes = dialogTool->GetNotes();
 
-    auto *spl = Create(initData);
+    auto *spl = CreateToolFromCommand<VToolCubicBezier>(initData, scene, doc, data);
 
     if (spl != nullptr)
     {

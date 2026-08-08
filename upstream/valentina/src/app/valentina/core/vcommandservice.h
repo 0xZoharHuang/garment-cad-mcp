@@ -28,6 +28,7 @@ private:
     MainWindow *m_window;
     QString m_candidateRoot{};
     QString m_candidatePattern{};
+    QString m_constructionAdapter{QStringLiteral("native_command")};
 
     auto Dispatch(const QJsonObject &request) -> QJsonObject;
     auto Preview(const QJsonObject &request) -> QJsonObject;

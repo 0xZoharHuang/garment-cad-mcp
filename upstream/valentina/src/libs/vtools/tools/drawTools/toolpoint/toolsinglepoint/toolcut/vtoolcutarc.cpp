@@ -145,7 +145,7 @@ auto VToolCutArc::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene 
     initData.name1 = dialogTool->GetName1();
     initData.name2 = dialogTool->GetName2();
 
-    VToolCutArc *point = Create(initData);
+    VToolCutArc *point = CreateToolFromCommand<VToolCutArc>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

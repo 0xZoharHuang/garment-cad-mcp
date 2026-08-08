@@ -97,7 +97,7 @@ auto VToolFlippingByAxis::Create(const QPointer<DialogTool> &dialog, VMainGraphi
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolFlippingByAxis *operation = Create(initData);
+    VToolFlippingByAxis *operation = CreateToolFromCommand<VToolFlippingByAxis>(initData, scene, doc, data);
     if (operation != nullptr)
     {
         operation->m_dialog = dialog;

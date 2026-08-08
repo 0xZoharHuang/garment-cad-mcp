@@ -188,7 +188,7 @@ auto VToolPointOfContact::Create(const QPointer<DialogTool> &dialog, VMainGraphi
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolPointOfContact *point = Create(initData);
+    VToolPointOfContact *point = CreateToolFromCommand<VToolPointOfContact>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

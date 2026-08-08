@@ -139,7 +139,8 @@ auto VToolSplinePath::Create(const QPointer<DialogTool> &dialog, VMainGraphicsSc
         initData.points.append(point.id());
     }
 
-    VToolSplinePath *spl = Create(initData, path);
+    auto command = PrepareToolCommand(initData, scene, doc, data);
+    VToolSplinePath *spl = Create(command.payload, path);
     if (spl != nullptr)
     {
         spl->m_dialog = dialog;

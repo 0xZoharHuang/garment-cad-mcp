@@ -607,7 +607,7 @@ auto VToolPointOfIntersectionCurves::Create(const QPointer<DialogTool> &dialog, 
     initData.curve2AliasSuffix1 = dialogTool->GetCurve2AliasSuffix1();
     initData.curve2AliasSuffix2 = dialogTool->GetCurve2AliasSuffix2();
 
-    VToolPointOfIntersectionCurves *point = Create(initData);
+    VToolPointOfIntersectionCurves *point = CreateToolFromCommand<VToolPointOfIntersectionCurves>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

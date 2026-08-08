@@ -131,7 +131,7 @@ auto VToolEllipticalArcWithLength::Create(const QPointer<DialogTool> &dialog,
     initData.notes = dialogTool->GetNotes();
     initData.aliasSuffix = dialogTool->GetAliasSuffix();
 
-    VToolEllipticalArcWithLength *point = Create(initData);
+    VToolEllipticalArcWithLength *point = CreateToolFromCommand<VToolEllipticalArcWithLength>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

@@ -119,7 +119,7 @@ auto VToolNormal::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene 
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolNormal *point = Create(initData);
+    VToolNormal *point = CreateToolFromCommand<VToolNormal>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

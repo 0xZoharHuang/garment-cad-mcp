@@ -157,7 +157,8 @@ auto VToolSpline::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene 
     initData.point1 = spline.GetP1().id();
     initData.point4 = spline.GetP4().id();
 
-    auto *spl = Create(initData, new VSpline(spline));
+    auto command = PrepareToolCommand(initData, scene, doc, data);
+    auto *spl = Create(command.payload, new VSpline(spline));
 
     if (spl != nullptr)
     {

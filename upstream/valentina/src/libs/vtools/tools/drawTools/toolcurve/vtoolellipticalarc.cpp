@@ -148,7 +148,7 @@ auto VToolEllipticalArc::Create(const QPointer<DialogTool> &dialog, VMainGraphic
     initData.aliasSuffix = dialogTool->GetAliasSuffix();
     // initData.approximationScale = dialogTool->GetApproximationScale(); // For future use
 
-    VToolEllipticalArc *point = Create(initData);
+    VToolEllipticalArc *point = CreateToolFromCommand<VToolEllipticalArc>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

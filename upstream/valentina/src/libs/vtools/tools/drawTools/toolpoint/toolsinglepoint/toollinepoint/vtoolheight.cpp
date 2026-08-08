@@ -123,7 +123,7 @@ auto VToolHeight::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene 
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolHeight *point = Create(initData);
+    VToolHeight *point = CreateToolFromCommand<VToolHeight>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

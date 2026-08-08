@@ -123,7 +123,7 @@ auto VToolLineIntersect::Create(const QPointer<DialogTool> &dialog, VMainGraphic
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolLineIntersect *point = Create(initData);
+    VToolLineIntersect *point = CreateToolFromCommand<VToolLineIntersect>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

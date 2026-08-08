@@ -514,7 +514,7 @@ auto VToolPointOfIntersectionArcs::Create(const QPointer<DialogTool> &dialog, VM
     initData.arc2AliasSuffix1 = dialogTool->GetArc2AliasSuffix1();
     initData.arc2AliasSuffix2 = dialogTool->GetArc2AliasSuffix2();
 
-    VToolPointOfIntersectionArcs *point = Create(initData);
+    VToolPointOfIntersectionArcs *point = CreateToolFromCommand<VToolPointOfIntersectionArcs>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

@@ -289,6 +289,27 @@ auto VToolAlongLine::Create(const QPointer<DialogTool> &dialog, VMainGraphicsSce
     const QPointer<DialogAlongLine> dialogTool = qobject_cast<DialogAlongLine *>(dialog);
     SCASSERT(not dialogTool.isNull())
 
+    VToolAlongLineCommandData command;
+    command.formula = dialogTool->GetFormula();
+    command.firstPointId = dialogTool->GetFirstPointId();
+    command.secondPointId = dialogTool->GetSecondPointId();
+    command.typeLine = dialogTool->GetTypeLine();
+    command.lineColor = dialogTool->GetLineColor();
+    command.name = dialogTool->GetPointName();
+    command.notes = dialogTool->GetNotes();
+
+    VToolAlongLine *point = Create(command, scene, doc, data);
+    if (point != nullptr)
+    {
+        point->m_dialog = dialog;
+    }
+    return point;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolAlongLine::Create(const VToolAlongLineCommandData &command, VMainGraphicsScene *scene,
+                            VAbstractPattern *doc, VContainer *data) -> VToolAlongLine *
+{
     QT_WARNING_PUSH
     QT_WARNING_DISABLE_GCC("-Wnoexcept")
 
@@ -296,25 +317,19 @@ auto VToolAlongLine::Create(const QPointer<DialogTool> &dialog, VMainGraphicsSce
 
     QT_WARNING_POP
 
-    initData.formula = dialogTool->GetFormula();
-    initData.firstPointId = dialogTool->GetFirstPointId();
-    initData.secondPointId = dialogTool->GetSecondPointId();
-    initData.typeLine = dialogTool->GetTypeLine();
-    initData.lineColor = dialogTool->GetLineColor();
-    initData.name = dialogTool->GetPointName();
+    initData.formula = command.formula;
+    initData.firstPointId = command.firstPointId;
+    initData.secondPointId = command.secondPointId;
+    initData.typeLine = command.typeLine;
+    initData.lineColor = CanonicalToolColor(command.lineColor);
+    initData.name = command.name;
+    initData.notes = command.notes;
     initData.scene = scene;
     initData.doc = doc;
     initData.data = data;
     initData.parse = Document::FullParse;
     initData.typeCreation = Source::FromGui;
-    initData.notes = dialogTool->GetNotes();
-
-    VToolAlongLine *point = Create(initData);
-    if (point != nullptr)
-    {
-        point->m_dialog = dialog;
-    }
-    return point;
+    return Create(initData);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

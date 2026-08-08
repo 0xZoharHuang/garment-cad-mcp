@@ -557,6 +557,9 @@
         "line_type": {
           "type": "string"
         },
+        "notes": {
+          "type": "string"
+        },
         "second_point": {
           "$ref": "#/$defs/objectReference"
         }
@@ -1167,6 +1170,9 @@
         },
         "line_type": {
           "type": "string"
+        },
+        "notes": {
+          "type": "string"
         }
       },
       "required": [
@@ -1345,6 +1351,9 @@
         "line_type": {
           "type": "string"
         },
+        "notes": {
+          "type": "string"
+        },
         "second_point": {
           "$ref": "#/$defs/objectReference"
         }
@@ -1428,6 +1437,9 @@
         },
         "first_point": {
           "$ref": "#/$defs/objectReference"
+        },
+        "notes": {
+          "type": "string"
         },
         "second_point": {
           "$ref": "#/$defs/objectReference"

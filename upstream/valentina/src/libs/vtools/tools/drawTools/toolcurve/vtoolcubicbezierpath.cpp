@@ -92,7 +92,7 @@ auto VToolCubicBezierPath::Create(const QPointer<DialogTool> &dialog, VMainGraph
     initData.notes = dialogTool->GetNotes();
     initData.path = new VCubicBezierPath(dialogTool->GetPath());
 
-    VToolCubicBezierPath *spl = Create(initData);
+    VToolCubicBezierPath *spl = CreateToolFromCommand<VToolCubicBezierPath>(initData, scene, doc, data);
     if (spl != nullptr)
     {
         spl->m_dialog = dialog;

@@ -85,7 +85,7 @@ auto VToolGraduatedCurve::Create(const QPointer<DialogTool> &dialog,
     initData.notes = dialogTool->GetNotes();
     initData.aliasSuffix = dialogTool->GetAliasSuffix();
 
-    VToolGraduatedCurve *curve = Create(initData);
+    VToolGraduatedCurve *curve = CreateToolFromCommand<VToolGraduatedCurve>(initData, scene, doc, data);
     if (curve != nullptr)
     {
         curve->m_dialog = dialog;

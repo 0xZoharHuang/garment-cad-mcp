@@ -446,7 +446,7 @@ auto VToolRotation::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScen
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolRotation *operation = Create(initData);
+    VToolRotation *operation = CreateToolFromCommand<VToolRotation>(initData, scene, doc, data);
     if (operation != nullptr)
     {
         operation->m_dialog = dialog;

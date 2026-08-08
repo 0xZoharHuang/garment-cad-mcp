@@ -40,8 +40,8 @@ uv run garmentcad create ./projects/sample
 
 Read [the architecture](docs/ARCHITECTURE.md), [setup guide](docs/SETUP.md), and
 [native Valentina host contract](docs/VALENTINA_HOST.md). The
-[acceptance ledger](docs/ACCEPTANCE.md) separates locally proven gates from the pending real-GPU and
-GUI-dialog equivalence evidence. See `THIRD_PARTY.md` for exact upstream commits and licenses.
+[acceptance ledger](docs/ACCEPTANCE.md) separates locally proven gates from the pending real-GPU
+evidence. See `THIRD_PARTY.md` for exact upstream commits and licenses.
 
 ## Current integration status
 

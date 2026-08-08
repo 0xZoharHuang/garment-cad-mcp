@@ -143,7 +143,7 @@ auto VToolArc::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *sc
     initData.notes = dialogTool->GetNotes();
     initData.aliasSuffix = dialogTool->GetAliasSuffix();
 
-    VToolArc *point = Create(initData);
+    VToolArc *point = CreateToolFromCommand<VToolArc>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

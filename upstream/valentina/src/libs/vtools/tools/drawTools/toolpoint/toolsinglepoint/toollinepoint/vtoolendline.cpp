@@ -104,26 +104,41 @@ auto VToolEndLine::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene
     const QPointer<DialogEndLine> dialogTool = qobject_cast<DialogEndLine *>(dialog);
     SCASSERT(not dialogTool.isNull())
 
-    VToolEndLineInitData initData;
-    initData.formulaLength = dialogTool->GetFormula();
-    initData.formulaAngle = dialogTool->GetAngle();
-    initData.basePointId = dialogTool->GetBasePointId();
-    initData.typeLine = dialogTool->GetTypeLine();
-    initData.lineColor = dialogTool->GetLineColor();
-    initData.name = dialogTool->GetPointName();
-    initData.scene = scene;
-    initData.doc = doc;
-    initData.data = data;
-    initData.parse = Document::FullParse;
-    initData.typeCreation = Source::FromGui;
-    initData.notes = dialogTool->GetNotes();
+    VToolEndLineCommandData command;
+    command.formulaLength = dialogTool->GetFormula();
+    command.formulaAngle = dialogTool->GetAngle();
+    command.basePointId = dialogTool->GetBasePointId();
+    command.typeLine = dialogTool->GetTypeLine();
+    command.lineColor = dialogTool->GetLineColor();
+    command.name = dialogTool->GetPointName();
+    command.notes = dialogTool->GetNotes();
 
-    VToolEndLine *point = Create(initData);
+    VToolEndLine *point = Create(command, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;
     }
     return point;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolEndLine::Create(const VToolEndLineCommandData &command, VMainGraphicsScene *scene, VAbstractPattern *doc,
+                          VContainer *data) -> VToolEndLine *
+{
+    VToolEndLineInitData initData;
+    initData.formulaLength = command.formulaLength;
+    initData.formulaAngle = command.formulaAngle;
+    initData.basePointId = command.basePointId;
+    initData.typeLine = command.typeLine;
+    initData.lineColor = CanonicalToolColor(command.lineColor);
+    initData.name = command.name;
+    initData.notes = command.notes;
+    initData.scene = scene;
+    initData.doc = doc;
+    initData.data = data;
+    initData.parse = Document::FullParse;
+    initData.typeCreation = Source::FromGui;
+    return Create(initData);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

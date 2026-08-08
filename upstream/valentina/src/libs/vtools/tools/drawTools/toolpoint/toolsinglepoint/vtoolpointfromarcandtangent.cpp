@@ -109,7 +109,7 @@ auto VToolPointFromArcAndTangent::Create(const QPointer<DialogTool> &dialog, VMa
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolPointFromArcAndTangent *point = Create(initData);
+    VToolPointFromArcAndTangent *point = CreateToolFromCommand<VToolPointFromArcAndTangent>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

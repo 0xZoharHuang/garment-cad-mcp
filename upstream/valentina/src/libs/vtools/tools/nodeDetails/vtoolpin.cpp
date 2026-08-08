@@ -51,7 +51,7 @@ auto VToolPin::Create(const QPointer<DialogTool> &dialog, VAbstractPattern *doc,
     initData.parse = Document::FullParse;
     initData.typeCreation = Source::FromGui;
 
-    return Create(initData);
+    return CreateToolFromCommand<VToolPin>(initData, nullptr, doc, data);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

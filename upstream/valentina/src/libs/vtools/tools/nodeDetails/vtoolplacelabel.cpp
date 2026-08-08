@@ -59,7 +59,7 @@ auto VToolPlaceLabel::Create(const QPointer<DialogTool> &dialog, VAbstractPatter
     initData.parse = Document::FullParse;
     initData.typeCreation = Source::FromGui;
 
-    return Create(initData);
+    return CreateToolFromCommand<VToolPlaceLabel>(initData, nullptr, doc, data);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

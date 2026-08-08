@@ -51,6 +51,17 @@ struct VToolEndLineInitData : VToolLinePointInitData
     quint32 basePointId{NULL_ID};
 };
 
+struct VToolEndLineCommandData
+{
+    QString formulaLength{};
+    QString formulaAngle{};
+    quint32 basePointId{NULL_ID};
+    QString typeLine{TypeLineLine};
+    QString lineColor{ColorBlack};
+    QString name{};
+    QString notes{};
+};
+
 /**
  * @brief The VToolEndLine class tool for creation point on the line end.
  */
@@ -61,6 +72,8 @@ public:
     ~VToolEndLine() override = default;
     void SetDialog() override;
     static auto Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *scene, VAbstractPattern *doc,
+                       VContainer *data) -> VToolEndLine *;
+    static auto Create(const VToolEndLineCommandData &command, VMainGraphicsScene *scene, VAbstractPattern *doc,
                        VContainer *data) -> VToolEndLine *;
     static auto Create(VToolEndLineInitData &initData) -> VToolEndLine *;
     static const QString ToolType;

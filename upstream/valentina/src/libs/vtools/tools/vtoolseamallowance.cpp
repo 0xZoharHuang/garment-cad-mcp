@@ -576,7 +576,7 @@ auto VToolSeamAllowance::Create(const QPointer<DialogTool> &dialog, VMainGraphic
     initData.detail.GetPieceLabelData().SetLabelTemplate(LoadLabelTemplate(doc->GetDefaultPieceLabelPath()));
     initData.detail.GetPath().SetNodes(PrepareNodes(initData.detail.GetPath(), scene, doc, data));
 
-    VToolSeamAllowance *piece = Create(initData);
+    VToolSeamAllowance *piece = CreateToolFromCommand<VToolSeamAllowance>(initData, scene, doc, data);
 
     if (piece != nullptr)
     {

@@ -88,7 +88,7 @@ auto VToolParallelCurve::Create(const QPointer<DialogTool> &dialog,
     initData.notes = dialogTool->GetNotes();
     initData.aliasSuffix = dialogTool->GetAliasSuffix();
 
-    VToolParallelCurve *curve = Create(initData);
+    VToolParallelCurve *curve = CreateToolFromCommand<VToolParallelCurve>(initData, scene, doc, data);
     if (curve != nullptr)
     {
         curve->m_dialog = dialog;

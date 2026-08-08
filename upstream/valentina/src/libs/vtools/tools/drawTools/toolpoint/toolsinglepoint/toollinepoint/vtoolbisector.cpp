@@ -152,7 +152,7 @@ auto VToolBisector::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScen
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolBisector *point = Create(initData);
+    VToolBisector *point = CreateToolFromCommand<VToolBisector>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

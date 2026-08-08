@@ -59,7 +59,7 @@ auto VToolPiecePath::Create(const QPointer<DialogTool> &dialog, VMainGraphicsSce
 
     initData.path.SetNodes(PrepareNodes(initData.path, scene, doc, data));
 
-    return Create(initData);
+    return CreateToolFromCommand<VToolPiecePath>(initData, scene, doc, data);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

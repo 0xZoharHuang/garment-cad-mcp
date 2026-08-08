@@ -128,7 +128,7 @@ auto VToolTriangle::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScen
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolTriangle *point = Create(initData);
+    VToolTriangle *point = CreateToolFromCommand<VToolTriangle>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

@@ -176,7 +176,7 @@ auto VToolShoulderPoint::Create(const QPointer<DialogTool> &dialog, VMainGraphic
     initData.typeCreation = Source::FromGui;
     initData.notes = dialogTool->GetNotes();
 
-    VToolShoulderPoint *point = Create(initData);
+    VToolShoulderPoint *point = CreateToolFromCommand<VToolShoulderPoint>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

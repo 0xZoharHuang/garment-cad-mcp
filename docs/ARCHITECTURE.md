@@ -77,7 +77,8 @@ commands.preview { project_root, change_set_id, operations[] } -> { summary, res
 commands.commit  { project_root, change_set_id } -> { ok }
 ```
 
-The command host invokes Valentina's own construction `InitData/Create` paths so the GUI and agent
-produce the same objects. The MCP never writes Valentina XML itself. The Python adapter, generated
+Every constructible GUI tool and the command host cross the same typed
+`VToolCommandData -> PrepareToolCommand -> InitData/Create` boundary so the GUI and agent produce the
+same native objects. The MCP never writes Valentina XML itself. The Python adapter, generated
 construction endpoints, patched C++ command service, native preview/commit host, coverage manifest,
 and replay tests are documented in `docs/VALENTINA_HOST.md`.

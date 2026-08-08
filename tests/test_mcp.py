@@ -242,6 +242,37 @@ def test_every_valentina_tool_enum_is_constructible_or_explained():
     assert not {name for name, record in records.items() if record["status"] == "unmapped"}
 
 
+def test_every_native_gui_dialog_emits_shared_command_dto():
+    import re
+    from pathlib import Path
+
+    from garmentcad.valentina_coverage import gui_dialog_command_coverage
+
+    records = gui_dialog_command_coverage(
+        Path("upstream/valentina/src/libs/vtools/tools")
+    )
+    assert len(records) >= 41
+    assert not {
+        name
+        for name, record in records.items()
+        if record["status"] != "shared_command_dto"
+    }
+
+    command_service = Path(
+        "upstream/valentina/src/app/valentina/core/vcommandservice.cpp"
+    ).read_text(encoding="utf-8")
+    assert not re.findall(r"VTool[A-Za-z0-9_]+::Create\(initData\)", command_service)
+    assert command_service.count("CreateToolFromCommand<") >= 40
+    assert all(
+        marker in command_service
+        for marker in (
+            "VToolLineCommandData",
+            "VToolAlongLineCommandData",
+            "VToolEndLineCommandData",
+        )
+    )
+
+
 def test_every_valentina_catalog_action_has_native_replay_coverage():
     from pathlib import Path
 

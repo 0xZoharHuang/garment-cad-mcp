@@ -395,7 +395,7 @@ auto VToolCurveIntersectAxis::Create(const QPointer<DialogTool> &dialog, VMainGr
     initData.name1 = dialogTool->GetName1();
     initData.name2 = dialogTool->GetName2();
 
-    VToolCurveIntersectAxis *point = Create(initData);
+    VToolCurveIntersectAxis *point = CreateToolFromCommand<VToolCurveIntersectAxis>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

@@ -50,6 +50,17 @@ struct VToolAlongLineInitData : VToolLinePointInitData
     quint32 secondPointId{NULL_ID}; // NOLINT(misc-non-private-member-variables-in-classes)
 };
 
+struct VToolAlongLineCommandData
+{
+    QString formula{QStringLiteral("100.0")};
+    quint32 firstPointId{NULL_ID};
+    quint32 secondPointId{NULL_ID};
+    QString typeLine{TypeLineLine};
+    QString lineColor{ColorBlack};
+    QString name{};
+    QString notes{};
+};
+
 /**
  * @brief The VToolAlongLine class tool for creation point along line.
  */
@@ -62,6 +73,8 @@ public:
     void SetDialog() override;
     static auto Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *scene,
                        VAbstractPattern *doc, VContainer *data) -> VToolAlongLine*;
+    static auto Create(const VToolAlongLineCommandData &command, VMainGraphicsScene *scene,
+                       VAbstractPattern *doc, VContainer *data) -> VToolAlongLine *;
     static auto Create(VToolAlongLineInitData &initData) -> VToolAlongLine*;
     static const QString ToolType;
     auto type() const -> int override {return Type;}

@@ -149,7 +149,7 @@ auto VToolCutSplinePath::Create(const QPointer<DialogTool> &dialog, VMainGraphic
     initData.name1 = dialogTool->GetName1();
     initData.name2 = dialogTool->GetName2();
 
-    VToolCutSplinePath *point = Create(initData);
+    VToolCutSplinePath *point = CreateToolFromCommand<VToolCutSplinePath>(initData, scene, doc, data);
     if (point != nullptr)
     {
         point->m_dialog = dialog;

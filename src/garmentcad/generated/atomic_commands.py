@@ -181,6 +181,7 @@ class PatternAlongLineArguments(TypedDict, total=False):
     length_mm: NotRequired[float]
     line_color: NotRequired[str]
     line_type: NotRequired[str]
+    notes: NotRequired[str]
     second_point: Required[ObjectReference]
 
 class PatternArcArguments(TypedDict, total=False):
@@ -361,6 +362,7 @@ class PatternEndLineArguments(TypedDict, total=False):
     length_mm: NotRequired[float]
     line_color: NotRequired[str]
     line_type: NotRequired[str]
+    notes: NotRequired[str]
 
 class PatternFlippingByAxisArguments(TypedDict, total=False):
     axis: NotRequired[str]
@@ -407,6 +409,7 @@ class PatternLineArguments(TypedDict, total=False):
     first_point: Required[ObjectReference]
     line_color: NotRequired[str]
     line_type: NotRequired[str]
+    notes: NotRequired[str]
     second_point: Required[ObjectReference]
 
 class PatternLineIntersectArguments(TypedDict, total=False):
@@ -429,6 +432,7 @@ class PatternLineIntersectAxisArguments(TypedDict, total=False):
 class PatternMidpointArguments(TypedDict, total=False):
     alias: Required[str]
     first_point: Required[ObjectReference]
+    notes: NotRequired[str]
     second_point: Required[ObjectReference]
 
 class PatternMoveArguments(TypedDict, total=False):
@@ -2358,6 +2362,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                        'length_mm': {'type': 'number'},
                                        'line_color': {'type': 'string'},
                                        'line_type': {'type': 'string'},
+                                       'notes': {'type': 'string'},
                                        'second_point': {'$ref': '#/$defs/objectReference'}},
                         'required': ['alias', 'first_point', 'second_point'],
                         'type': 'object'},
@@ -2552,7 +2557,8 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                      'formula_length': {'type': 'string'},
                                      'length_mm': {'type': 'number'},
                                      'line_color': {'type': 'string'},
-                                     'line_type': {'type': 'string'}},
+                                     'line_type': {'type': 'string'},
+                                     'notes': {'type': 'string'}},
                       'required': ['alias', 'base_point'],
                       'type': 'object'},
  'pattern.flipping_by_axis': {'additionalProperties': True,
@@ -2607,6 +2613,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                  'first_point': {'$ref': '#/$defs/objectReference'},
                                  'line_color': {'type': 'string'},
                                  'line_type': {'type': 'string'},
+                                 'notes': {'type': 'string'},
                                  'second_point': {'$ref': '#/$defs/objectReference'}},
                   'required': ['alias', 'first_point', 'second_point'],
                   'type': 'object'},
@@ -2636,6 +2643,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
  'pattern.midpoint': {'additionalProperties': True,
                       'properties': {'alias': {'type': 'string'},
                                      'first_point': {'$ref': '#/$defs/objectReference'},
+                                     'notes': {'type': 'string'},
                                      'second_point': {'$ref': '#/$defs/objectReference'}},
                       'required': ['alias', 'first_point', 'second_point'],
                       'type': 'object'},

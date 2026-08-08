@@ -51,6 +51,15 @@ struct VToolLineInitData : VDrawToolInitData
     QString lineColor{ColorBlack};
 };
 
+struct VToolLineCommandData
+{
+    quint32 firstPoint{NULL_ID};
+    quint32 secondPoint{NULL_ID};
+    QString typeLine{TypeLineLine};
+    QString lineColor{ColorBlack};
+    QString notes{};
+};
+
 /**
  * @brief The VToolLine class tool for creation line.
  */
@@ -63,6 +72,8 @@ public:
 
     void SetDialog() override;
     static auto Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *scene, VAbstractPattern *doc,
+                       VContainer *data) -> VToolLine *;
+    static auto Create(const VToolLineCommandData &command, VMainGraphicsScene *scene, VAbstractPattern *doc,
                        VContainer *data) -> VToolLine *;
     static auto Create(VToolLineInitData initData) -> VToolLine *;
 

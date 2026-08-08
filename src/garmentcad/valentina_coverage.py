@@ -24,6 +24,47 @@ NON_CONSTRUCTIBLE = {
 }
 
 
+def _function_body(text: str, declaration_start: int) -> str:
+    opening = text.find("{", declaration_start)
+    if opening < 0:
+        raise ValueError("Cannot locate function body")
+    depth = 0
+    for position in range(opening, len(text)):
+        if text[position] == "{":
+            depth += 1
+        elif text[position] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[declaration_start : position + 1]
+    raise ValueError("Unterminated function body")
+
+
+def gui_dialog_command_coverage(tools_root: Path) -> dict[str, dict[str, str]]:
+    """Report whether every native GUI Create(Dialog) crosses the command DTO boundary."""
+    result: dict[str, dict[str, str]] = {}
+    declaration = re.compile(
+        r"auto\s+(VTool[A-Za-z0-9_]+)::Create\(const QPointer<DialogTool>"
+    )
+    for source in sorted(tools_root.rglob("*.cpp")):
+        text = source.read_text(encoding="utf-8")
+        for match in declaration.finditer(text):
+            tool = match.group(1)
+            body = _function_body(text, match.start())
+            shared = any(
+                marker in body
+                for marker in (
+                    "CreateToolFromCommand<",
+                    "PrepareToolCommand(",
+                    f"{tool}CommandData",
+                )
+            )
+            result[tool] = {
+                "status": "shared_command_dto" if shared else "direct_init_data",
+                "source": str(source),
+            }
+    return result
+
+
 def enum_tools(header: Path) -> list[str]:
     text = header.read_text(encoding="utf-8")
     match = re.search(r"enum class Tool[^\{]*\{(?P<body>.*?)LAST_ONE_DO_NOT_USE", text, re.S)

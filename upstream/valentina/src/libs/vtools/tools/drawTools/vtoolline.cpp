@@ -120,24 +120,37 @@ auto VToolLine::Create(const QPointer<DialogTool> &dialog, VMainGraphicsScene *s
     const QPointer<DialogLine> dialogTool = qobject_cast<DialogLine *>(dialog);
     SCASSERT(not dialogTool.isNull())
 
-    VToolLineInitData initData;
-    initData.firstPoint = dialogTool->GetFirstPoint();
-    initData.secondPoint = dialogTool->GetSecondPoint();
-    initData.typeLine = dialogTool->GetTypeLine();
-    initData.lineColor = dialogTool->GetLineColor();
-    initData.scene = scene;
-    initData.doc = doc;
-    initData.data = data;
-    initData.parse = Document::FullParse;
-    initData.typeCreation = Source::FromGui;
-    initData.notes = dialogTool->GetNotes();
+    VToolLineCommandData command;
+    command.firstPoint = dialogTool->GetFirstPoint();
+    command.secondPoint = dialogTool->GetSecondPoint();
+    command.typeLine = dialogTool->GetTypeLine();
+    command.lineColor = dialogTool->GetLineColor();
+    command.notes = dialogTool->GetNotes();
 
-    VToolLine *line = Create(initData);
+    VToolLine *line = Create(command, scene, doc, data);
     if (line != nullptr)
     {
         line->m_dialog = dialog;
     }
     return line;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+auto VToolLine::Create(const VToolLineCommandData &command, VMainGraphicsScene *scene, VAbstractPattern *doc,
+                       VContainer *data) -> VToolLine *
+{
+    VToolLineInitData initData;
+    initData.firstPoint = command.firstPoint;
+    initData.secondPoint = command.secondPoint;
+    initData.typeLine = command.typeLine;
+    initData.lineColor = CanonicalToolColor(command.lineColor);
+    initData.notes = command.notes;
+    initData.scene = scene;
+    initData.doc = doc;
+    initData.data = data;
+    initData.parse = Document::FullParse;
+    initData.typeCreation = Source::FromGui;
+    return Create(initData);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
