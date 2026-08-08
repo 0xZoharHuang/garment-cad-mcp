@@ -77,9 +77,7 @@ def simulation_download(
     return {"ok": True, "resources": resources}
 
 
-def garmentcode_export(
-    project_path: str, formats: list[str] | None = None
-) -> dict[str, Any]:
+def garmentcode_export(project_path: str, formats: list[str] | None = None) -> dict[str, Any]:
     """Export native GarmentCode JSON and placed OBJ/USD as immutable artifacts."""
     from garmentcad.exports import export_garmentcode
 
@@ -95,9 +93,7 @@ def _run(
     commit: bool = False,
 ) -> dict[str, Any]:
     domain = (
-        OperationDomain.SIMULATION
-        if action.startswith("simulation.")
-        else OperationDomain.ASSEMBLY
+        OperationDomain.SIMULATION if action.startswith("simulation.") else OperationDomain.ASSEMBLY
     )
     return result_payload(
         execute_atomic(
@@ -143,6 +139,9 @@ def panel_transform(
     panel: str,
     translation_mm: list[float] | None = None,
     rotation_deg: list[float] | None = None,
+    translation_delta_mm: list[float] | None = None,
+    rotation_delta_deg: list[float] | None = None,
+    center_x: bool = False,
     commit: bool = False,
 ) -> dict[str, Any]:
     """Set the 3D placement of one panel."""
@@ -151,6 +150,12 @@ def panel_transform(
         arguments["translation_mm"] = translation_mm
     if rotation_deg is not None:
         arguments["rotation_deg"] = rotation_deg
+    if translation_delta_mm is not None:
+        arguments["translation_delta_mm"] = translation_delta_mm
+    if rotation_delta_deg is not None:
+        arguments["rotation_delta_deg"] = rotation_delta_deg
+    if center_x:
+        arguments["center_x"] = True
     return _run(project_path, "panel.transform", arguments, target=panel, commit=commit)
 
 
@@ -167,6 +172,23 @@ def panel_mirror(
         project_path,
         "panel.mirror",
         {"alias": alias, "axis": axis, "origin_mm": origin_mm},
+        target=panel,
+        commit=commit,
+    )
+
+
+def panel_pivot(
+    project_path: str,
+    panel: str,
+    point_mm: list[float],
+    replicate_placement: bool = False,
+    commit: bool = False,
+) -> dict[str, Any]:
+    """Move the local 2D pivot, optionally preserving its placed position."""
+    return _run(
+        project_path,
+        "panel.pivot",
+        {"point_mm": point_mm, "replicate_placement": replicate_placement},
         target=panel,
         commit=commit,
     )
@@ -232,6 +254,31 @@ def edge_chamfer(
     )
 
 
+def edge_sequence_transform(
+    project_path: str,
+    panel: str,
+    edge_indices: list[int],
+    translation_delta_mm: list[float] | None = None,
+    snap_start_mm: list[float] | None = None,
+    rotation_deg: float | None = None,
+    origin_mm: list[float] | None = None,
+    reflect_line_mm: list[list[float]] | None = None,
+    commit: bool = False,
+) -> dict[str, Any]:
+    """Transform the unique vertices belonging to an ordered edge sequence."""
+    arguments: dict[str, Any] = {"panel": panel, "edge_indices": edge_indices}
+    for name, value in {
+        "translation_delta_mm": translation_delta_mm,
+        "snap_start_mm": snap_start_mm,
+        "rotation_deg": rotation_deg,
+        "origin_mm": origin_mm,
+        "reflect_line_mm": reflect_line_mm,
+    }.items():
+        if value is not None:
+            arguments[name] = value
+    return _run(project_path, "edge_sequence.transform", arguments, commit=commit)
+
+
 def dart_insert(
     project_path: str,
     panel: str,
@@ -264,6 +311,42 @@ def component_define(
         project_path,
         "component.define",
         {"alias": alias, "panels": panels},
+        commit=commit,
+    )
+
+
+def component_transform(
+    project_path: str,
+    component: str,
+    translation_delta_mm: list[float] | None = None,
+    rotation_delta_deg: list[float] | None = None,
+    commit: bool = False,
+) -> dict[str, Any]:
+    """Translate and rotate every panel in a component by the same deltas."""
+    return _run(
+        project_path,
+        "component.transform",
+        {
+            "component": component,
+            "translation_delta_mm": translation_delta_mm or [0, 0, 0],
+            "rotation_delta_deg": rotation_delta_deg or [0, 0, 0],
+        },
+        commit=commit,
+    )
+
+
+def component_mirror(
+    project_path: str,
+    component: str,
+    axis: str = "x",
+    origin_mm: float = 0,
+    commit: bool = False,
+) -> dict[str, Any]:
+    """Mirror all panels in one component without changing their identities."""
+    return _run(
+        project_path,
+        "component.mirror",
+        {"component": component, "axis": axis, "origin_mm": origin_mm},
         commit=commit,
     )
 
@@ -325,6 +408,30 @@ def interface_delete(project_path: str, interface: str, commit: bool = False) ->
     return _run(project_path, "interface.delete", target=interface, commit=commit)
 
 
+def interface_update(
+    project_path: str,
+    interface: str,
+    edge_indices: list[int] | None = None,
+    reverse_order: bool = False,
+    flip_edges: bool = False,
+    right_wrong: bool | None = None,
+    ruffle: float | None = None,
+    commit: bool = False,
+) -> dict[str, Any]:
+    """Change interface order, edge direction, face orientation, or ruffle."""
+    arguments: dict[str, Any] = {
+        "reverse_order": reverse_order,
+        "flip_edges": flip_edges,
+    }
+    if edge_indices is not None:
+        arguments["edge_indices"] = edge_indices
+    if right_wrong is not None:
+        arguments["right_wrong"] = right_wrong
+    if ruffle is not None:
+        arguments["ruffle"] = ruffle
+    return _run(project_path, "interface.update", arguments, target=interface, commit=commit)
+
+
 def stitch_create(
     project_path: str,
     alias: str,
@@ -372,14 +479,19 @@ LAZY_TOOLS = {
     "panel_create": panel_create,
     "panel_delete": panel_delete,
     "panel_transform": panel_transform,
+    "panel_pivot": panel_pivot,
     "panel_mirror": panel_mirror,
     "edge_split": edge_split,
     "edge_extend": edge_extend,
+    "edge_sequence_transform": edge_sequence_transform,
     "edge_chamfer": edge_chamfer,
     "dart_insert": dart_insert,
     "component_define": component_define,
+    "component_transform": component_transform,
+    "component_mirror": component_mirror,
     "valentina_import_revision": valentina_import_revision,
     "interface_define": interface_define,
+    "interface_update": interface_update,
     "interface_delete": interface_delete,
     "stitch_create": stitch_create,
     "stitch_delete": stitch_delete,

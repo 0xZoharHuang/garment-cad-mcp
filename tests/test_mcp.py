@@ -147,8 +147,7 @@ async def test_change_set_detail_resource_is_on_demand_and_default_result_is_com
     detail.parent.mkdir(parents=True, exist_ok=True)
     detail.write_text('{"dependents":[1,2,3]}\n', encoding="utf-8")
     uri = (
-        f"garment://project/{project.manifest.project_id}/changeset/"
-        f"{token}/details/issue-0000.json"
+        f"garment://project/{project.manifest.project_id}/changeset/{token}/details/issue-0000.json"
     )
     resource_tool = garmentcode_mcp._tool_manager.get_tool("resource_read")
     result = await resource_tool.run(
@@ -248,14 +247,10 @@ def test_every_native_gui_dialog_emits_shared_command_dto():
 
     from garmentcad.valentina_coverage import gui_dialog_command_coverage
 
-    records = gui_dialog_command_coverage(
-        Path("upstream/valentina/src/libs/vtools/tools")
-    )
+    records = gui_dialog_command_coverage(Path("upstream/valentina/src/libs/vtools/tools"))
     assert len(records) >= 41
     assert not {
-        name
-        for name, record in records.items()
-        if record["status"] != "shared_command_dto"
+        name for name, record in records.items() if record["status"] != "shared_command_dto"
     }
 
     command_service = Path(
@@ -279,14 +274,12 @@ def test_every_native_layout_export_format_is_mapped():
 
     from garmentcad.valentina_coverage import layout_export_formats
 
-    formats = layout_export_formats(
-        Path("upstream/valentina/src/libs/vlayout/vlayoutdef.h")
-    )
+    formats = layout_export_formats(Path("upstream/valentina/src/libs/vlayout/vlayoutdef.h"))
     exportable = set(formats) - {"NC"}  # Reserved for future G-code in upstream.
 
-    valentina = Path(
-        "upstream/valentina/src/app/valentina/core/vcommandservice.cpp"
-    ).read_text(encoding="utf-8")
+    valentina = Path("upstream/valentina/src/app/valentina/core/vcommandservice.cpp").read_text(
+        encoding="utf-8"
+    )
     valentina_values = {
         int(value)
         for value in re.findall(
@@ -296,9 +289,7 @@ def test_every_native_layout_export_format_is_mapped():
     }
     assert {formats[name] for name in exportable} <= valentina_values
 
-    puzzle = Path(
-        "upstream/valentina/src/app/puzzle/vpmainwindow.cpp"
-    ).read_text(encoding="utf-8")
+    puzzle = Path("upstream/valentina/src/app/puzzle/vpmainwindow.cpp").read_text(encoding="utf-8")
     puzzle_names = set(
         re.findall(
             r'\{QStringLiteral\("[a-z0-9_]+"\), LayoutExportFormats::([A-Z0-9_]+)\}',
@@ -315,6 +306,4 @@ def test_every_valentina_catalog_action_has_native_replay_coverage():
         (Path("tests") / filename).read_text(encoding="utf-8")
         for filename in ("test_native_valentina.py", "test_native_puzzle.py")
     )
-    assert not {
-        spec.action for spec in VALENTINA_TOOLS if spec.action not in replay_sources
-    }
+    assert not {spec.action for spec in VALENTINA_TOOLS if spec.action not in replay_sources}

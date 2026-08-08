@@ -240,9 +240,7 @@ class Project:
                 summaries.append(summary)
             elif validate_backends and domain not in NATIVE_VALENTINA_DOMAINS:
                 summaries.append(
-                    ProjectMetadataBackend().preview(
-                        self.root, change_set.id, domain_operations
-                    )
+                    ProjectMetadataBackend().preview(self.root, change_set.id, domain_operations)
                 )
         native_operations = [
             operation for operation in selected if operation.domain in NATIVE_VALENTINA_DOMAINS
@@ -337,9 +335,7 @@ class Project:
                             self.root / f".garmentcad/changesets/{change_set.id}/simulation"
                         )
                         if staged_simulation.is_dir():
-                            candidate_root = (
-                                self.root / f".garmentcad/changesets/{change_set.id}"
-                            )
+                            candidate_root = self.root / f".garmentcad/changesets/{change_set.id}"
                             for source in sorted(staged_simulation.rglob("*")):
                                 if source.is_file():
                                     destination = self.root / source.relative_to(candidate_root)
@@ -359,12 +355,9 @@ class Project:
                         for operation in change_set.operations
                         if operation.domain in NATIVE_VALENTINA_DOMAINS
                     ]
-                    NativeCommandRouter().commit(
-                        self.root, change_set.id, native_operations
-                    )
+                    NativeCommandRouter().commit(self.root, change_set.id, native_operations)
                 staged_exports = (
-                    self.root
-                    / f".garmentcad/changesets/{change_set.id}/artifacts/exports"
+                    self.root / f".garmentcad/changesets/{change_set.id}/artifacts/exports"
                 )
                 if staged_exports.is_dir():
                     store = ArtifactStore(self.root)
@@ -378,9 +371,7 @@ class Project:
                                     revision=next_revision,
                                     metadata={
                                         "change_set_id": change_set.id,
-                                        "relative_path": str(
-                                            exported.relative_to(staged_exports)
-                                        ),
+                                        "relative_path": str(exported.relative_to(staged_exports)),
                                     },
                                 )
                             )
@@ -453,16 +444,11 @@ class Project:
     def _externalize_summary_details(change_set: ChangeSet, preview_directory: Path) -> None:
         for index, issue in enumerate(change_set.summary.issues):
             payload = canonical_json(issue.details)
-            if not issue.details or (
-                issue.code != "dependency_query" and len(payload) <= 4096
-            ):
+            if not issue.details or (issue.code != "dependency_query" and len(payload) <= 4096):
                 continue
             relative = f"details/issue-{index:04d}.json"
             atomic_write_json(preview_directory / relative, issue.details)
-            uri = (
-                f"garment://project/{change_set.project_id}/changeset/"
-                f"{change_set.id}/{relative}"
-            )
+            uri = f"garment://project/{change_set.project_id}/changeset/{change_set.id}/{relative}"
             issue.details = {"resource_uri": uri, "byte_length": len(payload)}
             change_set.preview_resources.append(uri)
 

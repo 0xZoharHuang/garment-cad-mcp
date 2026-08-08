@@ -42,9 +42,7 @@ def _function_body(text: str, declaration_start: int) -> str:
 def gui_dialog_command_coverage(tools_root: Path) -> dict[str, dict[str, str]]:
     """Report whether every native GUI Create(Dialog) crosses the command DTO boundary."""
     result: dict[str, dict[str, str]] = {}
-    declaration = re.compile(
-        r"auto\s+(VTool[A-Za-z0-9_]+)::Create\(const QPointer<DialogTool>"
-    )
+    declaration = re.compile(r"auto\s+(VTool[A-Za-z0-9_]+)::Create\(const QPointer<DialogTool>")
     for source in sorted(tools_root.rglob("*.cpp")):
         text = source.read_text(encoding="utf-8")
         for match in declaration.finditer(text):
@@ -68,15 +66,11 @@ def gui_dialog_command_coverage(tools_root: Path) -> dict[str, dict[str, str]]:
 def layout_export_formats(header: Path) -> dict[str, int]:
     """Read Valentina's explicitly numbered native export enum."""
     text = header.read_text(encoding="utf-8")
-    match = re.search(
-        r"enum class LayoutExportFormats[^\{]*\{(?P<body>.*?)\bCOUNT\b", text, re.S
-    )
+    match = re.search(r"enum class LayoutExportFormats[^\{]*\{(?P<body>.*?)\bCOUNT\b", text, re.S)
     if match is None:
         raise ValueError("Cannot locate LayoutExportFormats enum")
     result: dict[str, int] = {}
-    for name, value in re.findall(
-        r"\b([A-Z][A-Z0-9_]*)\s*=\s*(\d+)", match.group("body")
-    ):
+    for name, value in re.findall(r"\b([A-Z][A-Z0-9_]*)\s*=\s*(\d+)", match.group("body")):
         result[name] = int(value)
     return result
 

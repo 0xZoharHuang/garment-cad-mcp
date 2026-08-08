@@ -129,9 +129,7 @@ class NativeCommandRouter:
             summaries.append(self.puzzle.preview(project_root, change_set_id, puzzle))
         return merge_summaries(summaries)
 
-    def commit(
-        self, project_root: Path, change_set_id: str, operations: list[Operation]
-    ) -> None:
+    def commit(self, project_root: Path, change_set_id: str, operations: list[Operation]) -> None:
         if any(not self._is_puzzle(operation) for operation in operations):
             self.valentina.commit(project_root, change_set_id)
         if any(self._is_puzzle(operation) for operation in operations):

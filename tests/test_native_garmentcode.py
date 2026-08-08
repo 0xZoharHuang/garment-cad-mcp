@@ -216,7 +216,7 @@ import importlib.util, json, tempfile
 from pathlib import Path
 spec = importlib.util.spec_from_file_location(
     'autodl_runner',
-    {str(REPOSITORY / 'scripts/autodl-runner.py')!r},
+    {str(REPOSITORY / "scripts/autodl-runner.py")!r},
 )
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

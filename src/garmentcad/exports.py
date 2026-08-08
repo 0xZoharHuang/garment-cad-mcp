@@ -84,12 +84,10 @@ def _obj(panels: list[dict[str, Any]]) -> bytes:
     for panel in panels:
         lines.append(f"o {panel['name']}")
         lines.extend(
-            "v " + " ".join(f"{value:.9g}" for value in point)
-            for point in panel["vertices_3d_mm"]
+            "v " + " ".join(f"{value:.9g}" for value in point) for point in panel["vertices_3d_mm"]
         )
         lines.extend(
-            "f " + " ".join(str(vertex_offset + index) for index in face)
-            for face in panel["faces"]
+            "f " + " ".join(str(vertex_offset + index) for index in face) for face in panel["faces"]
         )
         vertex_offset += len(panel["vertices_3d_mm"])
     return ("\n".join(lines) + "\n").encode()

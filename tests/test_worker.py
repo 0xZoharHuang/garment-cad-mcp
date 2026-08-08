@@ -197,8 +197,7 @@ def test_external_simulation_inputs_are_previewed_committed_and_reverted(tmp_pat
     assert result.ok
     assert not (project.root / "simulation/bodies/body.obj").exists()
     assert (
-        project.root
-        / f".garmentcad/changesets/{result.token}/simulation/bodies/body.obj"
+        project.root / f".garmentcad/changesets/{result.token}/simulation/bodies/body.obj"
     ).exists()
     project.commit(result.token)
     assert (project.root / "simulation/bodies/body.obj").exists()

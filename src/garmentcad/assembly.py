@@ -92,6 +92,24 @@ def _lerp(first: list[float], second: list[float], fraction: float) -> list[floa
     return [first[index] + (second[index] - first[index]) * fraction for index in range(2)]
 
 
+def _rotate_2d(point: list[float], origin: list[float], angle_deg: float) -> list[float]:
+    angle = math.radians(angle_deg)
+    cosine, sine = math.cos(angle), math.sin(angle)
+    x, y = point[0] - origin[0], point[1] - origin[1]
+    return [
+        origin[0] + x * cosine - y * sine,
+        origin[1] + x * sine + y * cosine,
+    ]
+
+
+def _component_panels(
+    components: dict[str, Any], panels: dict[str, Any], alias: str
+) -> list[tuple[str, dict[str, Any]]]:
+    if alias not in components:
+        raise ValueError(f"Component not found: {alias}")
+    return [(panel_id, panels[panel_id]) for panel_id in components[alias]]
+
+
 def apply_operations(
     source: dict[str, Any], operations: list[Operation]
 ) -> tuple[dict[str, Any], ChangeSummary]:
@@ -170,6 +188,30 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
             panel["translation_mm"] = _point(args["translation_mm"], 3)
         if "rotation_deg" in args:
             panel["rotation_deg"] = _point(args["rotation_deg"], 3)
+        if "translation_delta_mm" in args:
+            delta = _point(args["translation_delta_mm"], 3)
+            panel["translation_mm"] = [
+                panel["translation_mm"][index] + delta[index] for index in range(3)
+            ]
+        if "rotation_delta_deg" in args:
+            delta = _point(args["rotation_delta_deg"], 3)
+            panel["rotation_deg"] = [
+                panel["rotation_deg"][index] + delta[index] for index in range(3)
+            ]
+        if args.get("center_x"):
+            xs = [point[0] for point in panel["vertices_mm"]]
+            panel["translation_mm"][0] = -(min(xs) + max(xs)) / 2
+        summary.changed.append(ObjectRef(uuid=object_id, alias=panel.get("alias")))
+    elif action == "panel.pivot":
+        object_id = _resolve(panels, operation.target)
+        panel = panels[object_id]
+        pivot = _point(args["point_mm"])
+        if args.get("replicate_placement"):
+            panel["translation_mm"][0] += pivot[0]
+            panel["translation_mm"][1] += pivot[1]
+        panel["vertices_mm"] = [
+            [point[0] - pivot[0], point[1] - pivot[1]] for point in panel["vertices_mm"]
+        ]
         summary.changed.append(ObjectRef(uuid=object_id, alias=panel.get("alias")))
     elif action == "panel.mirror":
         source_id = _resolve(panels, operation.target)
@@ -233,6 +275,42 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
             end[index] + unit[index] * end_delta for index in range(2)
         ]
         summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
+    elif action == "edge_sequence.transform":
+        panel_id = _resolve(panels, _panel_ref(args["panel"]))
+        panel = panels[panel_id]
+        indices = [int(value) for value in args["edge_indices"]]
+        if not indices:
+            raise ValueError("edge_indices must not be empty")
+        selected = [panel["edges"][index] for index in indices]
+        vertex_indices = list(
+            dict.fromkeys(index for edge in selected for index in (edge["start"], edge["end"]))
+        )
+        origin = _point(args.get("origin_mm", panel["vertices_mm"][selected[0]["start"]]))
+        if "snap_start_mm" in args:
+            target = _point(args["snap_start_mm"])
+            start = panel["vertices_mm"][selected[0]["start"]]
+            shift = [target[0] - start[0], target[1] - start[1]]
+        else:
+            shift = _point(args.get("translation_delta_mm", [0, 0]))
+        for index in vertex_indices:
+            point = panel["vertices_mm"][index]
+            point = [point[0] + shift[0], point[1] + shift[1]]
+            if "rotation_deg" in args:
+                point = _rotate_2d(point, origin, float(args["rotation_deg"]))
+            if "reflect_line_mm" in args:
+                line = args["reflect_line_mm"]
+                first, second = _point(line[0]), _point(line[1])
+                dx, dy = second[0] - first[0], second[1] - first[1]
+                length_squared = dx * dx + dy * dy
+                if math.isclose(length_squared, 0):
+                    raise ValueError("reflect_line_mm points must differ")
+                projection = (
+                    (point[0] - first[0]) * dx + (point[1] - first[1]) * dy
+                ) / length_squared
+                projected = [first[0] + projection * dx, first[1] + projection * dy]
+                point = [2 * projected[0] - point[0], 2 * projected[1] - point[1]]
+            panel["vertices_mm"][index] = point
+        summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
     elif action == "edge.chamfer":
         panel_id = _resolve(panels, _panel_ref(args["panel"]))
         panel = panels[panel_id]
@@ -279,6 +357,31 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
             ObjectRef(uuid=panel_id, alias=panels[panel_id].get("alias"))
             for panel_id in components[alias]
         )
+    elif action == "component.transform":
+        alias = str(args["component"])
+        members = _component_panels(components, panels, alias)
+        delta_translation = _point(args.get("translation_delta_mm", [0, 0, 0]), 3)
+        delta_rotation = _point(args.get("rotation_delta_deg", [0, 0, 0]), 3)
+        for panel_id, panel in members:
+            panel["translation_mm"] = [
+                panel["translation_mm"][index] + delta_translation[index] for index in range(3)
+            ]
+            panel["rotation_deg"] = [
+                panel["rotation_deg"][index] + delta_rotation[index] for index in range(3)
+            ]
+            summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
+    elif action == "component.mirror":
+        alias = str(args["component"])
+        axis = str(args.get("axis", "x"))
+        if axis not in {"x", "y"}:
+            raise ValueError("axis must be x or y")
+        coordinate = 0 if axis == "x" else 1
+        origin = float(args.get("origin_mm", 0))
+        for panel_id, panel in _component_panels(components, panels, alias):
+            for point in panel["vertices_mm"]:
+                point[coordinate] = 2 * origin - point[coordinate]
+            panel["translation_mm"][coordinate] *= -1
+            summary.changed.append(ObjectRef(uuid=panel_id, alias=panel.get("alias")))
     elif action == "valentina.import":
         from garmentcad.valentina_bridge import snapshot_to_assembly
 
@@ -313,6 +416,23 @@ def _apply_one(state: dict[str, Any], operation: Operation, summary: ChangeSumma
             if object_id in (stitches[key].get("interface_a"), stitches[key].get("interface_b")):
                 stitches.pop(key)
         summary.deleted.append(ObjectRef(uuid=object_id, alias=item.get("alias")))
+    elif action == "interface.update":
+        object_id = _resolve(interfaces, operation.target)
+        item = interfaces[object_id]
+        panel = panels[item["panel_id"]]
+        if "edge_indices" in args:
+            item["edge_indices"] = [int(index) for index in args["edge_indices"]]
+            item["edge_ids"] = [panel["edges"][index]["id"] for index in item["edge_indices"]]
+        if args.get("reverse_order"):
+            item["edge_indices"].reverse()
+            item["edge_ids"].reverse()
+        if args.get("flip_edges"):
+            item["reverse"] = not bool(item.get("reverse", False))
+        if "right_wrong" in args:
+            item["right_wrong"] = bool(args["right_wrong"])
+        if "ruffle" in args:
+            item["ruffle"] = float(args["ruffle"])
+        summary.changed.append(ObjectRef(uuid=object_id, alias=item.get("alias")))
     elif action == "stitch.create":
         interface_a = _resolve(interfaces, ObjectRef.model_validate(args["interface_a"]))
         interface_b = _resolve(interfaces, ObjectRef.model_validate(args["interface_b"]))

@@ -19,3 +19,8 @@ This ledger distinguishes implemented behavior from the external GPU gate.
 
 1. Run `uv run scripts/smoke-autodl.py` against the supplied AutoDL GPU instance. Local fixture
    results cannot satisfy this gate.
+
+The GarmentCode facade coverage check audits every public transformation on the pinned `Panel`,
+`Edge`, `EdgeSequence`, `Interface`, and `Component` classes. Shared parameterized actions implement
+the mappings; `Component.rotate_to` is recorded separately because upstream itself always raises
+`NotImplementedError`.

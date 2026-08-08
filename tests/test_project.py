@@ -139,9 +139,7 @@ def test_stale_preview_is_rejected(tmp_path):
 
 def test_gui_file_change_invalidates_preview_and_is_visible_on_refresh(tmp_path):
     project = Project.create(tmp_path / "gui-change")
-    preview = GarmentSDK(project.root).panel_create(
-        "front", [[0, 0], [100, 0], [0, 100]]
-    )
+    preview = GarmentSDK(project.root).panel_create("front", [[0, 0], [100, 0], [0, 100]])
     pattern = project.root / "pattern/main.val"
     pattern.write_bytes(pattern.read_bytes() + b"\n<!-- saved by GUI -->\n")
     refreshed = Project.open(project.root).status()
@@ -196,9 +194,7 @@ def test_preview_candidate_is_immutable_and_discard_is_terminal(tmp_path):
         project.commit(preview.token)
     assert project.current_revision == 0
 
-    clean = GarmentSDK(project.root).panel_create(
-        "back", [[0, 0], [80, 0], [80, 100], [0, 100]]
-    )
+    clean = GarmentSDK(project.root).panel_create("back", [[0, 0], [80, 0], [80, 100], [0, 100]])
     project.discard(clean.token)
     with pytest.raises(ChangeSetIntegrityError, match="already discarded"):
         project.commit(clean.token)
@@ -206,9 +202,7 @@ def test_preview_candidate_is_immutable_and_discard_is_terminal(tmp_path):
 
 def test_project_lock_rejects_a_second_writer(tmp_path):
     project = Project.create(tmp_path / "locked-project")
-    preview = GarmentSDK(project.root).panel_create(
-        "front", [[0, 0], [100, 0], [0, 100]]
-    )
+    preview = GarmentSDK(project.root).panel_create("front", [[0, 0], [100, 0], [0, 100]])
     with ProjectLock(project.root / ".garmentcad/project.lock"):
         with pytest.raises(ProjectLockedError):
             project.commit(preview.token)
@@ -223,7 +217,7 @@ from pathlib import Path
 from garmentcad.errors import ProjectLockedError
 from garmentcad.locking import ProjectLock
 try:
-    ProjectLock(Path({str(project.root / '.garmentcad/project.lock')!r})).acquire()
+    ProjectLock(Path({str(project.root / ".garmentcad/project.lock")!r})).acquire()
 except ProjectLockedError:
     raise SystemExit(0)
 raise SystemExit(1)
@@ -279,9 +273,7 @@ path.write_bytes(path.read_bytes() + b'\\n<!-- GUI save -->\\n')
     assert reopened.current_revision == 1
     assert reopened.status()["externally_modified"] is False
     revision = read_json(project.root / ".garmentcad/revisions/1.json")
-    change = read_json(
-        project.root / f".garmentcad/changesets/{revision['change_set_id']}.json"
-    )
+    change = read_json(project.root / f".garmentcad/changesets/{revision['change_set_id']}.json")
     assert change["operations"][0]["action"] == "project.gui_save"
     reopened.revert(1)
     assert pattern.read_bytes() == original
@@ -289,9 +281,7 @@ path.write_bytes(path.read_bytes() + b'\\n<!-- GUI save -->\\n')
 
 def test_commit_failure_restores_truth_and_leaves_preview_retryable(tmp_path, monkeypatch):
     project = Project.create(tmp_path / "rollback-project")
-    preview = GarmentSDK(project.root).panel_create(
-        "front", [[0, 0], [100, 0], [0, 100]]
-    )
+    preview = GarmentSDK(project.root).panel_create("front", [[0, 0], [100, 0], [0, 100]])
     original_manifest = (project.root / "garment.json").read_bytes()
     original_assembly = (project.root / "assembly/assembly.json").read_bytes()
     original_write = project_module.atomic_write_json
@@ -308,16 +298,15 @@ def test_commit_failure_restores_truth_and_leaves_preview_retryable(tmp_path, mo
     assert (project.root / "assembly/assembly.json").read_bytes() == original_assembly
     assert not (project.root / ".garmentcad/revisions/1.json").exists()
     assert not (project.root / ".garmentcad/snapshots/1").exists()
-    assert read_json(
-        project.root / f".garmentcad/changesets/{preview.token}.json"
-    )["status"] == "preview"
+    assert (
+        read_json(project.root / f".garmentcad/changesets/{preview.token}.json")["status"]
+        == "preview"
+    )
 
 
 def test_reverse_revision_is_appended_to_event_log(tmp_path):
     project = Project.create(tmp_path / "reverse-events")
-    preview = GarmentSDK(project.root).panel_create(
-        "front", [[0, 0], [100, 0], [0, 100]]
-    )
+    preview = GarmentSDK(project.root).panel_create("front", [[0, 0], [100, 0], [0, 100]])
     project.commit(preview.token)
     project.revert(1)
     events = [

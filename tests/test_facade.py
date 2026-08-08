@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from garmentcad.assembly import apply_operations, empty_assembly, to_garmentcode
 from garmentcad.catalog import GARMENTCODE_TOOLS
+from garmentcad.garmentcode_coverage import FACADE_TRANSFORM_MAP, coverage_report
 from garmentcad.models import Operation, OperationDomain
 from garmentcad.valentina_bridge import snapshot_to_assembly
 
@@ -163,6 +166,48 @@ def test_chamfer_preserves_every_existing_edge_uuid_and_interface():
     assert set(next(iter(state["interfaces"].values()))["edge_ids"]) <= updated_ids
 
 
+def test_interface_update_reorders_and_orients_native_interface():
+    state, summary = apply_operations(
+        empty_assembly(),
+        [
+            operation(
+                "panel.create",
+                alias="front",
+                vertices_mm=[[0, 0], [100, 0], [100, 100], [0, 100]],
+            ),
+            operation(
+                "interface.define",
+                alias="seam",
+                panel={"alias": "front"},
+                edge_indices=[0, 1],
+            ),
+        ],
+    )
+    interface_id = next(iter(state["interfaces"]))
+    state, summary = apply_operations(
+        state,
+        [
+            Operation(
+                domain=OperationDomain.ASSEMBLY,
+                action="interface.update",
+                target={"uuid": interface_id},
+                arguments={
+                    "reverse_order": True,
+                    "flip_edges": True,
+                    "right_wrong": True,
+                    "ruffle": 1.2,
+                },
+            )
+        ],
+    )
+    assert not [issue for issue in summary.issues if issue.severity == "error"]
+    interface = state["interfaces"][interface_id]
+    assert interface["edge_indices"] == [1, 0]
+    assert interface["reverse"] is True
+    assert interface["right_wrong"] is True
+    assert interface["ruffle"] == pytest.approx(1.2)
+
+
 def test_all_public_garmentcode_transformations_compose_and_validate():
     state, summary = apply_operations(
         empty_assembly(),
@@ -207,6 +252,26 @@ def test_all_public_garmentcode_transformations_compose_and_validate():
                 position=0.5,
             ),
             operation("component.define", alias="bodice", panels=["front", "back"]),
+            operation(
+                "component.transform",
+                component="bodice",
+                translation_delta_mm=[0, 5, 10],
+                rotation_delta_deg=[1, 0, 0],
+            ),
+            Operation(
+                domain=OperationDomain.ASSEMBLY,
+                action="panel.pivot",
+                target={"alias": "front"},
+                arguments={"point_mm": [10, 10], "replicate_placement": True},
+            ),
+            operation(
+                "edge_sequence.transform",
+                panel="back",
+                edge_indices=[1],
+                translation_delta_mm=[5, 0],
+                rotation_deg=5,
+            ),
+            operation("component.mirror", component="bodice", axis="x"),
         ],
     )
     assert not [issue for issue in summary.issues if issue.severity == "error"]
@@ -221,17 +286,32 @@ def test_garmentcode_catalog_exposes_every_mutating_facade_action():
         "panel.create",
         "panel.delete",
         "panel.transform",
+        "panel.pivot",
         "panel.mirror",
         "edge.split",
         "edge.extend",
+        "edge_sequence.transform",
         "edge.chamfer",
         "dart.insert",
         "component.define",
+        "component.transform",
+        "component.mirror",
         "valentina.import",
         "interface.define",
+        "interface.update",
         "interface.delete",
         "stitch.create",
         "stitch.delete",
         "validate",
     }
     assert expected <= {tool.action for tool in GARMENTCODE_TOOLS}
+
+
+def test_pinned_public_transformations_have_audited_facade_mapping():
+    source = Path(__file__).resolve().parents[1] / "upstream/garmentcode/pygarment/garmentcode"
+    report = coverage_report(source, {tool.action for tool in GARMENTCODE_TOOLS})
+    assert report["missing_declarations"] == []
+    assert report["stale_declarations"] == []
+    assert report["missing_actions"] == []
+    assert report["upstream_unavailable"] == ["Component.rotate_to"]
+    assert len(FACADE_TRANSFORM_MAP) >= 30
