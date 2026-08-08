@@ -32,6 +32,7 @@
 #include <QPaintEngine>
 #include <QPolygonF>
 #include <QRectF>
+#include <QPointer>
 #include <QSharedPointer>
 #include <QSize>
 #include <QtGlobal>
@@ -74,7 +75,7 @@ private:
     Q_DISABLE_COPY_MOVE(VObjEngine) // NOLINT
     QSharedPointer<QTextStream> stream;
     quint32 globalPointsCount;
-    QSharedPointer<QIODevice> outputDevice;
+    QPointer<QIODevice> outputDevice;
     del_point2d_t points[MAX_POINTS];
     quint32 planeCount;
     QSize size;

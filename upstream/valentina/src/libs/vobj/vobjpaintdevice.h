@@ -30,6 +30,7 @@
 #define VOBJPAINTDEVICE_H
 
 #include <QPaintDevice>
+#include <QScopedPointer>
 #include <QSharedPointer>
 #include <QSize>
 #include <QString>
@@ -64,8 +65,8 @@ private:
     // cppcheck-suppress unknownMacro
     Q_DISABLE_COPY_MOVE(VObjPaintDevice) // NOLINT
     QSharedPointer<VObjEngine> engine;
+    QScopedPointer<QIODevice> ownedOutputDevice;
     QString fileName;
-    uint owns_iodevice;
 };
 
 #endif // VOBJPAINTDEVICE_H

@@ -295,7 +295,7 @@ auto VObjEngine::getOutputDevice() const -> QIODevice *
 void VObjEngine::setOutputDevice(QIODevice *value)
 {
     Q_ASSERT(not isActive());
-    outputDevice.reset(value);
+    outputDevice = value;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

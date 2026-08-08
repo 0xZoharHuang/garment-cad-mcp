@@ -34,6 +34,10 @@ for app_name in Valentina Tape Puzzle; do
   mkdir -p "$app/Contents/Frameworks"
   ditto "$property_framework" "$app/Contents/Frameworks/VPropertyExplorerLib.framework"
   ditto "$parser_framework" "$app/Contents/Frameworks/QMUParserLib.framework"
+  mkdir -p "$app/Contents/PlugIns/imageformats"
+  ditto \
+    "$plugin_dir/imageformats/libqtiff.dylib" \
+    "$app/Contents/PlugIns/imageformats/libqtiff.dylib"
   macdeployqt "$app" \
     -no-strip \
     -no-plugins \
@@ -59,8 +63,9 @@ for app_name in Valentina Tape Puzzle; do
       \( -name VPropertyExplorerLib -o -name QMUParserLib \)
   )
 
-  # macdeployqt's -no-plugins mode is intentional: only ship the two platform
-  # backends required by desktop use and headless smoke tests.
+  # macdeployqt's -no-plugins mode is intentional: ship the TIFF writer used
+  # by the export contract plus the two platform backends required by desktop
+  # use and headless smoke tests.
   mkdir -p "$app/Contents/PlugIns/platforms"
   for platform_plugin in libqcocoa.dylib libqoffscreen.dylib; do
     ditto \

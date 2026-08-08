@@ -13,14 +13,22 @@ class ObjectReference(TypedDict, total=False):
     alias: NotRequired[str]
 
 class ExportLayoutArguments(TypedDict, total=False):
+    binary_dxf: NotRequired[bool]
     copy_number: NotRequired[int]
     format: NotRequired[str]
+    hide_ruler: NotRequired[bool]
     output_path: NotRequired[str]
     piece: NotRequired[str]
     piece_id: NotRequired[str]
     sheet: NotRequired[str]
     sheet_index: NotRequired[int]
     sheet_uuid: NotRequired[str]
+    show_grainline: NotRequired[bool]
+    text_as_paths: NotRequired[bool]
+    tiles_scheme: NotRequired[bool]
+    unified: NotRequired[bool]
+    x_scale: NotRequired[float]
+    y_scale: NotRequired[float]
 
 class ExportPatternArguments(TypedDict, total=False):
     binary_dxf: NotRequired[bool]
@@ -116,6 +124,19 @@ class LayoutSheetUpdateArguments(TypedDict, total=False):
     sheet_uuid: NotRequired[str]
     width_mm: NotRequired[float]
 
+class MeasurementCorrectionSetArguments(TypedDict, total=False):
+    base_a_mm: Required[float]
+    base_b_mm: NotRequired[float]
+    base_c_mm: NotRequired[float]
+    name: Required[str]
+    path: NotRequired[str]
+    value_mm: Required[float]
+
+class MeasurementDimensionLabelsSetArguments(TypedDict, total=False):
+    axis: Required[str]
+    labels: Required[list[Any]]
+    path: NotRequired[str]
+
 class MeasurementDimensionSetArguments(TypedDict, total=False):
     axis: Required[str]
     base_mm: NotRequired[float]
@@ -123,6 +144,7 @@ class MeasurementDimensionSetArguments(TypedDict, total=False):
     max_mm: NotRequired[float]
     min_mm: NotRequired[float]
     name: NotRequired[str]
+    path: NotRequired[str]
     step_mm: NotRequired[float]
 
 class MeasurementExportCsvArguments(TypedDict, total=False):
@@ -135,12 +157,23 @@ class MeasurementFileCreateArguments(TypedDict, total=False):
     path: NotRequired[str]
     type: NotRequired[str]
 
+class MeasurementFileMetadataSetArguments(TypedDict, total=False):
+    birth_date: NotRequired[str]
+    customer: NotRequired[str]
+    email: NotRequired[str]
+    full_circumference: NotRequired[bool]
+    gender: NotRequired[str]
+    known_measurements_uuid: NotRequired[str]
+    notes: NotRequired[str]
+    path: NotRequired[str]
+    read_only: NotRequired[bool]
+
 class MeasurementFileOpenArguments(TypedDict, total=False):
     path: NotRequired[str]
     source_path: Required[str]
 
 class MeasurementFileSaveArguments(TypedDict, total=False):
-    pass
+    path: NotRequired[str]
 
 class MeasurementFinalMeasurementSetArguments(TypedDict, total=False):
     description: NotRequired[str]
@@ -159,20 +192,46 @@ class MeasurementIncrementSetArguments(TypedDict, total=False):
 
 class MeasurementRemoveArguments(TypedDict, total=False):
     name: Required[str]
+    path: NotRequired[str]
 
 class MeasurementRenameArguments(TypedDict, total=False):
     name: Required[str]
     new_name: Required[str]
+    path: NotRequired[str]
+
+class MeasurementRestrictionRemoveArguments(TypedDict, total=False):
+    base_a_mm: Required[float]
+    base_b_mm: NotRequired[float]
+    path: NotRequired[str]
+
+class MeasurementRestrictionSetArguments(TypedDict, total=False):
+    base_a_mm: Required[float]
+    base_b_mm: NotRequired[float]
+    exclude_mm: NotRequired[list[Any]]
+    max_mm: Required[float]
+    min_mm: Required[float]
+    path: NotRequired[str]
 
 class MeasurementSetArguments(TypedDict, total=False):
     description: NotRequired[str]
+    dimension: NotRequired[str]
     formula: NotRequired[str]
     full_name: NotRequired[str]
     name: Required[str]
+    path: NotRequired[str]
     shift_a_mm: NotRequired[float]
     shift_b_mm: NotRequired[float]
     shift_c_mm: NotRequired[float]
+    special_units: NotRequired[bool]
     value_mm: NotRequired[float]
+
+class MeasurementValueAliasSetArguments(TypedDict, total=False):
+    alias: Required[str]
+    base_a_mm: NotRequired[float]
+    base_b_mm: NotRequired[float]
+    base_c_mm: NotRequired[float]
+    name: Required[str]
+    path: NotRequired[str]
 
 class PatternAlongLineArguments(TypedDict, total=False):
     alias: Required[str]
@@ -1946,6 +2005,126 @@ class AtomicCommands:
             commit=commit,
         )
 
+    def measurement_file_metadata_set(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementFileMetadataSetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.file_metadata_set',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def measurement_dimension_labels_set(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementDimensionLabelsSetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.dimension_labels_set',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def measurement_restriction_set(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementRestrictionSetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.restriction_set',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def measurement_restriction_remove(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementRestrictionRemoveArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.restriction_remove',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def measurement_correction_set(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementCorrectionSetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.correction_set',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def measurement_value_alias_set(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementValueAliasSetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.value_alias_set',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
     def measurement_export_csv(
         self,
         *,
@@ -2187,14 +2366,22 @@ class AtomicCommands:
         )
 
 ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProperties': True,
-                   'properties': {'copy_number': {'type': 'integer'},
+                   'properties': {'binary_dxf': {'type': 'boolean'},
+                                  'copy_number': {'type': 'integer'},
                                   'format': {'type': 'string'},
+                                  'hide_ruler': {'type': 'boolean'},
                                   'output_path': {'type': 'string'},
                                   'piece': {'type': 'string'},
                                   'piece_id': {'type': 'string'},
                                   'sheet': {'type': 'string'},
                                   'sheet_index': {'type': 'integer'},
-                                  'sheet_uuid': {'type': 'string'}},
+                                  'sheet_uuid': {'type': 'string'},
+                                  'show_grainline': {'type': 'boolean'},
+                                  'text_as_paths': {'type': 'boolean'},
+                                  'tiles_scheme': {'type': 'boolean'},
+                                  'unified': {'type': 'boolean'},
+                                  'x_scale': {'type': 'number'},
+                                  'y_scale': {'type': 'number'}},
                    'type': 'object'},
  'export.pattern': {'additionalProperties': True,
                     'properties': {'binary_dxf': {'type': 'boolean'},
@@ -2291,6 +2478,21 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                         'sheet_uuid': {'type': 'string'},
                                         'width_mm': {'type': 'number'}},
                          'type': 'object'},
+ 'measurement.correction_set': {'additionalProperties': True,
+                                'properties': {'base_a_mm': {'type': 'number'},
+                                               'base_b_mm': {'type': 'number'},
+                                               'base_c_mm': {'type': 'number'},
+                                               'name': {'type': 'string'},
+                                               'path': {'type': 'string'},
+                                               'value_mm': {'type': 'number'}},
+                                'required': ['base_a_mm', 'name', 'value_mm'],
+                                'type': 'object'},
+ 'measurement.dimension_labels_set': {'additionalProperties': True,
+                                      'properties': {'axis': {'type': 'string'},
+                                                     'labels': {'items': {}, 'type': 'array'},
+                                                     'path': {'type': 'string'}},
+                                      'required': ['axis', 'labels'],
+                                      'type': 'object'},
  'measurement.dimension_set': {'additionalProperties': True,
                                'properties': {'axis': {'type': 'string'},
                                               'base_mm': {'type': 'number'},
@@ -2298,6 +2500,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                               'max_mm': {'type': 'number'},
                                               'min_mm': {'type': 'number'},
                                               'name': {'type': 'string'},
+                                              'path': {'type': 'string'},
                                               'step_mm': {'type': 'number'}},
                                'required': ['axis'],
                                'type': 'object'},
@@ -2311,12 +2514,25 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                             'path': {'type': 'string'},
                                             'type': {'type': 'string'}},
                              'type': 'object'},
+ 'measurement.file_metadata_set': {'additionalProperties': True,
+                                   'properties': {'birth_date': {'type': 'string'},
+                                                  'customer': {'type': 'string'},
+                                                  'email': {'type': 'string'},
+                                                  'full_circumference': {'type': 'boolean'},
+                                                  'gender': {'type': 'string'},
+                                                  'known_measurements_uuid': {'type': 'string'},
+                                                  'notes': {'type': 'string'},
+                                                  'path': {'type': 'string'},
+                                                  'read_only': {'type': 'boolean'}},
+                                   'type': 'object'},
  'measurement.file_open': {'additionalProperties': True,
                            'properties': {'path': {'type': 'string'},
                                           'source_path': {'type': 'string'}},
                            'required': ['source_path'],
                            'type': 'object'},
- 'measurement.file_save': {'additionalProperties': True, 'properties': {}, 'type': 'object'},
+ 'measurement.file_save': {'additionalProperties': True,
+                           'properties': {'path': {'type': 'string'}},
+                           'type': 'object'},
  'measurement.final_measurement_set': {'additionalProperties': True,
                                        'properties': {'description': {'type': 'string'},
                                                       'formula': {'type': 'string'},
@@ -2336,25 +2552,53 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                'required': ['name'],
                                'type': 'object'},
  'measurement.remove': {'additionalProperties': True,
-                        'properties': {'name': {'type': 'string'}},
+                        'properties': {'name': {'type': 'string'}, 'path': {'type': 'string'}},
                         'required': ['name'],
                         'type': 'object'},
  'measurement.rename': {'additionalProperties': True,
                         'properties': {'name': {'type': 'string'},
-                                       'new_name': {'type': 'string'}},
+                                       'new_name': {'type': 'string'},
+                                       'path': {'type': 'string'}},
                         'required': ['name', 'new_name'],
                         'type': 'object'},
+ 'measurement.restriction_remove': {'additionalProperties': True,
+                                    'properties': {'base_a_mm': {'type': 'number'},
+                                                   'base_b_mm': {'type': 'number'},
+                                                   'path': {'type': 'string'}},
+                                    'required': ['base_a_mm'],
+                                    'type': 'object'},
+ 'measurement.restriction_set': {'additionalProperties': True,
+                                 'properties': {'base_a_mm': {'type': 'number'},
+                                                'base_b_mm': {'type': 'number'},
+                                                'exclude_mm': {'items': {}, 'type': 'array'},
+                                                'max_mm': {'type': 'number'},
+                                                'min_mm': {'type': 'number'},
+                                                'path': {'type': 'string'}},
+                                 'required': ['base_a_mm', 'max_mm', 'min_mm'],
+                                 'type': 'object'},
  'measurement.set': {'additionalProperties': True,
                      'properties': {'description': {'type': 'string'},
+                                    'dimension': {'type': 'string'},
                                     'formula': {'type': 'string'},
                                     'full_name': {'type': 'string'},
                                     'name': {'type': 'string'},
+                                    'path': {'type': 'string'},
                                     'shift_a_mm': {'type': 'number'},
                                     'shift_b_mm': {'type': 'number'},
                                     'shift_c_mm': {'type': 'number'},
+                                    'special_units': {'type': 'boolean'},
                                     'value_mm': {'type': 'number'}},
                      'required': ['name'],
                      'type': 'object'},
+ 'measurement.value_alias_set': {'additionalProperties': True,
+                                 'properties': {'alias': {'type': 'string'},
+                                                'base_a_mm': {'type': 'number'},
+                                                'base_b_mm': {'type': 'number'},
+                                                'base_c_mm': {'type': 'number'},
+                                                'name': {'type': 'string'},
+                                                'path': {'type': 'string'}},
+                                 'required': ['alias', 'name'],
+                                 'type': 'object'},
  'pattern.along_line': {'additionalProperties': True,
                         'properties': {'alias': {'type': 'string'},
                                        'first_point': {'$ref': '#/$defs/objectReference'},

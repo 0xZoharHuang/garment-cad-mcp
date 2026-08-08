@@ -165,33 +165,71 @@ def test_native_puzzle_layout_nesting_transform_export_and_reopen(tmp_path):
             for format_name, filename in (
                 ("svg", "shirt.svg"),
                 ("pdf", "shirt.pdf"),
+                ("png", "shirt.png"),
+                ("obj", "shirt.obj"),
+                ("ps", "shirt.ps"),
+                ("eps", "shirt.eps"),
+                ("dxf_r10", "shirt-r10.dxf"),
+                ("dxf_r12", "shirt-r12.dxf"),
+                ("dxf_r13", "shirt-r13.dxf"),
+                ("dxf_r14", "shirt-r14.dxf"),
+                ("dxf_2000", "shirt-2000.dxf"),
+                ("dxf_2004", "shirt-2004.dxf"),
+                ("dxf_2007", "shirt-2007.dxf"),
+                ("dxf_2010", "shirt-2010.dxf"),
+                ("dxf_2013", "shirt-2013.dxf"),
                 ("dxf_aama", "shirt-aama.dxf"),
                 ("dxf_astm", "shirt-astm.dxf"),
+                ("pdf_tiled", "shirt-tiled.pdf"),
+                ("rld", "shirt.rld"),
+                ("tif", "shirt.tif"),
                 ("hpgl", "shirt.hpgl"),
-            )
-        ]
-        + [
-            _operation(
-                OperationDomain.LAYOUT,
-                "layout.print",
-                output_path="artifacts/exports/shirt-tiled.pdf",
+                ("hpgl2", "shirt-hpgl2.hpgl"),
+                ("plt", "shirt.plt"),
+                ("hpgl2_plt", "shirt-hpgl2.plt"),
             )
         ]
     )
     assert exports.ok
     committed = project.commit(exports.token)
-    assert len(committed.resources) == 6
+    # Every native LayoutExportFormats value except the reserved future NC
+    # entry is exercised above. Alias spellings are covered by the static
+    # mapping drift test.
+    assert len(committed.resources) == 24
     payloads: dict[str, bytes] = {}
     store = ArtifactStore(project.root)
     for uri in committed.resources:
         blob, metadata = store.resolve(uri.rsplit("/", 1)[-1])
-        payloads[metadata["filenames"][0]] = blob.read_bytes()
+        content = blob.read_bytes()
+        for filename in metadata["filenames"]:
+            payloads[filename] = content
     assert payloads["shirt.svg"].lstrip().startswith(b"<?xml")
     assert payloads["shirt.pdf"].startswith(b"%PDF")
     assert payloads["shirt-tiled.pdf"].startswith(b"%PDF")
+    assert payloads["shirt.png"].startswith(b"\x89PNG\r\n\x1a\n")
+    assert payloads["shirt.tif"][:4] in {b"II*\x00", b"MM\x00*"}
+    assert payloads["shirt.obj"].startswith(b"# Valentina OBJ File")
+    assert payloads["shirt.ps"].startswith(b"%!PS")
+    assert payloads["shirt.eps"].startswith(b"%!PS")
+    for name in (
+        "shirt-r10.dxf",
+        "shirt-r12.dxf",
+        "shirt-r13.dxf",
+        "shirt-r14.dxf",
+        "shirt-2000.dxf",
+        "shirt-2004.dxf",
+        "shirt-2007.dxf",
+        "shirt-2010.dxf",
+        "shirt-2013.dxf",
+    ):
+        assert b"SECTION" in payloads[name]
     assert b"SECTION" in payloads["shirt-aama.dxf"]
     assert b"SECTION" in payloads["shirt-astm.dxf"]
+    assert len(payloads["shirt.rld"]) > 10_000
     assert len(payloads["shirt.hpgl"]) > 100
+    assert len(payloads["shirt-hpgl2.hpgl"]) > 100
+    assert len(payloads["shirt.plt"]) > 100
+    assert len(payloads["shirt-hpgl2.plt"]) > 100
 
     reopened = Project.open(project.root).preview(
         operations=[

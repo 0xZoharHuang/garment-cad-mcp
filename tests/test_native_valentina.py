@@ -23,10 +23,7 @@ pytestmark = pytest.mark.skipif(not NATIVE_COMMAND, reason="native Valentina hos
 
 def test_native_snapshot_and_sidecar_roundtrip_into_garmentcode(tmp_path):
     project = Project.create(tmp_path / "snapshot-to-garmentcode")
-    collection = (
-        Path(__file__).parents[1]
-        / "upstream/valentina/src/app/share/collection/MaleShirt"
-    )
+    collection = Path(__file__).parents[1] / "upstream/valentina/src/app/share/collection/MaleShirt"
     shutil.copy2(collection / "MaleShirt.val", project.root / "pattern/main.val")
     shutil.copy2(collection / "MaleShirt.vit", project.root / "pattern/MaleShirt.vit")
 
@@ -113,9 +110,7 @@ def test_native_preview_commit_and_uuid_sidecar(tmp_path):
     assert preview.thumbnails == [
         f"garment://project/{project.manifest.project_id}/changeset/{preview.token}/thumbnail"
     ]
-    _assert_preview_png(
-        project.root / f".garmentcad/changesets/{preview.token}/thumbnail.png"
-    )
+    _assert_preview_png(project.root / f".garmentcad/changesets/{preview.token}/thumbnail.png")
     assert [item.alias for item in preview.summary.created] == ["construction.guide", "B"]
     candidate = project.root / f".garmentcad/changesets/{preview.token}/pattern/main.val"
     assert 'name="B"' in candidate.read_text(encoding="utf-8")
@@ -231,8 +226,7 @@ def test_gui_dialog_and_headless_adapters_create_equivalent_native_history(tmp_p
             "construction.guide",
         ]
         roots[adapter] = ET.parse(
-            project.root
-            / f".garmentcad/changesets/{change_set_id}/pattern/main.val"
+            project.root / f".garmentcad/changesets/{change_set_id}/pattern/main.val"
         ).getroot()
 
     assert ET.tostring(roots["native_command"]) == ET.tostring(roots["gui_dialog"])
@@ -306,9 +300,7 @@ def test_native_base_point_and_dependency_query_replay(tmp_path):
         "draft.axis",
     ]
     assert any(issue.code == "dependency_query" for issue in preview.summary.issues)
-    dependency = next(
-        issue for issue in preview.summary.issues if issue.code == "dependency_query"
-    )
+    dependency = next(issue for issue in preview.summary.issues if issue.code == "dependency_query")
     assert set(dependency.details) == {"resource_uri", "byte_length"}
     detail = project.root / (
         ".garmentcad/changesets/"
@@ -1294,8 +1286,7 @@ def test_native_piece_creates_seam_allowance_and_reopens(tmp_path):
                 "seam_allowance": True,
                 "seam_allowance_mm": 10,
                 "nodes": [
-                    {"object": {"alias": alias}, "type": "point"}
-                    for alias in ("A", "B", "D", "C")
+                    {"object": {"alias": alias}, "type": "point"} for alias in ("A", "B", "D", "C")
                 ],
             },
         ),
@@ -1879,12 +1870,158 @@ def test_native_tape_multisize_dimensions_and_csv(tmp_path):
     assert reopened.ok
 
 
+def test_native_tape_metadata_labels_restrictions_corrections_and_aliases(tmp_path):
+    project = Project.create(tmp_path / "tape-complete-file")
+    preview = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_create",
+                arguments={"type": "individual", "path": "measurements/profile.vit"},
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={
+                    "path": "measurements/profile.vit",
+                    "name": "@height",
+                    "value_mm": 1700,
+                    "dimension": "X",
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_metadata_set",
+                arguments={
+                    "path": "measurements/profile.vit",
+                    "notes": "Individual notes",
+                    "customer": "Ada Patternmaker",
+                    "email": "ada@example.invalid",
+                    "birth_date": "1990-01-02",
+                    "gender": "female",
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_create",
+                arguments={
+                    "type": "multisize",
+                    "path": "measurements/complete.vst",
+                    "dimensions": [
+                        {
+                            "axis": "X",
+                            "min_mm": 500,
+                            "max_mm": 2000,
+                            "step_mm": 60,
+                            "base_mm": 1760,
+                        },
+                        {"axis": "Y", "min_mm": 220, "max_mm": 720, "step_mm": 20, "base_mm": 500},
+                    ],
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.set",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "name": "@chest",
+                    "value_mm": 1000,
+                    "special_units": True,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.file_metadata_set",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "notes": "Agent measurement file",
+                    "known_measurements_uuid": "6616c904-506f-4a99-a0e5-4a585184dd85",
+                    "read_only": False,
+                    "full_circumference": True,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.dimension_labels_set",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "axis": "X",
+                    "labels": [{"value_mm": 1760, "label": "Regular height"}],
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.restriction_set",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "base_a_mm": 1760,
+                    "min_mm": 220,
+                    "max_mm": 720,
+                    "exclude_mm": [500],
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.correction_set",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "name": "@chest",
+                    "base_a_mm": 1760,
+                    "base_b_mm": 500,
+                    "value_mm": 5,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.value_alias_set",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "name": "@chest",
+                    "base_a_mm": 1760,
+                    "base_b_mm": 500,
+                    "alias": "chest_regular",
+                },
+            ),
+        ]
+    )
+    assert preview.ok
+    project.commit(preview.token)
+    document = (project.root / "measurements/complete.vst").read_text(encoding="utf-8")
+    for value in (
+        "Agent measurement file",
+        "Regular height",
+        "chest_regular",
+    ):
+        assert value in document
+    assert "6616c904-506f-4a99-a0e5-4a585184dd85" in document
+    assert "restriction" in document
+    assert "correction" in document
+    individual = (project.root / "measurements/profile.vit").read_text(encoding="utf-8")
+    for value in ("Individual notes", "Ada Patternmaker", "ada@example.invalid", "1990-01-02"):
+        assert value in individual
+
+    removed = Project.open(project.root).preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.restriction_remove",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "base_a_mm": 1760,
+                },
+            )
+        ]
+    )
+    assert removed.ok
+    Project.open(project.root).commit(removed.token)
+    assert "<restriction " not in (project.root / "measurements/complete.vst").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_native_pattern_exports_are_content_addressed(tmp_path):
     project = Project.create(tmp_path / "pattern-exports")
-    collection = (
-        Path(__file__).parents[1]
-        / "upstream/valentina/src/app/share/collection/MaleShirt"
-    )
+    collection = Path(__file__).parents[1] / "upstream/valentina/src/app/share/collection/MaleShirt"
     shutil.copy2(collection / "MaleShirt.val", project.root / "pattern/main.val")
     shutil.copy2(collection / "MaleShirt.vit", project.root / "pattern/MaleShirt.vit")
     preview = project.preview(

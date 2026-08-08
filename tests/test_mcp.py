@@ -273,6 +273,41 @@ def test_every_native_gui_dialog_emits_shared_command_dto():
     )
 
 
+def test_every_native_layout_export_format_is_mapped():
+    import re
+    from pathlib import Path
+
+    from garmentcad.valentina_coverage import layout_export_formats
+
+    formats = layout_export_formats(
+        Path("upstream/valentina/src/libs/vlayout/vlayoutdef.h")
+    )
+    exportable = set(formats) - {"NC"}  # Reserved for future G-code in upstream.
+
+    valentina = Path(
+        "upstream/valentina/src/app/valentina/core/vcommandservice.cpp"
+    ).read_text(encoding="utf-8")
+    valentina_values = {
+        int(value)
+        for value in re.findall(
+            r'\{QStringLiteral\("[a-z0-9_]+"\), \{(\d+), QStringLiteral\("\.[a-z0-9]+"\)\}\}',
+            valentina,
+        )
+    }
+    assert {formats[name] for name in exportable} <= valentina_values
+
+    puzzle = Path(
+        "upstream/valentina/src/app/puzzle/vpmainwindow.cpp"
+    ).read_text(encoding="utf-8")
+    puzzle_names = set(
+        re.findall(
+            r'\{QStringLiteral\("[a-z0-9_]+"\), LayoutExportFormats::([A-Z0-9_]+)\}',
+            puzzle,
+        )
+    )
+    assert exportable <= puzzle_names
+
+
 def test_every_valentina_catalog_action_has_native_replay_coverage():
     from pathlib import Path
 

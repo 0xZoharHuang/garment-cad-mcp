@@ -101,6 +101,36 @@ VALENTINA_TOOLS = tuple(
     ToolSpec("measurement_rename", "measurement.rename", "Rename a custom Tape measurement."),
     ToolSpec("measurement_remove", "measurement.remove", "Remove one Tape measurement."),
     ToolSpec("measurement_dimension_set", "measurement.dimension_set", "Set multisize dimensions."),
+    ToolSpec(
+        "measurement_file_metadata_set",
+        "measurement.file_metadata_set",
+        "Set Tape personal, system, and file metadata.",
+    ),
+    ToolSpec(
+        "measurement_dimension_labels_set",
+        "measurement.dimension_labels_set",
+        "Set display labels for one multisize dimension.",
+    ),
+    ToolSpec(
+        "measurement_restriction_set",
+        "measurement.restriction_set",
+        "Set a multisize dimension restriction.",
+    ),
+    ToolSpec(
+        "measurement_restriction_remove",
+        "measurement.restriction_remove",
+        "Remove a multisize dimension restriction.",
+    ),
+    ToolSpec(
+        "measurement_correction_set",
+        "measurement.correction_set",
+        "Set a measurement correction at one size coordinate.",
+    ),
+    ToolSpec(
+        "measurement_value_alias_set",
+        "measurement.value_alias_set",
+        "Set an individual or multisize measurement value alias.",
+    ),
     ToolSpec("measurement_export_csv", "measurement.export_csv", "Export measurements as CSV."),
     ToolSpec("layout_generate", "layout.generate", "Generate a Puzzle marker layout."),
     ToolSpec("layout_sheet_add", "layout.sheet_add", "Add a Puzzle layout sheet."),

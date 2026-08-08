@@ -65,6 +65,22 @@ def gui_dialog_command_coverage(tools_root: Path) -> dict[str, dict[str, str]]:
     return result
 
 
+def layout_export_formats(header: Path) -> dict[str, int]:
+    """Read Valentina's explicitly numbered native export enum."""
+    text = header.read_text(encoding="utf-8")
+    match = re.search(
+        r"enum class LayoutExportFormats[^\{]*\{(?P<body>.*?)\bCOUNT\b", text, re.S
+    )
+    if match is None:
+        raise ValueError("Cannot locate LayoutExportFormats enum")
+    result: dict[str, int] = {}
+    for name, value in re.findall(
+        r"\b([A-Z][A-Z0-9_]*)\s*=\s*(\d+)", match.group("body")
+    ):
+        result[name] = int(value)
+    return result
+
+
 def enum_tools(header: Path) -> list[str]:
     text = header.read_text(encoding="utf-8")
     match = re.search(r"enum class Tool[^\{]*\{(?P<body>.*?)LAST_ONE_DO_NOT_USE", text, re.S)

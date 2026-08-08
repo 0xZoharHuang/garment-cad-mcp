@@ -71,6 +71,7 @@
 #include "../vlayout/vlayoutpoint.h"
 
 #include <QDir>
+#include <QDate>
 #include <QCryptographicHash>
 #include <QCoreApplication>
 #include <QFile>
@@ -374,6 +375,12 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("measurement.file_save"), QStringLiteral("measurement.set"),
                             QStringLiteral("measurement.rename"), QStringLiteral("measurement.remove"),
                             QStringLiteral("measurement.dimension_set"),
+                            QStringLiteral("measurement.file_metadata_set"),
+                            QStringLiteral("measurement.dimension_labels_set"),
+                            QStringLiteral("measurement.restriction_set"),
+                            QStringLiteral("measurement.restriction_remove"),
+                            QStringLiteral("measurement.correction_set"),
+                            QStringLiteral("measurement.value_alias_set"),
                             QStringLiteral("measurement.export_csv"), QStringLiteral("export.pattern"),
                             QStringLiteral("pattern.shoulder_point"), QStringLiteral("pattern.normal"),
                             QStringLiteral("pattern.bisector"), QStringLiteral("pattern.height"),
@@ -734,7 +741,27 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
             {QStringLiteral("pdf"), {1, QStringLiteral(".pdf")}},
             {QStringLiteral("png"), {2, QStringLiteral(".png")}},
             {QStringLiteral("obj"), {3, QStringLiteral(".obj")}},
+            {QStringLiteral("ps"), {4, QStringLiteral(".ps")}},
+            {QStringLiteral("eps"), {5, QStringLiteral(".eps")}},
+            {QStringLiteral("dxf_r10"), {6, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1006"), {6, QStringLiteral(".dxf")}},
             {QStringLiteral("dxf"), {7, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_r12"), {7, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1009"), {7, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_r13"), {8, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1012"), {8, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_r14"), {9, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1014"), {9, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_2000"), {10, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1015"), {10, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_2004"), {11, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1018"), {11, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_2007"), {12, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1021"), {12, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_2010"), {13, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1024"), {13, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_2013"), {14, QStringLiteral(".dxf")}},
+            {QStringLiteral("dxf_ac1027"), {14, QStringLiteral(".dxf")}},
             {QStringLiteral("dxf_aama"), {16, QStringLiteral(".dxf")}},
             {QStringLiteral("aama"), {16, QStringLiteral(".dxf")}},
             {QStringLiteral("dxf_astm"), {25, QStringLiteral(".dxf")}},
@@ -970,7 +997,13 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
 
     if (action == QStringLiteral("measurement.file_save") || action == QStringLiteral("measurement.set") ||
         action == QStringLiteral("measurement.rename") || action == QStringLiteral("measurement.remove") ||
-        action == QStringLiteral("measurement.dimension_set"))
+        action == QStringLiteral("measurement.dimension_set") ||
+        action == QStringLiteral("measurement.file_metadata_set") ||
+        action == QStringLiteral("measurement.dimension_labels_set") ||
+        action == QStringLiteral("measurement.restriction_set") ||
+        action == QStringLiteral("measurement.restriction_remove") ||
+        action == QStringLiteral("measurement.correction_set") ||
+        action == QStringLiteral("measurement.value_alias_set"))
     {
         const QString path = measurementPath(arguments);
         if (!QFileInfo::exists(path))
@@ -1025,6 +1058,26 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
             if (arguments.contains(QStringLiteral("full_name")))
             {
                 measurements.SetMFullName(name, arguments.value(QStringLiteral("full_name")).toString());
+            }
+            if (arguments.contains(QStringLiteral("special_units")))
+            {
+                measurements.SetMSpecialUnits(name, arguments.value(QStringLiteral("special_units")).toBool());
+            }
+            if (arguments.contains(QStringLiteral("dimension")))
+            {
+                if (measurements.Type() != MeasurementsType::Individual)
+                {
+                    throw std::invalid_argument("dimension is only valid for individual measurement files");
+                }
+                const QString dimension = arguments.value(QStringLiteral("dimension")).toString().toUpper();
+                const QMap<QString, IMD> dimensions{{QStringLiteral("N"), IMD::N}, {QStringLiteral("X"), IMD::X},
+                                                    {QStringLiteral("Y"), IMD::Y}, {QStringLiteral("W"), IMD::W},
+                                                    {QStringLiteral("Z"), IMD::Z}};
+                if (!dimensions.contains(dimension))
+                {
+                    throw std::invalid_argument("Individual measurement dimension must be N, X, Y, W, or Z");
+                }
+                measurements.SetMDimension(name, dimensions.value(dimension));
             }
             QJsonObject values = summary.value(QStringLiteral("measurements")).toObject();
             values.insert(name, arguments.value(QStringLiteral("value_mm")).toDouble());
@@ -1119,6 +1172,157 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
             values.insert(QStringLiteral("dimension.%1.base_mm").arg(axis),
                           UnitConvertor(dimension->BaseValue(), measurements.Units(), Unit::Mm));
             summary.insert(QStringLiteral("measurements"), values);
+        }
+        else if (action == QStringLiteral("measurement.file_metadata_set"))
+        {
+            if (arguments.contains(QStringLiteral("notes")))
+            {
+                measurements.SetNotes(arguments.value(QStringLiteral("notes")).toString());
+            }
+            if (arguments.contains(QStringLiteral("customer")))
+            {
+                measurements.SetCustomer(arguments.value(QStringLiteral("customer")).toString());
+            }
+            if (arguments.contains(QStringLiteral("email")))
+            {
+                measurements.SetEmail(arguments.value(QStringLiteral("email")).toString());
+            }
+            if (arguments.contains(QStringLiteral("birth_date")))
+            {
+                const QDate date = QDate::fromString(arguments.value(QStringLiteral("birth_date")).toString(), Qt::ISODate);
+                if (!date.isValid())
+                {
+                    throw std::invalid_argument("birth_date must be an ISO 8601 date");
+                }
+                measurements.SetBirthDate(date);
+            }
+            if (arguments.contains(QStringLiteral("gender")))
+            {
+                const QString gender = arguments.value(QStringLiteral("gender")).toString().toLower();
+                if (gender == QStringLiteral("male"))
+                {
+                    measurements.SetGender(GenderType::Male);
+                }
+                else if (gender == QStringLiteral("female"))
+                {
+                    measurements.SetGender(GenderType::Female);
+                }
+                else if (gender == QStringLiteral("unknown"))
+                {
+                    measurements.SetGender(GenderType::Unknown);
+                }
+                else
+                {
+                    throw std::invalid_argument("gender must be male, female, or unknown");
+                }
+            }
+            if (arguments.contains(QStringLiteral("known_measurements_uuid")))
+            {
+                const QUuid id(arguments.value(QStringLiteral("known_measurements_uuid")).toString());
+                if (id.isNull())
+                {
+                    throw std::invalid_argument("known_measurements_uuid must be a UUID");
+                }
+                measurements.SetKnownMeasurements(id);
+            }
+            if (arguments.contains(QStringLiteral("read_only")))
+            {
+                measurements.SetReadOnly(arguments.value(QStringLiteral("read_only")).toBool());
+            }
+            if (arguments.contains(QStringLiteral("full_circumference")))
+            {
+                measurements.SetFullCircumference(arguments.value(QStringLiteral("full_circumference")).toBool());
+            }
+        }
+        else if (action == QStringLiteral("measurement.dimension_labels_set"))
+        {
+            if (measurements.Type() != MeasurementsType::Multisize)
+            {
+                throw std::invalid_argument("dimension_labels_set requires a multisize measurement file");
+            }
+            const QString axis = RequiredString(arguments, QStringLiteral("axis")).toUpper();
+            const QMap<QString, MeasurementDimension> types{{QStringLiteral("X"), MeasurementDimension::X},
+                                                            {QStringLiteral("Y"), MeasurementDimension::Y},
+                                                            {QStringLiteral("W"), MeasurementDimension::W},
+                                                            {QStringLiteral("Z"), MeasurementDimension::Z}};
+            if (!types.contains(axis) || !measurements.Dimensions().contains(types.value(axis)))
+            {
+                throw std::invalid_argument("The requested dimension does not exist in the measurement file");
+            }
+            DimesionLabels labels;
+            for (const QJsonValue value : arguments.value(QStringLiteral("labels")).toArray())
+            {
+                const QJsonObject label = value.toObject();
+                labels.insert(UnitConvertor(label.value(QStringLiteral("value_mm")).toDouble(), Unit::Mm,
+                                            measurements.Units()),
+                              RequiredString(label, QStringLiteral("label")));
+            }
+            measurements.SetDimensionLabels({{types.value(axis), labels}});
+        }
+        else if (action == QStringLiteral("measurement.restriction_set") ||
+                 action == QStringLiteral("measurement.restriction_remove"))
+        {
+            const auto fileValue = [&measurements](qreal millimetres) {
+                return UnitConvertor(millimetres, Unit::Mm, measurements.Units());
+            };
+            const qreal baseA = fileValue(arguments.value(QStringLiteral("base_a_mm")).toDouble());
+            const qreal baseB = fileValue(arguments.value(QStringLiteral("base_b_mm")).toDouble());
+            const QString key = VMeasurement::CorrectionHash(baseA, baseB);
+            QMap<QString, VDimensionRestriction> restrictions = measurements.GetRestrictions();
+            if (action == QStringLiteral("measurement.restriction_remove"))
+            {
+                restrictions.remove(key);
+            }
+            else
+            {
+                QSet<qreal> excluded;
+                for (const QJsonValue value : arguments.value(QStringLiteral("exclude_mm")).toArray())
+                {
+                    excluded.insert(fileValue(value.toDouble()));
+                }
+                VDimensionRestriction restriction(fileValue(arguments.value(QStringLiteral("min_mm")).toDouble()),
+                                                  fileValue(arguments.value(QStringLiteral("max_mm")).toDouble()));
+                restriction.SetExcludeValues(excluded);
+                restrictions.insert(key, restriction);
+            }
+            measurements.SetRestrictions(restrictions);
+        }
+        else if (action == QStringLiteral("measurement.correction_set"))
+        {
+            const QString name = RequiredString(arguments, QStringLiteral("name"));
+            if (!measurements.ListAll().contains(name))
+            {
+                throw std::invalid_argument("Measurement does not exist");
+            }
+            const auto fileValue = [&measurements](qreal millimetres) {
+                return UnitConvertor(millimetres, Unit::Mm, measurements.Units());
+            };
+            measurements.SetMCorrectionValue(name, fileValue(arguments.value(QStringLiteral("base_a_mm")).toDouble()),
+                                             fileValue(arguments.value(QStringLiteral("base_b_mm")).toDouble()),
+                                             fileValue(arguments.value(QStringLiteral("base_c_mm")).toDouble()),
+                                             fileValue(arguments.value(QStringLiteral("value_mm")).toDouble()));
+        }
+        else if (action == QStringLiteral("measurement.value_alias_set"))
+        {
+            const QString name = RequiredString(arguments, QStringLiteral("name"));
+            const QString alias = RequiredString(arguments, QStringLiteral("alias"));
+            if (!measurements.ListAll().contains(name))
+            {
+                throw std::invalid_argument("Measurement does not exist");
+            }
+            if (arguments.contains(QStringLiteral("base_a_mm")))
+            {
+                const auto fileValue = [&measurements](qreal millimetres) {
+                    return UnitConvertor(millimetres, Unit::Mm, measurements.Units());
+                };
+                measurements.SetMValueAlias(name, fileValue(arguments.value(QStringLiteral("base_a_mm")).toDouble()),
+                                            fileValue(arguments.value(QStringLiteral("base_b_mm")).toDouble()),
+                                            fileValue(arguments.value(QStringLiteral("base_c_mm")).toDouble()), alias);
+            }
+            else
+            {
+                measurements.SetMValueAlias(name, alias);
+            }
         }
 
         QString error;

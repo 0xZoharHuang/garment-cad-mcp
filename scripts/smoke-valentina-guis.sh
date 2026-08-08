@@ -26,5 +26,6 @@ for app_name in Valentina Tape Puzzle; do
 
   test -f "$app/Contents/PlugIns/platforms/libqcocoa.dylib"
   test -f "$app/Contents/PlugIns/platforms/libqoffscreen.dylib"
+  test -f "$app/Contents/PlugIns/imageformats/libqtiff.dylib"
   codesign --verify --deep --strict "$app"
 done

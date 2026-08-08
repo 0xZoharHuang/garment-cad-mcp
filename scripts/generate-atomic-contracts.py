@@ -49,6 +49,60 @@ PIECE_SELECTOR_PROPERTIES = {
     "copy_number": {"type": "integer"},
 }
 
+# Some arguments are consumed by shared helpers or are renamed to `options` at
+# the native boundary, so the source regex cannot infer them from an action
+# branch. Keep their types explicit here; the per-action allowlist below still
+# prevents accidental schema expansion.
+FIELD_SCHEMA_OVERRIDES = {
+    **{
+        name: {"type": "string"}
+        for name in {
+            "path",
+            "axis",
+            "notes",
+            "customer",
+            "email",
+            "birth_date",
+            "gender",
+            "known_measurements_uuid",
+            "name",
+            "alias",
+            "dimension",
+            "format",
+            "output_path",
+        }
+    },
+    **{
+        name: {"type": "number"}
+        for name in {
+            "base_a_mm",
+            "base_b_mm",
+            "base_c_mm",
+            "min_mm",
+            "max_mm",
+            "value_mm",
+            "x_scale",
+            "y_scale",
+        }
+    },
+    **{
+        name: {"type": "boolean"}
+        for name in {
+            "read_only",
+            "full_circumference",
+            "special_units",
+            "binary_dxf",
+            "text_as_paths",
+            "unified",
+            "tiles_scheme",
+            "show_grainline",
+            "hide_ruler",
+        }
+    },
+    "labels": {"type": "array", "items": {}},
+    "exclude_mm": {"type": "array", "items": {"type": "number"}},
+}
+
 PROPERTY_ALLOWLISTS = {
     "measurement.file_save": {"path"},
     "measurement.set": {
@@ -61,6 +115,8 @@ PROPERTY_ALLOWLISTS = {
         "shift_c_mm",
         "description",
         "full_name",
+        "special_units",
+        "dimension",
     },
     "measurement.rename": {"path", "name", "new_name"},
     "measurement.remove": {"path", "name"},
@@ -73,6 +129,43 @@ PROPERTY_ALLOWLISTS = {
         "base_mm",
         "body_measurement",
         "name",
+    },
+    "measurement.file_metadata_set": {
+        "path",
+        "notes",
+        "customer",
+        "email",
+        "birth_date",
+        "gender",
+        "known_measurements_uuid",
+        "read_only",
+        "full_circumference",
+    },
+    "measurement.dimension_labels_set": {"path", "axis", "labels"},
+    "measurement.restriction_set": {
+        "path",
+        "base_a_mm",
+        "base_b_mm",
+        "min_mm",
+        "max_mm",
+        "exclude_mm",
+    },
+    "measurement.restriction_remove": {"path", "base_a_mm", "base_b_mm"},
+    "measurement.correction_set": {
+        "path",
+        "name",
+        "base_a_mm",
+        "base_b_mm",
+        "base_c_mm",
+        "value_mm",
+    },
+    "measurement.value_alias_set": {
+        "path",
+        "name",
+        "alias",
+        "base_a_mm",
+        "base_b_mm",
+        "base_c_mm",
     },
     "layout.generate": {
         "raw_layout_path",
@@ -123,7 +216,18 @@ PROPERTY_ALLOWLISTS = {
     "layout.rotate_piece": {"angle_deg"},
     "layout.flip_piece": {"axis"},
     "layout.print": {"output_path"},
-    "export.layout": {"format", "output_path"},
+    "export.layout": {
+        "format",
+        "output_path",
+        "x_scale",
+        "y_scale",
+        "binary_dxf",
+        "text_as_paths",
+        "unified",
+        "tiles_scheme",
+        "show_grainline",
+        "hide_ruler",
+    },
 }
 
 REQUIRED_FIELDS = {
@@ -133,6 +237,11 @@ REQUIRED_FIELDS = {
     "measurement.rename": {"name", "new_name"},
     "measurement.remove": {"name"},
     "measurement.dimension_set": {"axis"},
+    "measurement.dimension_labels_set": {"axis", "labels"},
+    "measurement.restriction_set": {"base_a_mm", "min_mm", "max_mm"},
+    "measurement.restriction_remove": {"base_a_mm"},
+    "measurement.correction_set": {"name", "base_a_mm", "value_mm"},
+    "measurement.value_alias_set": {"name", "alias"},
     "measurement.increment_set": {"name"},
     "measurement.increment_remove": {"name"},
     "measurement.final_measurement_set": {"name", "formula"},
@@ -186,6 +295,9 @@ def discover() -> dict[str, dict[str, Any]]:
             discovered[action].update(PIECE_SELECTOR_PROPERTIES)
         allowlist = PROPERTY_ALLOWLISTS.get(action)
         if allowlist is not None:
+            for name in allowlist:
+                if name in FIELD_SCHEMA_OVERRIDES:
+                    discovered[action].setdefault(name, FIELD_SCHEMA_OVERRIDES[name])
             selectors = set(SHEET_SELECTOR_PROPERTIES) | set(PIECE_SELECTOR_PROPERTIES)
             discovered[action] = {
                 name: value

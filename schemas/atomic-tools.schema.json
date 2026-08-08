@@ -3,11 +3,17 @@
     "export_layout": {
       "additionalProperties": true,
       "properties": {
+        "binary_dxf": {
+          "type": "boolean"
+        },
         "copy_number": {
           "type": "integer"
         },
         "format": {
           "type": "string"
+        },
+        "hide_ruler": {
+          "type": "boolean"
         },
         "output_path": {
           "type": "string"
@@ -26,6 +32,24 @@
         },
         "sheet_uuid": {
           "type": "string"
+        },
+        "show_grainline": {
+          "type": "boolean"
+        },
+        "text_as_paths": {
+          "type": "boolean"
+        },
+        "tiles_scheme": {
+          "type": "boolean"
+        },
+        "unified": {
+          "type": "boolean"
+        },
+        "x_scale": {
+          "type": "number"
+        },
+        "y_scale": {
+          "type": "number"
         }
       },
       "type": "object"
@@ -315,6 +339,55 @@
       },
       "type": "object"
     },
+    "measurement_correction_set": {
+      "additionalProperties": true,
+      "properties": {
+        "base_a_mm": {
+          "type": "number"
+        },
+        "base_b_mm": {
+          "type": "number"
+        },
+        "base_c_mm": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "value_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "base_a_mm",
+        "name",
+        "value_mm"
+      ],
+      "type": "object"
+    },
+    "measurement_dimension_labels_set": {
+      "additionalProperties": true,
+      "properties": {
+        "axis": {
+          "type": "string"
+        },
+        "labels": {
+          "items": {},
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "axis",
+        "labels"
+      ],
+      "type": "object"
+    },
     "measurement_dimension_set": {
       "additionalProperties": true,
       "properties": {
@@ -334,6 +407,9 @@
           "type": "number"
         },
         "name": {
+          "type": "string"
+        },
+        "path": {
           "type": "string"
         },
         "step_mm": {
@@ -376,6 +452,39 @@
       },
       "type": "object"
     },
+    "measurement_file_metadata_set": {
+      "additionalProperties": true,
+      "properties": {
+        "birth_date": {
+          "type": "string"
+        },
+        "customer": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "full_circumference": {
+          "type": "boolean"
+        },
+        "gender": {
+          "type": "string"
+        },
+        "known_measurements_uuid": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "read_only": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "measurement_file_open": {
       "additionalProperties": true,
       "properties": {
@@ -393,7 +502,11 @@
     },
     "measurement_file_save": {
       "additionalProperties": true,
-      "properties": {},
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
       "type": "object"
     },
     "measurement_final_measurement_set": {
@@ -456,6 +569,9 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "path": {
+          "type": "string"
         }
       },
       "required": [
@@ -471,6 +587,9 @@
         },
         "new_name": {
           "type": "string"
+        },
+        "path": {
+          "type": "string"
         }
       },
       "required": [
@@ -479,10 +598,61 @@
       ],
       "type": "object"
     },
+    "measurement_restriction_remove": {
+      "additionalProperties": true,
+      "properties": {
+        "base_a_mm": {
+          "type": "number"
+        },
+        "base_b_mm": {
+          "type": "number"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_a_mm"
+      ],
+      "type": "object"
+    },
+    "measurement_restriction_set": {
+      "additionalProperties": true,
+      "properties": {
+        "base_a_mm": {
+          "type": "number"
+        },
+        "base_b_mm": {
+          "type": "number"
+        },
+        "exclude_mm": {
+          "items": {},
+          "type": "array"
+        },
+        "max_mm": {
+          "type": "number"
+        },
+        "min_mm": {
+          "type": "number"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_a_mm",
+        "max_mm",
+        "min_mm"
+      ],
+      "type": "object"
+    },
     "measurement_set": {
       "additionalProperties": true,
       "properties": {
         "description": {
+          "type": "string"
+        },
+        "dimension": {
           "type": "string"
         },
         "formula": {
@@ -494,6 +664,9 @@
         "name": {
           "type": "string"
         },
+        "path": {
+          "type": "string"
+        },
         "shift_a_mm": {
           "type": "number"
         },
@@ -503,11 +676,42 @@
         "shift_c_mm": {
           "type": "number"
         },
+        "special_units": {
+          "type": "boolean"
+        },
         "value_mm": {
           "type": "number"
         }
       },
       "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "measurement_value_alias_set": {
+      "additionalProperties": true,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "base_a_mm": {
+          "type": "number"
+        },
+        "base_b_mm": {
+          "type": "number"
+        },
+        "base_c_mm": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
         "name"
       ],
       "type": "object"
@@ -2192,9 +2396,12 @@
         "layout.settings_update",
         "layout.sheet_add",
         "layout.sheet_update",
+        "measurement.correction_set",
+        "measurement.dimension_labels_set",
         "measurement.dimension_set",
         "measurement.export_csv",
         "measurement.file_create",
+        "measurement.file_metadata_set",
         "measurement.file_open",
         "measurement.file_save",
         "measurement.final_measurement_set",
@@ -2202,7 +2409,10 @@
         "measurement.increment_set",
         "measurement.remove",
         "measurement.rename",
+        "measurement.restriction_remove",
+        "measurement.restriction_set",
         "measurement.set",
+        "measurement.value_alias_set",
         "pattern.along_line",
         "pattern.arc",
         "pattern.arc_end",
