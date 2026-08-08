@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import inspect
 import json
 import subprocess
 
@@ -9,7 +10,12 @@ from mcp.types import ImageContent, TextContent
 
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.catalog import GARMENTCODE_TOOLS, VALENTINA_TOOLS
+from garmentcad.generated.assembly_commands import (
+    ARGUMENT_SCHEMAS as ASSEMBLY_ARGUMENT_SCHEMAS,
+)
+from garmentcad.generated.assembly_commands import AssemblyCommands
 from garmentcad.generated.atomic_commands import ARGUMENT_SCHEMAS, AtomicCommands
+from garmentcad.mcp.garmentcode import LAZY_TOOLS as GARMENTCODE_LAZY_TOOLS
 from garmentcad.mcp.garmentcode import mcp as garmentcode_mcp
 from garmentcad.mcp.valentina import mcp as valentina_mcp
 from garmentcad.models import Operation, OperationDomain
@@ -74,6 +80,46 @@ async def test_valentina_mcp_starts_with_only_five_core_tools_and_loads_on_searc
 def test_every_valentina_action_has_generated_schema_and_typed_recipe_method():
     assert set(ARGUMENT_SCHEMAS) == {spec.action for spec in VALENTINA_TOOLS}
     assert all(hasattr(AtomicCommands, spec.name) for spec in VALENTINA_TOOLS)
+
+
+def test_every_assembly_action_has_generated_schema_and_typed_recipe_method():
+    assembly_specs = [
+        spec for spec in GARMENTCODE_TOOLS if spec.action in ASSEMBLY_ARGUMENT_SCHEMAS
+    ]
+    assert len(assembly_specs) == len(ASSEMBLY_ARGUMENT_SCHEMAS)
+    assert all(hasattr(AssemblyCommands, spec.name) for spec in assembly_specs)
+
+
+def test_garmentcode_mcp_signatures_match_generated_assembly_contract():
+    targets = {
+        "panel.delete": "panel",
+        "panel.transform": "panel",
+        "panel.pivot": "panel",
+        "panel.mirror": "panel",
+        "interface.update": "interface",
+        "interface.delete": "interface",
+        "stitch.delete": "stitch",
+    }
+    by_action = {spec.action: spec for spec in GARMENTCODE_TOOLS}
+    for action, schema in ASSEMBLY_ARGUMENT_SCHEMAS.items():
+        if action == "valentina.import":
+            # This adapter obtains the snapshot from the current native revision.
+            continue
+        function = GARMENTCODE_LAZY_TOOLS[by_action[action].name]
+        exposed = set(inspect.signature(function).parameters) - {"project_path", "commit"}
+        if target := targets.get(action):
+            exposed.remove(target)
+        assert exposed == set(schema["properties"]), action
+
+
+@pytest.mark.asyncio
+async def test_garmentcode_catalog_returns_generated_argument_schema():
+    result = await garmentcode_mcp._tool_manager.call_tool(
+        "catalog_search", {"query": "edge sequence transform", "load": False}
+    )
+    match = next(item for item in result["matches"] if item["action"] == "edge_sequence.transform")
+    assert set(match["arguments_schema"]["required"]) == {"panel", "edge_indices"}
+    assert "reflect_line_mm" in match["arguments_schema"]["properties"]
 
 
 @pytest.mark.asyncio
@@ -164,7 +210,9 @@ async def test_sdk_and_mcp_generate_semantically_identical_changesets(tmp_path):
     mcp_project = Project.create(tmp_path / "mcp-project")
     vertices = [[0, 0], [120, 0], [100, 180], [0, 180]]
 
-    sdk_result = GarmentSDK(sdk_project.root).panel_create("front", vertices)
+    sdk_result = GarmentSDK(sdk_project.root).assembly_commands.panel_create(
+        alias="front", vertices_mm=vertices
+    )
     if garmentcode_mcp._tool_manager.get_tool("panel_create") is None:
         await garmentcode_mcp._tool_manager.call_tool(
             "catalog_search", {"query": "panel create", "load": True}

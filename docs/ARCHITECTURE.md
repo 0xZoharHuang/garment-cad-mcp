@@ -58,8 +58,10 @@ New projects copy a minimal Valentina-authored seed pattern; subsequent `.val` c
 through the native command service.
 
 The checked-in `atomic-tools.schema.json` and generated `AtomicCommands` class are rebuilt from the
-pinned native handlers. CI fails if handler coverage, schemas, generated recipe types, or the lazy
-MCP input schemas drift apart.
+pinned native handlers. GarmentCode assembly actions likewise generate `assembly-tools.schema.json`
+and `AssemblyCommands`. CI fails if handler coverage, schemas, generated recipe types, or lazy MCP
+signatures drift apart. The Valentina-import MCP adapter is intentionally safer than its internal
+DTO: it snapshots the current native revision rather than accepting caller-supplied pattern state.
 
 ## Boundary with GarmentCode
 

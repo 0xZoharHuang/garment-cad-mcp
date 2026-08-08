@@ -111,20 +111,24 @@ def panel_create(
     project_path: str,
     alias: str,
     vertices_mm: list[list[float]],
+    uuid: str | None = None,
     translation_mm: list[float] | None = None,
     rotation_deg: list[float] | None = None,
     commit: bool = False,
 ) -> dict[str, Any]:
     """Create one polygonal sewing panel. Preview-only unless commit is true."""
+    arguments = {
+        "alias": alias,
+        "vertices_mm": vertices_mm,
+        "translation_mm": translation_mm or [0, 0, 0],
+        "rotation_deg": rotation_deg or [0, 0, 0],
+    }
+    if uuid is not None:
+        arguments["uuid"] = uuid
     return _run(
         project_path,
         "panel.create",
-        {
-            "alias": alias,
-            "vertices_mm": vertices_mm,
-            "translation_mm": translation_mm or [0, 0, 0],
-            "rotation_deg": rotation_deg or [0, 0, 0],
-        },
+        arguments,
         commit=commit,
     )
 
@@ -165,13 +169,17 @@ def panel_mirror(
     alias: str,
     axis: str = "x",
     origin_mm: float = 0,
+    uuid: str | None = None,
     commit: bool = False,
 ) -> dict[str, Any]:
     """Create a mirrored panel copy across x=origin or y=origin."""
+    arguments = {"alias": alias, "axis": axis, "origin_mm": origin_mm}
+    if uuid is not None:
+        arguments["uuid"] = uuid
     return _run(
         project_path,
         "panel.mirror",
-        {"alias": alias, "axis": axis, "origin_mm": origin_mm},
+        arguments,
         target=panel,
         commit=commit,
     )
@@ -384,21 +392,25 @@ def interface_define(
     reverse: bool = False,
     ruffle: float = 1.0,
     right_wrong: bool = False,
+    uuid: str | None = None,
     commit: bool = False,
 ) -> dict[str, Any]:
     """Define an ordered sewing interface from edges of one panel."""
     panel_ref = reference(panel)
+    arguments = {
+        "alias": alias,
+        "panel": panel_ref.model_dump(exclude_none=True) if panel_ref else {},
+        "edge_indices": edge_indices,
+        "reverse": reverse,
+        "ruffle": ruffle,
+        "right_wrong": right_wrong,
+    }
+    if uuid is not None:
+        arguments["uuid"] = uuid
     return _run(
         project_path,
         "interface.define",
-        {
-            "alias": alias,
-            "panel": panel_ref.model_dump(exclude_none=True) if panel_ref else {},
-            "edge_indices": edge_indices,
-            "reverse": reverse,
-            "ruffle": ruffle,
-            "right_wrong": right_wrong,
-        },
+        arguments,
         commit=commit,
     )
 
@@ -438,20 +450,24 @@ def stitch_create(
     interface_a: str,
     interface_b: str,
     direction: str = "auto",
+    uuid: str | None = None,
     commit: bool = False,
 ) -> dict[str, Any]:
     """Sew two interfaces; their edge partitions must currently match."""
     left = reference(interface_a)
     right = reference(interface_b)
+    arguments = {
+        "alias": alias,
+        "interface_a": left.model_dump(exclude_none=True) if left else {},
+        "interface_b": right.model_dump(exclude_none=True) if right else {},
+        "direction": direction,
+    }
+    if uuid is not None:
+        arguments["uuid"] = uuid
     return _run(
         project_path,
         "stitch.create",
-        {
-            "alias": alias,
-            "interface_a": left.model_dump(exclude_none=True) if left else {},
-            "interface_b": right.model_dump(exclude_none=True) if right else {},
-            "direction": direction,
-        },
+        arguments,
         commit=commit,
     )
 

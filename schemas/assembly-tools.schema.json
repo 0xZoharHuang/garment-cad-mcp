@@ -1,0 +1,498 @@
+{
+  "$defs": {
+    "component_define": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "panels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "alias",
+        "panels"
+      ],
+      "type": "object"
+    },
+    "component_mirror": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string"
+        },
+        "origin_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "component"
+      ],
+      "type": "object"
+    },
+    "component_transform": {
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "type": "string"
+        },
+        "rotation_delta_deg": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "translation_delta_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "component"
+      ],
+      "type": "object"
+    },
+    "dart_insert": {
+      "additionalProperties": false,
+      "properties": {
+        "depth_mm": {
+          "type": "number"
+        },
+        "edge_index": {
+          "type": "integer"
+        },
+        "intake_mm": {
+          "type": "number"
+        },
+        "panel": {
+          "type": "string"
+        },
+        "position": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "depth_mm",
+        "edge_index",
+        "intake_mm",
+        "panel"
+      ],
+      "type": "object"
+    },
+    "edge_chamfer": {
+      "additionalProperties": false,
+      "properties": {
+        "distance_after_mm": {
+          "type": "number"
+        },
+        "distance_before_mm": {
+          "type": "number"
+        },
+        "panel": {
+          "type": "string"
+        },
+        "vertex_index": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "distance_before_mm",
+        "panel",
+        "vertex_index"
+      ],
+      "type": "object"
+    },
+    "edge_extend": {
+      "additionalProperties": false,
+      "properties": {
+        "edge_index": {
+          "type": "integer"
+        },
+        "end_delta_mm": {
+          "type": "number"
+        },
+        "panel": {
+          "type": "string"
+        },
+        "start_delta_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "edge_index",
+        "panel"
+      ],
+      "type": "object"
+    },
+    "edge_sequence_transform": {
+      "additionalProperties": false,
+      "properties": {
+        "edge_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "origin_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "panel": {
+          "type": "string"
+        },
+        "reflect_line_mm": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "rotation_deg": {
+          "type": "number"
+        },
+        "snap_start_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "translation_delta_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "edge_indices",
+        "panel"
+      ],
+      "type": "object"
+    },
+    "edge_split": {
+      "additionalProperties": false,
+      "properties": {
+        "edge_index": {
+          "type": "integer"
+        },
+        "fractions": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "panel": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "edge_index",
+        "fractions",
+        "panel"
+      ],
+      "type": "object"
+    },
+    "interface_define": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "edge_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "panel": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "reverse": {
+          "type": "boolean"
+        },
+        "right_wrong": {
+          "type": "boolean"
+        },
+        "ruffle": {
+          "type": "number"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "edge_indices",
+        "panel"
+      ],
+      "type": "object"
+    },
+    "interface_delete": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "interface_update": {
+      "additionalProperties": false,
+      "properties": {
+        "edge_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "flip_edges": {
+          "type": "boolean"
+        },
+        "reverse_order": {
+          "type": "boolean"
+        },
+        "right_wrong": {
+          "type": "boolean"
+        },
+        "ruffle": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "objectReference": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "uuid"
+          ]
+        },
+        {
+          "required": [
+            "alias"
+          ]
+        }
+      ],
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "panel_create": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "rotation_deg": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "translation_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "uuid": {
+          "type": "string"
+        },
+        "vertices_mm": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "alias",
+        "vertices_mm"
+      ],
+      "type": "object"
+    },
+    "panel_delete": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "panel_mirror": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "axis": {
+          "type": "string"
+        },
+        "origin_mm": {
+          "type": "number"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias"
+      ],
+      "type": "object"
+    },
+    "panel_pivot": {
+      "additionalProperties": false,
+      "properties": {
+        "point_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "replicate_placement": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "point_mm"
+      ],
+      "type": "object"
+    },
+    "panel_transform": {
+      "additionalProperties": false,
+      "properties": {
+        "center_x": {
+          "type": "boolean"
+        },
+        "rotation_deg": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "rotation_delta_deg": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "translation_delta_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "translation_mm": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "stitch_create": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "interface_a": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "interface_b": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "interface_a",
+        "interface_b"
+      ],
+      "type": "object"
+    },
+    "stitch_delete": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "valentina_import": {
+      "additionalProperties": false,
+      "properties": {
+        "sidecar": {
+          "type": "object"
+        },
+        "snapshot": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "snapshot"
+      ],
+      "type": "object"
+    },
+    "validate": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "$id": "https://garmentcad.local/schemas/assembly-tools.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "action": {
+      "enum": [
+        "component.define",
+        "component.mirror",
+        "component.transform",
+        "dart.insert",
+        "edge.chamfer",
+        "edge.extend",
+        "edge.split",
+        "edge_sequence.transform",
+        "interface.define",
+        "interface.delete",
+        "interface.update",
+        "panel.create",
+        "panel.delete",
+        "panel.mirror",
+        "panel.pivot",
+        "panel.transform",
+        "stitch.create",
+        "stitch.delete",
+        "valentina.import",
+        "validate"
+      ]
+    },
+    "arguments": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "action",
+    "arguments"
+  ],
+  "type": "object"
+}

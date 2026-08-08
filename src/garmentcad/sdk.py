@@ -7,6 +7,7 @@ from garmentcad.models import ObjectRef, Operation, OperationDomain, ToolResult
 from garmentcad.project import Project
 
 if TYPE_CHECKING:
+    from garmentcad.generated.assembly_commands import AssemblyCommands
     from garmentcad.generated.atomic_commands import AtomicCommands
 
 
@@ -18,6 +19,38 @@ def reference(value: str | None) -> ObjectRef | None:
 
 def _looks_like_uuid(value: str) -> bool:
     return len(value) == 36 and value.count("-") == 4
+
+
+DEFAULT_ARGUMENTS: dict[str, dict[str, Any]] = {
+    "panel.create": {"translation_mm": [0, 0, 0], "rotation_deg": [0, 0, 0]},
+    "panel.transform": {"center_x": False},
+    "panel.pivot": {"replicate_placement": False},
+    "panel.mirror": {"axis": "x", "origin_mm": 0},
+    "edge.extend": {"start_delta_mm": 0, "end_delta_mm": 0},
+    "edge_sequence.transform": {"translation_delta_mm": [0, 0]},
+    "dart.insert": {"position": 0.5},
+    "component.transform": {
+        "translation_delta_mm": [0, 0, 0],
+        "rotation_delta_deg": [0, 0, 0],
+    },
+    "component.mirror": {"axis": "x", "origin_mm": 0},
+    "interface.define": {"reverse": False, "ruffle": 1.0, "right_wrong": False},
+    "interface.update": {"reverse_order": False, "flip_edges": False},
+    "stitch.create": {"direction": "auto"},
+}
+
+
+def canonical_arguments(action: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Remove wrapper defaults so SDK and MCP persist the same minimal command DTO."""
+    canonical = dict(arguments)
+    for name, default in DEFAULT_ARGUMENTS.get(action, {}).items():
+        if canonical.get(name) == default:
+            canonical.pop(name, None)
+    if action == "edge.chamfer" and canonical.get("distance_after_mm") == canonical.get(
+        "distance_before_mm"
+    ):
+        canonical.pop("distance_after_mm", None)
+    return canonical
 
 
 def execute_atomic(
@@ -36,7 +69,7 @@ def execute_atomic(
         domain=domain,
         action=action,
         target=reference(target),
-        arguments=arguments or {},
+        arguments=canonical_arguments(action, arguments or {}),
     )
     result = project.preview(message=message, author=author, operations=[operation])
     if commit and result.ok and result.preview_token:
@@ -49,9 +82,11 @@ class GarmentSDK:
 
     def __init__(self, project_path: str | Path) -> None:
         self.project_path = Path(project_path)
+        from garmentcad.generated.assembly_commands import AssemblyCommands
         from garmentcad.generated.atomic_commands import AtomicCommands
 
         self.commands: AtomicCommands = AtomicCommands(self.project_path)
+        self.assembly_commands: AssemblyCommands = AssemblyCommands(self.project_path)
 
     def panel_create(
         self,

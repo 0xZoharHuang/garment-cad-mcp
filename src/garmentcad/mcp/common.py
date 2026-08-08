@@ -7,11 +7,14 @@ from mcp.server.fastmcp import FastMCP, Image
 
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.catalog import ToolSpec
-from garmentcad.generated.atomic_commands import ARGUMENT_SCHEMAS
+from garmentcad.generated.assembly_commands import ARGUMENT_SCHEMAS as ASSEMBLY_ARGUMENT_SCHEMAS
+from garmentcad.generated.atomic_commands import ARGUMENT_SCHEMAS as VALENTINA_ARGUMENT_SCHEMAS
 from garmentcad.models import OperationDomain
 from garmentcad.project import Project
 from garmentcad.sdk import execute_atomic
 from garmentcad.storage import read_json
+
+ARGUMENT_SCHEMAS = VALENTINA_ARGUMENT_SCHEMAS | ASSEMBLY_ARGUMENT_SCHEMAS
 
 
 def result_payload(value: Any) -> dict[str, Any]:

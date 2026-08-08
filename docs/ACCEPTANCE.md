@@ -6,7 +6,7 @@ This ledger distinguishes implemented behavior from the external GPU gate.
 | Final acceptance | Evidence | State |
 | --- | --- | --- |
 | 1. Open and atomically modify an existing `.val` | Native collection fixtures, compact preview PNG, commit/reopen, all catalog actions replayed; every GUI constructor crosses the typed command envelope and representative dialog/headless XML is byte-equivalent | Passing |
-| 2. Typed Python recipe, preview, commit | Generated `AtomicCommands`, schema drift check, documented `Project` namespace contract | Passing |
+| 2. Typed Python recipe, preview, commit | Generated `AtomicCommands` and `AssemblyCommands`, schema/MCP-signature drift checks, canonical SDK/MCP change-set equivalence, and documented `Project` namespace contract | Passing |
 | 3. Continue in GUI and refresh Agent state | Project-aware GUI launcher holds writer lock; changed sessions append reversible `project.gui_save` revisions | Passing for repository launcher |
 | 4. Tape change triggers parametric recalculation | Native `.vit`/`.vst` lifecycle, personal/file metadata, dimension labels and restrictions, corrections/value aliases, embedded measurement images, individual/multisize CSV import/export, plus a 100 mm to 200 mm measurement-driven piece snapshot test | Passing |
 | 5. Puzzle nesting and all implemented exports | Official MaleShirt layout, reopen, sheet/piece editing, z-order, grainline rotation, trash/reset, crop and native validity checks, plus runtime validation of all 24 implemented `LayoutExportFormats` values; upstream `NC` remains explicitly reserved | Passing |

@@ -35,6 +35,13 @@ def run_doctor() -> dict:
         text=True,
         check=False,
     )
+    assembly_contract_check = subprocess.run(
+        ["uv", "run", "scripts/generate-assembly-contracts.py", "--check"],
+        cwd=repository,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     command = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
     if not command:
         bundled_host = repository / "scripts/valentina-command-host.sh"
@@ -107,6 +114,7 @@ def run_doctor() -> dict:
         ),
         "schemas_current": schema_check.returncode == 0,
         "atomic_contracts_current": atomic_contract_check.returncode == 0,
+        "assembly_contracts_current": assembly_contract_check.returncode == 0,
         "valentina_command": bool(command_info and command_info.get("ok")),
         "puzzle_command": bool(puzzle_info and puzzle_info.get("ok")),
         "garmentcode_compat_python": garmentcode_python.is_file(),
@@ -131,6 +139,7 @@ def run_doctor() -> dict:
         "upstream_pins",
         "schemas_current",
         "atomic_contracts_current",
+        "assembly_contracts_current",
         "valentina_command",
         "puzzle_command",
         "garmentcode_compat_python",
