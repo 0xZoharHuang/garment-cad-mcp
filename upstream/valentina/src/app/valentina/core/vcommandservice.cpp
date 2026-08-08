@@ -13,6 +13,7 @@
 #include "../mainwindow.h"
 #include "../vmisc/def.h"
 #include "../vmisc/vabstractvalapplication.h"
+#include "../vmisc/qxtcsvmodel.h"
 #include "../vtools/dialogs/tools/dialogalongline.h"
 #include "../vtools/dialogs/tools/dialogendline.h"
 #include "../vtools/dialogs/tools/dialogline.h"
@@ -65,6 +66,7 @@
 #include "../vgeometry/vcubicbezier.h"
 #include "../vgeometry/vcubicbezierpath.h"
 #include "../vformat/vmeasurements.h"
+#include "../ifc/xml/vpatternimage.h"
 #include "../vpatterndb/vpiecenode.h"
 #include "../vpatterndb/vpiecepath.h"
 #include "../vpatterndb/variables/vmeasurement.h"
@@ -381,6 +383,9 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                             QStringLiteral("measurement.restriction_remove"),
                             QStringLiteral("measurement.correction_set"),
                             QStringLiteral("measurement.value_alias_set"),
+                            QStringLiteral("measurement.image_set"),
+                            QStringLiteral("measurement.image_remove"),
+                            QStringLiteral("measurement.import_csv"),
                             QStringLiteral("measurement.export_csv"), QStringLiteral("export.pattern"),
                             QStringLiteral("pattern.shoulder_point"), QStringLiteral("pattern.normal"),
                             QStringLiteral("pattern.bisector"), QStringLiteral("pattern.height"),
@@ -1003,7 +1008,8 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         action == QStringLiteral("measurement.restriction_set") ||
         action == QStringLiteral("measurement.restriction_remove") ||
         action == QStringLiteral("measurement.correction_set") ||
-        action == QStringLiteral("measurement.value_alias_set"))
+        action == QStringLiteral("measurement.value_alias_set") || action == QStringLiteral("measurement.image_set") ||
+        action == QStringLiteral("measurement.image_remove") || action == QStringLiteral("measurement.import_csv"))
     {
         const QString path = measurementPath(arguments);
         if (!QFileInfo::exists(path))
@@ -1322,6 +1328,98 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
             else
             {
                 measurements.SetMValueAlias(name, alias);
+            }
+        }
+        else if (action == QStringLiteral("measurement.image_set") ||
+                 action == QStringLiteral("measurement.image_remove"))
+        {
+            const QString name = RequiredString(arguments, QStringLiteral("name"));
+            if (!measurements.ListAll().contains(name))
+            {
+                throw std::invalid_argument("Measurement does not exist");
+            }
+            VPatternImage image;
+            if (action == QStringLiteral("measurement.image_set"))
+            {
+                const QString source = QFileInfo(RequiredString(arguments, QStringLiteral("source_path"))).absoluteFilePath();
+                if (!QFileInfo::exists(source))
+                {
+                    throw std::invalid_argument("Measurement image does not exist");
+                }
+                image = VPatternImage::FromFile(source);
+                if (!image.IsValid())
+                {
+                    throw std::invalid_argument(
+                        QStringLiteral("Invalid measurement image: %1").arg(image.ErrorString()).toStdString());
+                }
+            }
+            measurements.SetMImage(name, image);
+        }
+        else if (action == QStringLiteral("measurement.import_csv"))
+        {
+            const QString source = QFileInfo(RequiredString(arguments, QStringLiteral("source_path"))).absoluteFilePath();
+            if (!QFileInfo::exists(source))
+            {
+                throw std::invalid_argument("Measurement CSV does not exist");
+            }
+            const QString separatorText = arguments.value(QStringLiteral("separator")).toString(QStringLiteral(","));
+            if (separatorText.isEmpty())
+            {
+                throw std::invalid_argument("CSV separator cannot be empty");
+            }
+            const bool withHeader = arguments.value(QStringLiteral("with_header")).toBool(true);
+            const QxtCsvModel csv(source, nullptr, withHeader, separatorText.at(0), nullptr);
+            const bool individual = measurements.Type() == MeasurementsType::Individual;
+            const int minimumColumns = individual ? 2 : 5;
+            if (csv.columnCount() < minimumColumns)
+            {
+                throw std::invalid_argument(
+                    QStringLiteral("Measurement CSV requires at least %1 columns").arg(minimumColumns).toStdString());
+            }
+            const auto fileValue = [&measurements](const QString &text) {
+                bool ok = false;
+                const qreal millimetres = text.toDouble(&ok);
+                if (!ok)
+                {
+                    throw std::invalid_argument(QStringLiteral("Invalid millimetre value in CSV: %1").arg(text).toStdString());
+                }
+                return UnitConvertor(millimetres, Unit::Mm, measurements.Units());
+            };
+            for (int row = 0; row < csv.rowCount(); ++row)
+            {
+                const QString name = csv.text(row, 0).simplified();
+                if (name.isEmpty())
+                {
+                    throw std::invalid_argument(QStringLiteral("Empty measurement name in CSV row %1").arg(row + 1).toStdString());
+                }
+                if (!measurements.ListAll().contains(name))
+                {
+                    measurements.AddEmpty(name);
+                }
+                if (individual)
+                {
+                    QString value = csv.text(row, 1).simplified();
+                    bool numeric = false;
+                    const qreal millimetres = value.toDouble(&numeric);
+                    if (numeric)
+                    {
+                        value = QString::number(UnitConvertor(millimetres, Unit::Mm, measurements.Units()), 'g', 15);
+                    }
+                    measurements.SetMValue(name, value);
+                    if (csv.columnCount() > 2) measurements.SetMFullName(name, csv.text(row, 2).simplified());
+                    if (csv.columnCount() > 3) measurements.SetMDescription(name, csv.text(row, 3).simplified());
+                    if (csv.columnCount() > 4) measurements.SetMSpecialUnits(name, csv.text(row, 4).toInt() != 0);
+                }
+                else
+                {
+                    measurements.SetMBaseValue(name, fileValue(csv.text(row, 1)));
+                    measurements.SetMShiftA(name, fileValue(csv.text(row, 2)));
+                    measurements.SetMShiftB(name, fileValue(csv.text(row, 3)));
+                    measurements.SetMShiftC(name, fileValue(csv.text(row, 4)));
+                    if (csv.columnCount() > 5) measurements.SetMFullName(name, csv.text(row, 5).simplified());
+                    if (csv.columnCount() > 6) measurements.SetMDescription(name, csv.text(row, 6).simplified());
+                    if (csv.columnCount() > 7) measurements.SetMSpecialUnits(name, csv.text(row, 7).toInt() != 0);
+                }
             }
         }
 

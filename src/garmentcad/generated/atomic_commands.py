@@ -66,6 +66,17 @@ class LayoutMovePieceArguments(TypedDict, total=False):
     piece: NotRequired[str]
     piece_id: NotRequired[str]
 
+class LayoutPieceResetArguments(TypedDict, total=False):
+    copy_number: NotRequired[int]
+    piece: NotRequired[str]
+    piece_id: NotRequired[str]
+
+class LayoutPieceZOrderArguments(TypedDict, total=False):
+    copy_number: NotRequired[int]
+    move: NotRequired[str]
+    piece: NotRequired[str]
+    piece_id: NotRequired[str]
+
 class LayoutPlaceArguments(TypedDict, total=False):
     copy_number: NotRequired[int]
     piece: NotRequired[str]
@@ -91,16 +102,38 @@ class LayoutRotatePieceArguments(TypedDict, total=False):
     piece: NotRequired[str]
     piece_id: NotRequired[str]
 
+class LayoutRotateToGrainlineArguments(TypedDict, total=False):
+    copy_number: NotRequired[int]
+    piece: NotRequired[str]
+    piece_id: NotRequired[str]
+
 class LayoutSettingsUpdateArguments(TypedDict, total=False):
     boundary_with_notches: NotRequired[bool]
     cut_on_fold: NotRequired[bool]
     description: NotRequired[str]
     follow_grainline: NotRequired[bool]
+    grid_column_width_mm: NotRequired[float]
+    grid_row_height_mm: NotRequired[float]
     horizontal_scale: NotRequired[float]
+    ignore_tile_margins: NotRequired[bool]
     piece_gap_mm: NotRequired[float]
+    print_tiles_scheme: NotRequired[bool]
+    show_grid: NotRequired[bool]
+    show_tiles: NotRequired[bool]
+    show_watermark: NotRequired[bool]
     sticky_edges: NotRequired[bool]
+    tile_height_mm: NotRequired[float]
+    tile_margin_bottom_mm: NotRequired[float]
+    tile_margin_left_mm: NotRequired[float]
+    tile_margin_right_mm: NotRequired[float]
+    tile_margin_top_mm: NotRequired[float]
+    tile_width_mm: NotRequired[float]
     title: NotRequired[str]
     vertical_scale: NotRequired[float]
+    warning_out_of_bounds: NotRequired[bool]
+    warning_piece_gap: NotRequired[bool]
+    warning_superposition: NotRequired[bool]
+    watermark_path: NotRequired[str]
 
 class LayoutSheetAddArguments(TypedDict, total=False):
     height_mm: NotRequired[float]
@@ -110,6 +143,16 @@ class LayoutSheetAddArguments(TypedDict, total=False):
     margin_top_mm: NotRequired[float]
     name: NotRequired[str]
     width_mm: NotRequired[float]
+
+class LayoutSheetCropArguments(TypedDict, total=False):
+    sheet: NotRequired[str]
+    sheet_index: NotRequired[int]
+    sheet_uuid: NotRequired[str]
+
+class LayoutSheetRemoveArguments(TypedDict, total=False):
+    sheet: NotRequired[str]
+    sheet_index: NotRequired[int]
+    sheet_uuid: NotRequired[str]
 
 class LayoutSheetUpdateArguments(TypedDict, total=False):
     height_mm: NotRequired[float]
@@ -123,6 +166,14 @@ class LayoutSheetUpdateArguments(TypedDict, total=False):
     sheet_index: NotRequired[int]
     sheet_uuid: NotRequired[str]
     width_mm: NotRequired[float]
+
+class LayoutTrashPieceArguments(TypedDict, total=False):
+    copy_number: NotRequired[int]
+    piece: NotRequired[str]
+    piece_id: NotRequired[str]
+
+class LayoutValidateArguments(TypedDict, total=False):
+    pass
 
 class MeasurementCorrectionSetArguments(TypedDict, total=False):
     base_a_mm: Required[float]
@@ -179,6 +230,21 @@ class MeasurementFinalMeasurementSetArguments(TypedDict, total=False):
     description: NotRequired[str]
     formula: Required[str]
     name: Required[str]
+
+class MeasurementImageRemoveArguments(TypedDict, total=False):
+    name: Required[str]
+    path: NotRequired[str]
+
+class MeasurementImageSetArguments(TypedDict, total=False):
+    name: Required[str]
+    path: NotRequired[str]
+    source_path: Required[str]
+
+class MeasurementImportCsvArguments(TypedDict, total=False):
+    path: NotRequired[str]
+    separator: NotRequired[str]
+    source_path: Required[str]
+    with_header: NotRequired[bool]
 
 class MeasurementIncrementRemoveArguments(TypedDict, total=False):
     name: Required[str]
@@ -2125,6 +2191,66 @@ class AtomicCommands:
             commit=commit,
         )
 
+    def measurement_image_set(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementImageSetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.image_set',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def measurement_image_remove(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementImageRemoveArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.image_remove',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def measurement_import_csv(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[MeasurementImportCsvArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.MEASUREMENTS,
+            action='measurement.import_csv',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
     def measurement_export_csv(
         self,
         *,
@@ -2198,6 +2324,46 @@ class AtomicCommands:
             self.project_path,
             domain=OperationDomain.LAYOUT,
             action='layout.sheet_update',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def layout_sheet_remove(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[LayoutSheetRemoveArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.LAYOUT,
+            action='layout.sheet_remove',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def layout_sheet_crop(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[LayoutSheetCropArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.LAYOUT,
+            action='layout.sheet_crop',
             arguments=dict(arguments),
             target=target,
             message=message,
@@ -2285,6 +2451,86 @@ class AtomicCommands:
             commit=commit,
         )
 
+    def layout_piece_reset(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[LayoutPieceResetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.LAYOUT,
+            action='layout.piece_reset',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def layout_piece_z_order(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[LayoutPieceZOrderArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.LAYOUT,
+            action='layout.piece_z_order',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def layout_rotate_to_grainline(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[LayoutRotateToGrainlineArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.LAYOUT,
+            action='layout.rotate_to_grainline',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def layout_trash_piece(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[LayoutTrashPieceArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.LAYOUT,
+            action='layout.trash_piece',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
     def layout_settings_update(
         self,
         *,
@@ -2298,6 +2544,26 @@ class AtomicCommands:
             self.project_path,
             domain=OperationDomain.LAYOUT,
             action='layout.settings_update',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+            commit=commit,
+        )
+
+    def layout_validate(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        commit: bool = False,
+        **arguments: Unpack[LayoutValidateArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.LAYOUT,
+            action='layout.validate',
             arguments=dict(arguments),
             target=target,
             message=message,
@@ -2420,6 +2686,17 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                       'piece': {'type': 'string'},
                                       'piece_id': {'type': 'string'}},
                        'type': 'object'},
+ 'layout.piece_reset': {'additionalProperties': True,
+                        'properties': {'copy_number': {'type': 'integer'},
+                                       'piece': {'type': 'string'},
+                                       'piece_id': {'type': 'string'}},
+                        'type': 'object'},
+ 'layout.piece_z_order': {'additionalProperties': True,
+                          'properties': {'copy_number': {'type': 'integer'},
+                                         'move': {'type': 'string'},
+                                         'piece': {'type': 'string'},
+                                         'piece_id': {'type': 'string'}},
+                          'type': 'object'},
  'layout.place': {'additionalProperties': True,
                   'properties': {'copy_number': {'type': 'integer'},
                                  'piece': {'type': 'string'},
@@ -2445,16 +2722,38 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                         'piece': {'type': 'string'},
                                         'piece_id': {'type': 'string'}},
                          'type': 'object'},
+ 'layout.rotate_to_grainline': {'additionalProperties': True,
+                                'properties': {'copy_number': {'type': 'integer'},
+                                               'piece': {'type': 'string'},
+                                               'piece_id': {'type': 'string'}},
+                                'type': 'object'},
  'layout.settings_update': {'additionalProperties': True,
                             'properties': {'boundary_with_notches': {'type': 'boolean'},
                                            'cut_on_fold': {'type': 'boolean'},
                                            'description': {'type': 'string'},
                                            'follow_grainline': {'type': 'boolean'},
+                                           'grid_column_width_mm': {'type': 'number'},
+                                           'grid_row_height_mm': {'type': 'number'},
                                            'horizontal_scale': {'type': 'number'},
+                                           'ignore_tile_margins': {'type': 'boolean'},
                                            'piece_gap_mm': {'type': 'number'},
+                                           'print_tiles_scheme': {'type': 'boolean'},
+                                           'show_grid': {'type': 'boolean'},
+                                           'show_tiles': {'type': 'boolean'},
+                                           'show_watermark': {'type': 'boolean'},
                                            'sticky_edges': {'type': 'boolean'},
+                                           'tile_height_mm': {'type': 'number'},
+                                           'tile_margin_bottom_mm': {'type': 'number'},
+                                           'tile_margin_left_mm': {'type': 'number'},
+                                           'tile_margin_right_mm': {'type': 'number'},
+                                           'tile_margin_top_mm': {'type': 'number'},
+                                           'tile_width_mm': {'type': 'number'},
                                            'title': {'type': 'string'},
-                                           'vertical_scale': {'type': 'number'}},
+                                           'vertical_scale': {'type': 'number'},
+                                           'warning_out_of_bounds': {'type': 'boolean'},
+                                           'warning_piece_gap': {'type': 'boolean'},
+                                           'warning_superposition': {'type': 'boolean'},
+                                           'watermark_path': {'type': 'string'}},
                             'type': 'object'},
  'layout.sheet_add': {'additionalProperties': True,
                       'properties': {'height_mm': {'type': 'number'},
@@ -2465,6 +2764,16 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                      'name': {'type': 'string'},
                                      'width_mm': {'type': 'number'}},
                       'type': 'object'},
+ 'layout.sheet_crop': {'additionalProperties': True,
+                       'properties': {'sheet': {'type': 'string'},
+                                      'sheet_index': {'type': 'integer'},
+                                      'sheet_uuid': {'type': 'string'}},
+                       'type': 'object'},
+ 'layout.sheet_remove': {'additionalProperties': True,
+                         'properties': {'sheet': {'type': 'string'},
+                                        'sheet_index': {'type': 'integer'},
+                                        'sheet_uuid': {'type': 'string'}},
+                         'type': 'object'},
  'layout.sheet_update': {'additionalProperties': True,
                          'properties': {'height_mm': {'type': 'number'},
                                         'ignore_margins': {'type': 'boolean'},
@@ -2478,6 +2787,12 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                         'sheet_uuid': {'type': 'string'},
                                         'width_mm': {'type': 'number'}},
                          'type': 'object'},
+ 'layout.trash_piece': {'additionalProperties': True,
+                        'properties': {'copy_number': {'type': 'integer'},
+                                       'piece': {'type': 'string'},
+                                       'piece_id': {'type': 'string'}},
+                        'type': 'object'},
+ 'layout.validate': {'additionalProperties': True, 'properties': {}, 'type': 'object'},
  'measurement.correction_set': {'additionalProperties': True,
                                 'properties': {'base_a_mm': {'type': 'number'},
                                                'base_b_mm': {'type': 'number'},
@@ -2539,6 +2854,24 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                       'name': {'type': 'string'}},
                                        'required': ['formula', 'name'],
                                        'type': 'object'},
+ 'measurement.image_remove': {'additionalProperties': True,
+                              'properties': {'name': {'type': 'string'},
+                                             'path': {'type': 'string'}},
+                              'required': ['name'],
+                              'type': 'object'},
+ 'measurement.image_set': {'additionalProperties': True,
+                           'properties': {'name': {'type': 'string'},
+                                          'path': {'type': 'string'},
+                                          'source_path': {'type': 'string'}},
+                           'required': ['name', 'source_path'],
+                           'type': 'object'},
+ 'measurement.import_csv': {'additionalProperties': True,
+                            'properties': {'path': {'type': 'string'},
+                                           'separator': {'type': 'string'},
+                                           'source_path': {'type': 'string'},
+                                           'with_header': {'type': 'boolean'}},
+                            'required': ['source_path'],
+                            'type': 'object'},
  'measurement.increment_remove': {'additionalProperties': True,
                                   'properties': {'name': {'type': 'string'}},
                                   'required': ['name'],

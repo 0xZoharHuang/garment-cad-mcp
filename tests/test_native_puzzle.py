@@ -63,11 +63,18 @@ def test_native_puzzle_service_info():
         "layout.generate",
         "layout.sheet_add",
         "layout.sheet_update",
+        "layout.sheet_remove",
+        "layout.sheet_crop",
         "layout.move_piece",
         "layout.place",
         "layout.rotate_piece",
         "layout.flip_piece",
+        "layout.piece_reset",
+        "layout.piece_z_order",
+        "layout.rotate_to_grainline",
+        "layout.trash_piece",
         "layout.settings_update",
+        "layout.validate",
         "layout.print",
         "export.layout",
     }
@@ -95,6 +102,21 @@ def test_native_puzzle_layout_nesting_transform_export_and_reopen(tmp_path):
                 description="Native command replay",
                 sticky_edges=True,
                 piece_gap_mm=8,
+                warning_superposition=True,
+                warning_out_of_bounds=True,
+                warning_piece_gap=True,
+                tile_width_mm=210,
+                tile_height_mm=297,
+                tile_margin_left_mm=5,
+                tile_margin_top_mm=5,
+                tile_margin_right_mm=5,
+                tile_margin_bottom_mm=5,
+                show_tiles=True,
+                show_grid=True,
+                grid_column_width_mm=10,
+                grid_row_height_mm=10,
+                ignore_tile_margins=False,
+                print_tiles_scheme=True,
             ),
         ]
     )
@@ -102,17 +124,13 @@ def test_native_puzzle_layout_nesting_transform_export_and_reopen(tmp_path):
     assert generated.summary.measurements["layout.efficiency"] > 0
     assert generated.summary.measurements["layout.sheets"] >= 1
     thumbnail = (
-        project.root
-        / f".garmentcad/changesets/{generated.token}/thumbnail.png"
+        project.root / f".garmentcad/changesets/{generated.token}/thumbnail.png"
     ).read_bytes()
     assert thumbnail.startswith(b"\x89PNG\r\n\x1a\n")
     assert struct.unpack(">II", thumbnail[16:24]) == (512, 512)
     assert len(thumbnail) > 1_000
     assert generated.thumbnails
-    candidate = (
-        project.root
-        / f".garmentcad/changesets/{generated.token}/layout/main.vlt"
-    )
+    candidate = project.root / f".garmentcad/changesets/{generated.token}/layout/main.vlt"
     assert "FrontPanel" in candidate.read_text(encoding="utf-8")
     assert not (project.root / "layout/main.vlt").exists()
     project.commit(generated.token)
@@ -141,12 +159,35 @@ def test_native_puzzle_layout_nesting_transform_export_and_reopen(tmp_path):
             ),
             _operation(
                 OperationDomain.LAYOUT,
+                "layout.piece_z_order",
+                piece="FrontPanel",
+                move="top",
+            ),
+            _operation(
+                OperationDomain.LAYOUT,
+                "layout.rotate_to_grainline",
+                piece="FrontPanel",
+            ),
+            _operation(
+                OperationDomain.LAYOUT,
+                "layout.piece_reset",
+                piece="FrontPanel",
+            ),
+            _operation(
+                OperationDomain.LAYOUT,
+                "layout.trash_piece",
+                piece="FrontPanel",
+            ),
+            _operation(
+                OperationDomain.LAYOUT,
                 "layout.place",
                 piece="FrontPanel",
                 sheet_index=0,
                 x_mm=25,
                 y_mm=30,
             ),
+            _operation(OperationDomain.LAYOUT, "layout.sheet_crop", sheet_index=0),
+            _operation(OperationDomain.LAYOUT, "layout.validate"),
         ]
     )
     assert transformed.ok
@@ -252,10 +293,15 @@ def test_native_puzzle_layout_nesting_transform_export_and_reopen(tmp_path):
                 width_mm=620,
                 margin_left_mm=10,
             ),
+            _operation(
+                OperationDomain.LAYOUT,
+                "layout.sheet_remove",
+                sheet="Overflow",
+            ),
         ]
     )
     assert reopened.ok
     Project.open(project.root).commit(reopened.token)
     reopened_text = (project.root / "layout/main.vlt").read_text(encoding="utf-8")
     assert "Reopened marker" in reopened_text
-    assert "Overflow" in reopened_text
+    assert "Overflow" not in reopened_text

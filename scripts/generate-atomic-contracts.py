@@ -70,6 +70,10 @@ FIELD_SCHEMA_OVERRIDES = {
             "dimension",
             "format",
             "output_path",
+            "source_path",
+            "move",
+            "watermark_path",
+            "separator",
         }
     },
     **{
@@ -83,6 +87,14 @@ FIELD_SCHEMA_OVERRIDES = {
             "value_mm",
             "x_scale",
             "y_scale",
+            "tile_width_mm",
+            "tile_height_mm",
+            "tile_margin_left_mm",
+            "tile_margin_top_mm",
+            "tile_margin_right_mm",
+            "tile_margin_bottom_mm",
+            "grid_column_width_mm",
+            "grid_row_height_mm",
         }
     },
     **{
@@ -97,6 +109,15 @@ FIELD_SCHEMA_OVERRIDES = {
             "tiles_scheme",
             "show_grainline",
             "hide_ruler",
+            "warning_superposition",
+            "warning_out_of_bounds",
+            "warning_piece_gap",
+            "show_tiles",
+            "show_grid",
+            "ignore_tile_margins",
+            "show_watermark",
+            "print_tiles_scheme",
+            "with_header",
         }
     },
     "labels": {"type": "array", "items": {}},
@@ -167,6 +188,9 @@ PROPERTY_ALLOWLISTS = {
         "base_b_mm",
         "base_c_mm",
     },
+    "measurement.image_set": {"path", "name", "source_path"},
+    "measurement.image_remove": {"path", "name"},
+    "measurement.import_csv": {"path", "source_path", "separator", "with_header"},
     "layout.generate": {
         "raw_layout_path",
         "sheet_width_mm",
@@ -200,6 +224,8 @@ PROPERTY_ALLOWLISTS = {
         "name",
         "ignore_margins",
     },
+    "layout.sheet_remove": set(),
+    "layout.sheet_crop": set(),
     "layout.settings_update": {
         "title",
         "description",
@@ -210,11 +236,33 @@ PROPERTY_ALLOWLISTS = {
         "cut_on_fold",
         "horizontal_scale",
         "vertical_scale",
+        "warning_superposition",
+        "warning_out_of_bounds",
+        "warning_piece_gap",
+        "tile_width_mm",
+        "tile_height_mm",
+        "tile_margin_left_mm",
+        "tile_margin_top_mm",
+        "tile_margin_right_mm",
+        "tile_margin_bottom_mm",
+        "show_tiles",
+        "show_grid",
+        "grid_column_width_mm",
+        "grid_row_height_mm",
+        "ignore_tile_margins",
+        "watermark_path",
+        "show_watermark",
+        "print_tiles_scheme",
     },
     "layout.place": {"x_mm", "y_mm"},
     "layout.move_piece": {"dx_mm", "dy_mm"},
     "layout.rotate_piece": {"angle_deg"},
     "layout.flip_piece": {"axis"},
+    "layout.piece_reset": set(),
+    "layout.piece_z_order": {"move"},
+    "layout.rotate_to_grainline": set(),
+    "layout.trash_piece": set(),
+    "layout.validate": set(),
     "layout.print": {"output_path"},
     "export.layout": {
         "format",
@@ -242,6 +290,9 @@ REQUIRED_FIELDS = {
     "measurement.restriction_remove": {"base_a_mm"},
     "measurement.correction_set": {"name", "base_a_mm", "value_mm"},
     "measurement.value_alias_set": {"name", "alias"},
+    "measurement.image_set": {"name", "source_path"},
+    "measurement.image_remove": {"name"},
+    "measurement.import_csv": {"source_path"},
     "measurement.increment_set": {"name"},
     "measurement.increment_remove": {"name"},
     "measurement.final_measurement_set": {"name", "formula"},
@@ -284,13 +335,22 @@ def discover() -> dict[str, dict[str, Any]]:
                 required_by_action.setdefault(action, set()).update(required_objects)
 
     for action in discovered:
-        if action in {"layout.sheet_update", "layout.place"}:
+        if action in {
+            "layout.sheet_update",
+            "layout.sheet_remove",
+            "layout.sheet_crop",
+            "layout.place",
+        }:
             discovered[action].update(SHEET_SELECTOR_PROPERTIES)
         if action in {
             "layout.place",
             "layout.move_piece",
             "layout.rotate_piece",
             "layout.flip_piece",
+            "layout.piece_reset",
+            "layout.piece_z_order",
+            "layout.rotate_to_grainline",
+            "layout.trash_piece",
         }:
             discovered[action].update(PIECE_SELECTOR_PROPERTIES)
         allowlist = PROPERTY_ALLOWLISTS.get(action)

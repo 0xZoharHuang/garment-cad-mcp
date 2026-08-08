@@ -1872,6 +1872,19 @@ def test_native_tape_multisize_dimensions_and_csv(tmp_path):
 
 def test_native_tape_metadata_labels_restrictions_corrections_and_aliases(tmp_path):
     project = Project.create(tmp_path / "tape-complete-file")
+    image = Path(__file__).parents[1] / "upstream/valentina/share/icons/64x64/apps/tape.png"
+    individual_csv = tmp_path / "individual.csv"
+    individual_csv.write_text(
+        "name,value,full_name,description,special_units\n"
+        "@waist,700,Waist circumference,Imported individual,0\n",
+        encoding="utf-8",
+    )
+    multisize_csv = tmp_path / "multisize.csv"
+    multisize_csv.write_text(
+        "name,base,shift_a,shift_b,shift_c,full_name,description,special_units\n"
+        "@hip,950,1,2,3,Hip circumference,Imported multisize,0\n",
+        encoding="utf-8",
+    )
     preview = project.preview(
         operations=[
             Operation(
@@ -1887,6 +1900,24 @@ def test_native_tape_metadata_labels_restrictions_corrections_and_aliases(tmp_pa
                     "name": "@height",
                     "value_mm": 1700,
                     "dimension": "X",
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.image_set",
+                arguments={
+                    "path": "measurements/profile.vit",
+                    "name": "@height",
+                    "source_path": str(image),
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.import_csv",
+                arguments={
+                    "path": "measurements/profile.vit",
+                    "source_path": str(individual_csv),
+                    "with_header": True,
                 },
             ),
             Operation(
@@ -1927,6 +1958,15 @@ def test_native_tape_metadata_labels_restrictions_corrections_and_aliases(tmp_pa
                     "name": "@chest",
                     "value_mm": 1000,
                     "special_units": True,
+                },
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.import_csv",
+                arguments={
+                    "path": "measurements/complete.vst",
+                    "source_path": str(multisize_csv),
+                    "with_header": True,
                 },
             ),
             Operation(
@@ -1996,9 +2036,14 @@ def test_native_tape_metadata_labels_restrictions_corrections_and_aliases(tmp_pa
     assert "6616c904-506f-4a99-a0e5-4a585184dd85" in document
     assert "restriction" in document
     assert "correction" in document
+    assert 'name="@hip"' in document
+    assert 'base="950"' in document
     individual = (project.root / "measurements/profile.vit").read_text(encoding="utf-8")
     for value in ("Individual notes", "Ada Patternmaker", "ada@example.invalid", "1990-01-02"):
         assert value in individual
+    assert '<image contentType="image/png">' in individual
+    assert 'name="@waist"' in individual
+    assert "Imported individual" in individual
 
     removed = Project.open(project.root).preview(
         operations=[
@@ -2009,7 +2054,12 @@ def test_native_tape_metadata_labels_restrictions_corrections_and_aliases(tmp_pa
                     "path": "measurements/complete.vst",
                     "base_a_mm": 1760,
                 },
-            )
+            ),
+            Operation(
+                domain=OperationDomain.MEASUREMENTS,
+                action="measurement.image_remove",
+                arguments={"path": "measurements/profile.vit", "name": "@height"},
+            ),
         ]
     )
     assert removed.ok
@@ -2017,6 +2067,7 @@ def test_native_tape_metadata_labels_restrictions_corrections_and_aliases(tmp_pa
     assert "<restriction " not in (project.root / "measurements/complete.vst").read_text(
         encoding="utf-8"
     )
+    assert "<image " not in (project.root / "measurements/profile.vit").read_text(encoding="utf-8")
 
 
 def test_native_pattern_exports_are_content_addressed(tmp_path):

@@ -12,6 +12,8 @@
 #include "undocommands/vpundomovepieceonsheet.h"
 #include "undocommands/vpundopiecemove.h"
 #include "undocommands/vpundopiecerotate.h"
+#include "undocommands/vpundopiecezvaluemove.h"
+#include "undocommands/vpundoremovesheet.h"
 #include "vpmainwindow.h"
 
 #include "../vmisc/def.h"
@@ -138,10 +140,14 @@ auto VPCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                 {QStringLiteral("preview_commit"), true},
                 {QStringLiteral("handlers"),
                  QJsonArray{QStringLiteral("layout.generate"), QStringLiteral("layout.sheet_add"),
-                            QStringLiteral("layout.sheet_update"), QStringLiteral("layout.move_piece"),
+                            QStringLiteral("layout.sheet_update"), QStringLiteral("layout.sheet_remove"),
+                            QStringLiteral("layout.sheet_crop"), QStringLiteral("layout.move_piece"),
                             QStringLiteral("layout.place"), QStringLiteral("layout.rotate_piece"),
-                            QStringLiteral("layout.flip_piece"), QStringLiteral("layout.settings_update"),
-                            QStringLiteral("layout.print"), QStringLiteral("export.layout")}}};
+                            QStringLiteral("layout.flip_piece"), QStringLiteral("layout.piece_reset"),
+                            QStringLiteral("layout.piece_z_order"), QStringLiteral("layout.rotate_to_grainline"),
+                            QStringLiteral("layout.trash_piece"), QStringLiteral("layout.settings_update"),
+                            QStringLiteral("layout.validate"), QStringLiteral("layout.print"),
+                            QStringLiteral("export.layout")}}};
     }
     if (method == QStringLiteral("commands.preview"))
     {
@@ -365,6 +371,28 @@ void VPCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject 
         return;
     }
 
+    if (action == QStringLiteral("layout.sheet_remove"))
+    {
+        VPSheetPtr sheet = ResolveSheet(arguments);
+        if (layout->GetSheets().size() <= 1)
+        {
+            throw std::invalid_argument("Puzzle must keep at least one visible sheet");
+        }
+        layout->UndoStack()->push(new VPUndoRemoveSheet(sheet));
+        AddReference(summary, QStringLiteral("deleted"),
+                     ObjectReference(sheet->Uuid().toString(QUuid::WithoutBraces), sheet->GetName()));
+        return;
+    }
+
+    if (action == QStringLiteral("layout.sheet_crop"))
+    {
+        VPSheetPtr sheet = ResolveSheet(arguments);
+        sheet->RemoveUnusedLength();
+        AddReference(summary, QStringLiteral("changed"),
+                     ObjectReference(sheet->Uuid().toString(QUuid::WithoutBraces), sheet->GetName()));
+        return;
+    }
+
     if (action == QStringLiteral("layout.settings_update"))
     {
         VPLayoutSettings &settings = layout->LayoutSettings();
@@ -377,6 +405,32 @@ void VPCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject 
         if (arguments.contains(QStringLiteral("cut_on_fold"))) settings.SetCutOnFold(arguments.value(QStringLiteral("cut_on_fold")).toBool());
         if (arguments.contains(QStringLiteral("horizontal_scale"))) settings.SetHorizontalScale(arguments.value(QStringLiteral("horizontal_scale")).toDouble());
         if (arguments.contains(QStringLiteral("vertical_scale"))) settings.SetVerticalScale(arguments.value(QStringLiteral("vertical_scale")).toDouble());
+        if (arguments.contains(QStringLiteral("warning_superposition"))) settings.SetWarningSuperpositionOfPieces(arguments.value(QStringLiteral("warning_superposition")).toBool());
+        if (arguments.contains(QStringLiteral("warning_out_of_bounds"))) settings.SetWarningPiecesOutOfBound(arguments.value(QStringLiteral("warning_out_of_bounds")).toBool());
+        if (arguments.contains(QStringLiteral("warning_piece_gap"))) settings.SetWarningPieceGapePosition(arguments.value(QStringLiteral("warning_piece_gap")).toBool());
+        if (arguments.contains(QStringLiteral("tile_width_mm")) || arguments.contains(QStringLiteral("tile_height_mm")))
+        {
+            const QSizeF size = settings.GetTilesSize();
+            settings.SetTilesSize(arguments.contains(QStringLiteral("tile_width_mm")) ? MmToPx(arguments.value(QStringLiteral("tile_width_mm")).toDouble()) : size.width(),
+                                  arguments.contains(QStringLiteral("tile_height_mm")) ? MmToPx(arguments.value(QStringLiteral("tile_height_mm")).toDouble()) : size.height());
+        }
+        if (arguments.contains(QStringLiteral("tile_margin_left_mm")) || arguments.contains(QStringLiteral("tile_margin_top_mm")) ||
+            arguments.contains(QStringLiteral("tile_margin_right_mm")) || arguments.contains(QStringLiteral("tile_margin_bottom_mm")))
+        {
+            const QMarginsF margins = settings.GetTilesMargins();
+            settings.SetTilesMargins(arguments.contains(QStringLiteral("tile_margin_left_mm")) ? MmToPx(arguments.value(QStringLiteral("tile_margin_left_mm")).toDouble()) : margins.left(),
+                                     arguments.contains(QStringLiteral("tile_margin_top_mm")) ? MmToPx(arguments.value(QStringLiteral("tile_margin_top_mm")).toDouble()) : margins.top(),
+                                     arguments.contains(QStringLiteral("tile_margin_right_mm")) ? MmToPx(arguments.value(QStringLiteral("tile_margin_right_mm")).toDouble()) : margins.right(),
+                                     arguments.contains(QStringLiteral("tile_margin_bottom_mm")) ? MmToPx(arguments.value(QStringLiteral("tile_margin_bottom_mm")).toDouble()) : margins.bottom());
+        }
+        if (arguments.contains(QStringLiteral("show_tiles"))) settings.SetShowTiles(arguments.value(QStringLiteral("show_tiles")).toBool());
+        if (arguments.contains(QStringLiteral("show_grid"))) settings.SetShowGrid(arguments.value(QStringLiteral("show_grid")).toBool());
+        if (arguments.contains(QStringLiteral("grid_column_width_mm"))) settings.SetGridColWidth(MmToPx(arguments.value(QStringLiteral("grid_column_width_mm")).toDouble()));
+        if (arguments.contains(QStringLiteral("grid_row_height_mm"))) settings.SetGridRowHeight(MmToPx(arguments.value(QStringLiteral("grid_row_height_mm")).toDouble()));
+        if (arguments.contains(QStringLiteral("ignore_tile_margins"))) settings.SetIgnoreTilesMargins(arguments.value(QStringLiteral("ignore_tile_margins")).toBool());
+        if (arguments.contains(QStringLiteral("watermark_path"))) settings.SetWatermarkPath(arguments.value(QStringLiteral("watermark_path")).toString());
+        if (arguments.contains(QStringLiteral("show_watermark"))) settings.SetShowWatermark(arguments.value(QStringLiteral("show_watermark")).toBool());
+        if (arguments.contains(QStringLiteral("print_tiles_scheme"))) settings.SetPrintTilesScheme(arguments.value(QStringLiteral("print_tiles_scheme")).toBool());
         AddReference(summary, QStringLiteral("changed"),
                      ObjectReference(layout->Uuid().toString(QUuid::WithoutBraces), QStringLiteral("layout.settings")));
         return;
@@ -425,6 +479,66 @@ void VPCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject 
         else if (axis == QStringLiteral("horizontal")) piece->FlipHorizontally();
         else throw std::invalid_argument("Flip axis must be vertical or horizontal");
         AddReference(summary, QStringLiteral("changed"), ObjectReference(piece->GetUniqueID(), piece->GetName()));
+        return;
+    }
+
+    if (action == QStringLiteral("layout.piece_reset"))
+    {
+        VPPiecePtr piece = ResolvePiece(arguments);
+        piece->ClearTransformations();
+        AddReference(summary, QStringLiteral("changed"), ObjectReference(piece->GetUniqueID(), piece->GetName()));
+        return;
+    }
+
+    if (action == QStringLiteral("layout.piece_z_order"))
+    {
+        VPPiecePtr piece = ResolvePiece(arguments);
+        const QString move = arguments.value(QStringLiteral("move")).toString(QStringLiteral("top"));
+        const QMap<QString, ML::ZValueMove> moves{{QStringLiteral("top"), ML::ZValueMove::Top},
+                                                  {QStringLiteral("up"), ML::ZValueMove::Up},
+                                                  {QStringLiteral("down"), ML::ZValueMove::Down},
+                                                  {QStringLiteral("bottom"), ML::ZValueMove::Bottom}};
+        if (!moves.contains(move))
+        {
+            throw std::invalid_argument("Z-order move must be top, up, down, or bottom");
+        }
+        layout->UndoStack()->push(new VPUndoPieceZValueMove(piece, moves.value(move)));
+        AddReference(summary, QStringLiteral("changed"), ObjectReference(piece->GetUniqueID(), piece->GetName()));
+        return;
+    }
+
+    if (action == QStringLiteral("layout.rotate_to_grainline"))
+    {
+        VPPiecePtr piece = ResolvePiece(arguments);
+        piece->RotateToGrainline({.custom = true});
+        AddReference(summary, QStringLiteral("changed"), ObjectReference(piece->GetUniqueID(), piece->GetName()));
+        return;
+    }
+
+    if (action == QStringLiteral("layout.trash_piece"))
+    {
+        VPPiecePtr piece = ResolvePiece(arguments);
+        layout->UndoStack()->push(new VPUndoMovePieceOnSheet(layout->GetTrashSheet(), piece));
+        AddReference(summary, QStringLiteral("deleted"), ObjectReference(piece->GetUniqueID(), piece->GetName()));
+        return;
+    }
+
+    if (action == QStringLiteral("layout.validate"))
+    {
+        layout->CheckPiecesPositionValidity();
+        QJsonArray issues = summary.value(QStringLiteral("issues")).toArray();
+        for (const VPPiecePtr &piece : layout->GetPlacedPieces())
+        {
+            QString error;
+            if (!piece->IsValid(error))
+            {
+                issues.append(QJsonObject{{QStringLiteral("severity"), QStringLiteral("error")},
+                                          {QStringLiteral("code"), QStringLiteral("invalid_layout_piece")},
+                                          {QStringLiteral("message"), error},
+                                          {QStringLiteral("objects"), QJsonArray{ObjectReference(piece->GetUniqueID(), piece->GetName())}}});
+            }
+        }
+        summary.insert(QStringLiteral("issues"), issues);
         return;
     }
 
