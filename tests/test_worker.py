@@ -11,6 +11,7 @@ from shlex import quote
 
 import pytest
 from fastapi.testclient import TestClient
+from v2_helpers import commit_sync
 
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.project import Project
@@ -24,6 +25,7 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 
 def configured_project(tmp_path):
     project = Project.create(tmp_path / "project")
+    commit_sync(project, "front")
     files = {
         "simulation/bodies/test.obj": "o body\nv 0 0 0\n",
         "simulation/bodies/test.yaml": "body: {}\n",
@@ -109,7 +111,7 @@ def test_bundle_is_self_contained_and_revisioned(tmp_path):
         names = {member.name for member in archive.getmembers() if member.isfile()}
         assert {
             "garmentcode.json",
-            "assembly.json",
+            "assembly/main.garmentcode.json",
             "pattern_snapshot.json",
             "job.json",
             "simulation/bodies/test.obj",
@@ -120,7 +122,7 @@ def test_bundle_is_self_contained_and_revisioned(tmp_path):
             "simulation/cameras/test.json",
         } <= names
         task = json.load(archive.extractfile("job.json"))
-    assert task["revision"] == 1
+    assert task["revision"] == 2
     assert task["units"] == "mm"
     assert task["body_mesh_units"] == "m"
     assert task["expected_views"] == ["front", "back"]

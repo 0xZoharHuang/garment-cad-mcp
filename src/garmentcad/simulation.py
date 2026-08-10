@@ -9,7 +9,6 @@ from typing import Any
 import httpx
 
 from garmentcad.artifacts import ArtifactStore
-from garmentcad.assembly import to_garmentcode
 from garmentcad.errors import StaleRevisionError
 from garmentcad.models import SimulationCameraConfig, SimulationTask
 from garmentcad.project import Project
@@ -17,9 +16,15 @@ from garmentcad.storage import canonical_json, read_json, sha256_bytes
 
 
 def build_simulation_bundle(project: Project) -> tuple[bytes, str]:
-    assembly = read_json(project.root / "assembly/assembly.json")
-    garmentcode = to_garmentcode(assembly)
+    project.assert_assembly_current()
     manifest = project.manifest
+    assembly_path = project.root / manifest.assembly_file
+    assembly = read_json(assembly_path)
+    if not assembly or assembly.get("engine") != "GarmentCode":
+        raise ValueError("Native GarmentCode document is missing or invalid")
+    garmentcode = assembly.get("native_pattern")
+    if not garmentcode:
+        raise ValueError("Native GarmentCode document has no compiled pattern")
     required_inputs = {
         "body_mesh": manifest.active_body,
         "body_measurements": manifest.active_body_measurements,
@@ -41,7 +46,7 @@ def build_simulation_bundle(project: Project) -> tuple[bytes, str]:
         expected_views=[view.name for view in camera_config.views],
     )
     files = {
-        "assembly.json": canonical_json(assembly),
+        "assembly/main.garmentcode.json": assembly_path.read_bytes(),
         "garmentcode.json": canonical_json(garmentcode),
         "pattern_snapshot.json": canonical_json(garmentcode),
         "job.json": canonical_json(task.model_dump(mode="json")),

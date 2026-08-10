@@ -14,13 +14,23 @@ This ledger distinguishes implemented behavior from the external GPU gate.
 | 7. AutoDL stitch/simulate/multiview | Worker/fixture contract passes; `scripts/smoke-autodl.py` requires the pinned runner, CUDA result diagnostics, four PNGs and cache reuse | Awaiting an AutoDL instance |
 | 8. Structured failure and safe rollback | Invalid preview, immutable candidate, stale GUI save, injected commit failure, Worker failure/timeout/cancel/restart tests | Passing |
 | 9. Doctor and full tests on Apple Silicon | `scripts/test.sh`; doctor verifies exact pins, native hosts and universal CPU Warp | Passing |
+| 10. Public real-pattern CAD fidelity | 85-file corpus runner; 20/20 self-contained production-like patterns snapshot, mutate, commit, reopen and reverse byte-exactly; ten production-like patterns have missing upstream measurements | Passing for self-contained public corpus |
+| 11. From-zero client drafting | Bodice, shirt and trouser qualification drafts create 3/6/4 formula-driven pieces with seam allowance, passmarks, internal paths, measurement redraft and PDF/AAMA/ASTM export | Passing |
+| 12. Codex MCP dogfood | Codex 0.144.1 project-scoped STDIO config eagerly exposed `pattern_end_line`; Codex created a project, produced and read a native preview, and left revision 0 uncommitted | Passing |
 
 ## Remaining proof gates
 
 1. Run `uv run scripts/smoke-autodl.py` against the supplied AutoDL GPU instance. Local fixture
    results cannot satisfy this gate.
+2. Supply the ten missing public measurement assets before those corpus patterns can be counted as
+   CAD compatibility passes.
 
-The GarmentCode facade coverage check audits every public transformation on the pinned `Panel`,
-`Edge`, `EdgeSequence`, `Interface`, and `Component` classes. Shared parameterized actions implement
-the mappings; `Component.rotate_to` is recorded separately because upstream itself always raises
+The qualification drafts are deterministic integration fixtures, not professionally approved
+blocks. Production readiness still requires patternmaker review, grading, fabric/shrinkage rules,
+sewability checks, and physical or validated 3D fit evidence.
+
+The GarmentCode coverage report still audits the pinned public transformation surface, but the MCP
+deliberately exposes only sewing, component, and 3D-placement semantics owned by GarmentCode.
+Panel/edge/dart construction actions were removed from this MCP because Valentina is the sole 2D
+CAD truth. `Component.rotate_to` remains recorded separately because upstream itself raises
 `NotImplementedError`.

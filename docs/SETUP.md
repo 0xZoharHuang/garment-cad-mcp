@@ -24,8 +24,27 @@ export GARMENTCAD_VALENTINA_COMMAND="$PWD/scripts/valentina-command-host.sh"
 export GARMENTCAD_GARMENTCODE_COMMAND="$PWD/scripts/garmentcode-command-host.sh"
 ```
 
-Claude Code and compatible MCP clients load the same wrapper from `.mcp.json`; commands default to
-preview-only.
+Claude Code loads the wrappers from `.mcp.json`. Codex CLI, the Codex desktop app, and the Codex IDE
+extension load `.codex/config.toml` after the repository is trusted. Commands default to
+preview-only. Codex uses eager tool registration; Claude Code retains the smaller lazy catalog.
+
+Verify the Codex connection in a new session:
+
+```bash
+codex -C "$PWD"
+# /mcp should show valentina_cad and garmentcode_cad
+```
+
+The core tools are always present: `project_create`, `project_import`, `project_open`,
+`project_status`, `catalog_search`, `resource_read`, `command_preview`, `changeset_commit`,
+`changeset_discard`, and `revision_revert`. `project_create` is
+available from `valentina-mcp` alone, so a CAD client does not need GarmentCode merely to begin a
+new pattern. The shell wrappers resolve the repository path themselves and do not require an
+absolute path in Codex configuration.
+
+Codex 0.144.1 has a client-side config merge bug when per-server approval/time-out fields are
+overridden on a project-scoped STDIO server; the checked-in config intentionally contains only the
+portable command and arguments. Configure optional policy globally after upgrading the client.
 
 Launch each upstream GUI through the reproducible wrappers:
 
@@ -54,9 +73,32 @@ for project status, submission, polling, and revision-safe artifact download. It
 Python client as MCP and the CLI; the original GarmentCode editor remains unchanged outside that
 optional panel.
 
+There is no separate browser CAD editor in this repository. During agent work, inspect compact MCP
+preview images; open Valentina/Tape/Puzzle for full native CAD inspection. A GUI opened in editing
+mode owns the single-writer lock, so an agent can continue reading but cannot commit concurrently.
+
+## Public real-pattern qualification
+
+```bash
+uv run garmentcad-corpus manifest
+GARMENTCAD_VALENTINA_COMMAND="$PWD/scripts/valentina-command-host.sh" \
+  uv run garmentcad-corpus validate --output build/reports/real-patterns
+```
+
+The runner never edits upstream fixtures. It creates isolated temporary projects, obtains two
+native semantic snapshots, adds an unused increment through the native command service, commits,
+reopens, appends a reverse revision, and requires exact restoration of both semantic snapshot and
+`.val` bytes. It writes JSON, HTML, and a resumable partial report. Production timeouts receive one
+120-second retry; regression fixtures remain bounded at ten seconds.
+
+The 2026-08-10 Apple Silicon run classified 85 files as 61 pass, 13 missing dependency, seven
+bounded regression rejection, two expected rejection, and two invalid XML. All 20 self-contained
+production-like cases passed; ten additional production-like cases cannot be qualified because the
+public upstream corpus omits their referenced measurement assets.
+
 ## Valentina revision to GarmentCode
 
-The SDK and `valentina_import_revision` MCP tool ask the native Valentina host to expand the
+The SDK and `assembly_sync_from_pattern` MCP tool ask the native Valentina host to expand the
 current `pattern/main.val`; they never parse or edit its XML in Python. Optional sewing semantics
 live in `assembly/sewing-sidecar.json` and reference deterministic edge aliases from the native
 snapshot:
@@ -82,7 +124,7 @@ snapshot:
 ```python
 from garmentcad.sdk import GarmentSDK
 
-preview = GarmentSDK("./project").import_valentina_revision()
+preview = GarmentSDK("./project").sync_assembly_from_pattern()
 ```
 
 The contracts are generated as `schemas/pattern-snapshot.schema.json` and

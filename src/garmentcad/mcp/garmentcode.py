@@ -1,62 +1,23 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from garmentcad.backends import JsonLineCommandBackend
 from garmentcad.catalog import GARMENTCODE_TOOLS
-from garmentcad.mcp.common import add_core_tools, result_payload
+from garmentcad.mcp.common import PREVIEW_WRITE, add_core_tools, register_atomic, result_payload
 from garmentcad.models import OperationDomain
 from garmentcad.project import Project
-from garmentcad.sdk import execute_atomic, reference
+from garmentcad.sdk import GarmentSDK, execute_atomic
 from garmentcad.simulation import SimulationClient
-from garmentcad.storage import read_json
 
 mcp = FastMCP("garmentcode-cad")
 
 
-def project_create(path: str, name: str | None = None) -> dict[str, Any]:
-    """Create an empty transactional Garment Project."""
-    return Project.create(path, name).status()
-
-
-def changeset_discard(project_path: str, preview_token: str) -> dict[str, Any]:
-    """Discard one immutable preview without changing project truth."""
-    Project.open(project_path).discard(preview_token)
-    return {"ok": True, "preview_token": preview_token}
-
-
-def revision_revert(project_path: str, revision: int, author: str = "agent") -> dict[str, Any]:
-    """Append a reverse revision from the stored preimage."""
-    return result_payload(Project.open(project_path).revert(revision, author=author))
-
-
 def simulation_submit(project_path: str, worker_url: str | None = None) -> dict[str, Any]:
-    """Submit the current revision as a self-contained AutoDL bundle."""
+    """Submit the current native GarmentCode document as a self-contained GPU bundle."""
     return SimulationClient(worker_url).submit(Project.open(project_path))
-
-
-def simulation_configure(
-    project_path: str,
-    body_mesh: str,
-    body_measurements: str,
-    body_segmentation: str,
-    fabric: str,
-    simulation_config: str,
-    camera_config: str,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Preview or commit the complete body, fabric, simulation, and camera input set."""
-    arguments = {
-        "body_mesh": body_mesh,
-        "body_measurements": body_measurements,
-        "body_segmentation": body_segmentation,
-        "fabric": fabric,
-        "simulation_config": simulation_config,
-        "camera_config": camera_config,
-    }
-    return _run(project_path, "simulation.configure", arguments, commit=commit)
 
 
 def simulation_status(job_id: str, worker_url: str | None = None) -> dict[str, Any]:
@@ -72,455 +33,90 @@ def simulation_cancel(job_id: str, worker_url: str | None = None) -> dict[str, A
 def simulation_download(
     project_path: str, job_id: str, worker_url: str | None = None
 ) -> dict[str, Any]:
-    """Download job results into the current revision's content-addressed artifacts."""
+    """Download immutable GPU results into the project artifact store."""
     resources = SimulationClient(worker_url).download(Project.open(project_path), job_id)
     return {"ok": True, "resources": resources}
 
 
 def garmentcode_export(project_path: str, formats: list[str] | None = None) -> dict[str, Any]:
-    """Export native GarmentCode JSON and placed OBJ/USD as immutable artifacts."""
+    """Export JSON/OBJ/USD from the native GarmentCode truth document."""
     from garmentcad.exports import export_garmentcode
 
     return export_garmentcode(project_path, formats)
 
 
-def _run(
+def assembly_sync_from_pattern(
     project_path: str,
-    action: str,
-    arguments: dict[str, Any] | None = None,
-    *,
-    target: str | None = None,
-    commit: bool = False,
+    bindings: dict[str, Any] | None = None,
+    message: str = "",
+    author: str = "agent",
 ) -> dict[str, Any]:
-    domain = (
-        OperationDomain.SIMULATION if action.startswith("simulation.") else OperationDomain.ASSEMBLY
-    )
+    """Preview a native GarmentCode projection of current Valentina truth."""
     return result_payload(
-        execute_atomic(
-            project_path,
-            domain=domain,
-            action=action,
-            arguments=arguments,
-            target=target,
-            commit=commit,
+        GarmentSDK(project_path).sync_assembly_from_pattern(
+            bindings=bindings,
+            message=message,
+            author=author,
         )
     )
 
 
-def panel_create(
+def simulation_configure(
     project_path: str,
-    alias: str,
-    vertices_mm: list[list[float]],
-    uuid: str | None = None,
-    translation_mm: list[float] | None = None,
-    rotation_deg: list[float] | None = None,
-    commit: bool = False,
+    body_mesh: str,
+    body_measurements: str,
+    body_segmentation: str,
+    fabric: str,
+    simulation_config: str,
+    camera_config: str,
 ) -> dict[str, Any]:
-    """Create one polygonal sewing panel. Preview-only unless commit is true."""
-    arguments = {
-        "alias": alias,
-        "vertices_mm": vertices_mm,
-        "translation_mm": translation_mm or [0, 0, 0],
-        "rotation_deg": rotation_deg or [0, 0, 0],
-    }
-    if uuid is not None:
-        arguments["uuid"] = uuid
-    return _run(
-        project_path,
-        "panel.create",
-        arguments,
-        commit=commit,
+    """Preview the complete body, fabric, simulation, and camera input selection."""
+    return result_payload(
+        execute_atomic(
+            project_path,
+            domain=OperationDomain.SIMULATION,
+            action="simulation.configure",
+            arguments={
+                "body_mesh": body_mesh,
+                "body_measurements": body_measurements,
+                "body_segmentation": body_segmentation,
+                "fabric": fabric,
+                "simulation_config": simulation_config,
+                "camera_config": camera_config,
+            },
+        )
     )
 
 
-def panel_delete(project_path: str, panel: str, commit: bool = False) -> dict[str, Any]:
-    """Delete a panel and dependent interfaces/stitches."""
-    return _run(project_path, "panel.delete", target=panel, commit=commit)
-
-
-def panel_transform(
-    project_path: str,
-    panel: str,
-    translation_mm: list[float] | None = None,
-    rotation_deg: list[float] | None = None,
-    translation_delta_mm: list[float] | None = None,
-    rotation_delta_deg: list[float] | None = None,
-    center_x: bool = False,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Set the 3D placement of one panel."""
-    arguments = {}
-    if translation_mm is not None:
-        arguments["translation_mm"] = translation_mm
-    if rotation_deg is not None:
-        arguments["rotation_deg"] = rotation_deg
-    if translation_delta_mm is not None:
-        arguments["translation_delta_mm"] = translation_delta_mm
-    if rotation_delta_deg is not None:
-        arguments["rotation_delta_deg"] = rotation_delta_deg
-    if center_x:
-        arguments["center_x"] = True
-    return _run(project_path, "panel.transform", arguments, target=panel, commit=commit)
-
-
-def panel_mirror(
-    project_path: str,
-    panel: str,
-    alias: str,
-    axis: str = "x",
-    origin_mm: float = 0,
-    uuid: str | None = None,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Create a mirrored panel copy across x=origin or y=origin."""
-    arguments = {"alias": alias, "axis": axis, "origin_mm": origin_mm}
-    if uuid is not None:
-        arguments["uuid"] = uuid
-    return _run(
-        project_path,
-        "panel.mirror",
-        arguments,
-        target=panel,
-        commit=commit,
-    )
-
-
-def panel_pivot(
-    project_path: str,
-    panel: str,
-    point_mm: list[float],
-    replicate_placement: bool = False,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Move the local 2D pivot, optionally preserving its placed position."""
-    return _run(
-        project_path,
-        "panel.pivot",
-        {"point_mm": point_mm, "replicate_placement": replicate_placement},
-        target=panel,
-        commit=commit,
-    )
-
-
-def edge_split(
-    project_path: str,
-    panel: str,
-    edge_index: int,
-    fractions: list[float],
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Split an edge at normalized fractions strictly between zero and one."""
-    return _run(
-        project_path,
-        "edge.split",
-        {"panel": panel, "edge_index": edge_index, "fractions": fractions},
-        commit=commit,
-    )
-
-
-def edge_extend(
-    project_path: str,
-    panel: str,
-    edge_index: int,
-    start_delta_mm: float = 0,
-    end_delta_mm: float = 0,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Extend or shorten both endpoints of a straight edge."""
-    return _run(
-        project_path,
-        "edge.extend",
-        {
-            "panel": panel,
-            "edge_index": edge_index,
-            "start_delta_mm": start_delta_mm,
-            "end_delta_mm": end_delta_mm,
-        },
-        commit=commit,
-    )
-
-
-def edge_chamfer(
-    project_path: str,
-    panel: str,
-    vertex_index: int,
-    distance_before_mm: float,
-    distance_after_mm: float | None = None,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Replace one corner with a straight chamfer."""
-    return _run(
-        project_path,
-        "edge.chamfer",
-        {
-            "panel": panel,
-            "vertex_index": vertex_index,
-            "distance_before_mm": distance_before_mm,
-            "distance_after_mm": distance_after_mm or distance_before_mm,
-        },
-        commit=commit,
-    )
-
-
-def edge_sequence_transform(
-    project_path: str,
-    panel: str,
-    edge_indices: list[int],
-    translation_delta_mm: list[float] | None = None,
-    snap_start_mm: list[float] | None = None,
-    rotation_deg: float | None = None,
-    origin_mm: list[float] | None = None,
-    reflect_line_mm: list[list[float]] | None = None,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Transform the unique vertices belonging to an ordered edge sequence."""
-    arguments: dict[str, Any] = {"panel": panel, "edge_indices": edge_indices}
-    for name, value in {
-        "translation_delta_mm": translation_delta_mm,
-        "snap_start_mm": snap_start_mm,
-        "rotation_deg": rotation_deg,
-        "origin_mm": origin_mm,
-        "reflect_line_mm": reflect_line_mm,
-    }.items():
-        if value is not None:
-            arguments[name] = value
-    return _run(project_path, "edge_sequence.transform", arguments, commit=commit)
-
-
-def dart_insert(
-    project_path: str,
-    panel: str,
-    edge_index: int,
-    intake_mm: float,
-    depth_mm: float,
-    position: float = 0.5,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Insert a cut dart into a straight boundary edge."""
-    return _run(
-        project_path,
-        "dart.insert",
-        {
-            "panel": panel,
-            "edge_index": edge_index,
-            "intake_mm": intake_mm,
-            "depth_mm": depth_mm,
-            "position": position,
-        },
-        commit=commit,
-    )
-
-
-def component_define(
-    project_path: str, alias: str, panels: list[str], commit: bool = False
-) -> dict[str, Any]:
-    """Group existing panels under one component alias."""
-    return _run(
-        project_path,
-        "component.define",
-        {"alias": alias, "panels": panels},
-        commit=commit,
-    )
-
-
-def component_transform(
-    project_path: str,
-    component: str,
-    translation_delta_mm: list[float] | None = None,
-    rotation_delta_deg: list[float] | None = None,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Translate and rotate every panel in a component by the same deltas."""
-    return _run(
-        project_path,
-        "component.transform",
-        {
-            "component": component,
-            "translation_delta_mm": translation_delta_mm or [0, 0, 0],
-            "rotation_delta_deg": rotation_delta_deg or [0, 0, 0],
-        },
-        commit=commit,
-    )
-
-
-def component_mirror(
-    project_path: str,
-    component: str,
-    axis: str = "x",
-    origin_mm: float = 0,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Mirror all panels in one component without changing their identities."""
-    return _run(
-        project_path,
-        "component.mirror",
-        {"component": component, "axis": axis, "origin_mm": origin_mm},
-        commit=commit,
-    )
-
-
-def valentina_import_revision(
-    project_path: str,
-    sidecar_relative_path: str = "assembly/sewing-sidecar.json",
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Snapshot the current `.val` natively and apply an optional sewing sidecar."""
-    project = Project.open(project_path)
-
-    def project_file(relative: str) -> dict[str, Any]:
-        path = (project.root / relative).resolve()
-        if project.root not in path.parents:
-            raise ValueError("Import path must stay inside the project")
-        return read_json(path, default={})
-
-    return _run(
-        project_path,
-        "valentina.import",
-        {
-            "snapshot": JsonLineCommandBackend().snapshot(project.root),
-            "sidecar": project_file(sidecar_relative_path),
-        },
-        commit=commit,
-    )
-
-
-def interface_define(
-    project_path: str,
-    alias: str,
-    panel: str,
-    edge_indices: list[int],
-    reverse: bool = False,
-    ruffle: float = 1.0,
-    right_wrong: bool = False,
-    uuid: str | None = None,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Define an ordered sewing interface from edges of one panel."""
-    panel_ref = reference(panel)
-    arguments = {
-        "alias": alias,
-        "panel": panel_ref.model_dump(exclude_none=True) if panel_ref else {},
-        "edge_indices": edge_indices,
-        "reverse": reverse,
-        "ruffle": ruffle,
-        "right_wrong": right_wrong,
-    }
-    if uuid is not None:
-        arguments["uuid"] = uuid
-    return _run(
-        project_path,
-        "interface.define",
-        arguments,
-        commit=commit,
-    )
-
-
-def interface_delete(project_path: str, interface: str, commit: bool = False) -> dict[str, Any]:
-    """Delete an interface and its dependent stitches."""
-    return _run(project_path, "interface.delete", target=interface, commit=commit)
-
-
-def interface_update(
-    project_path: str,
-    interface: str,
-    edge_indices: list[int] | None = None,
-    reverse_order: bool = False,
-    flip_edges: bool = False,
-    right_wrong: bool | None = None,
-    ruffle: float | None = None,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Change interface order, edge direction, face orientation, or ruffle."""
-    arguments: dict[str, Any] = {
-        "reverse_order": reverse_order,
-        "flip_edges": flip_edges,
-    }
-    if edge_indices is not None:
-        arguments["edge_indices"] = edge_indices
-    if right_wrong is not None:
-        arguments["right_wrong"] = right_wrong
-    if ruffle is not None:
-        arguments["ruffle"] = ruffle
-    return _run(project_path, "interface.update", arguments, target=interface, commit=commit)
-
-
-def stitch_create(
-    project_path: str,
-    alias: str,
-    interface_a: str,
-    interface_b: str,
-    direction: str = "auto",
-    uuid: str | None = None,
-    commit: bool = False,
-) -> dict[str, Any]:
-    """Sew two interfaces; their edge partitions must currently match."""
-    left = reference(interface_a)
-    right = reference(interface_b)
-    arguments = {
-        "alias": alias,
-        "interface_a": left.model_dump(exclude_none=True) if left else {},
-        "interface_b": right.model_dump(exclude_none=True) if right else {},
-        "direction": direction,
-    }
-    if uuid is not None:
-        arguments["uuid"] = uuid
-    return _run(
-        project_path,
-        "stitch.create",
-        arguments,
-        commit=commit,
-    )
-
-
-def stitch_delete(project_path: str, stitch: str, commit: bool = False) -> dict[str, Any]:
-    """Delete one stitch relation."""
-    return _run(project_path, "stitch.delete", target=stitch, commit=commit)
-
-
-def assembly_validate(project_path: str) -> dict[str, Any]:
-    """Preview a no-op validation of the current assembly."""
-    return _run(project_path, "validate")
-
-
-LAZY_TOOLS = {
-    "project_create": project_create,
-    "changeset_discard": changeset_discard,
-    "revision_revert": revision_revert,
+SPECIAL: dict[str, Any] = {
+    "assembly_sync_from_pattern": assembly_sync_from_pattern,
+    "garmentcode_export": garmentcode_export,
     "simulation_submit": simulation_submit,
     "simulation_configure": simulation_configure,
     "simulation_status": simulation_status,
     "simulation_cancel": simulation_cancel,
     "simulation_download": simulation_download,
-    "garmentcode_export": garmentcode_export,
-    "panel_create": panel_create,
-    "panel_delete": panel_delete,
-    "panel_transform": panel_transform,
-    "panel_pivot": panel_pivot,
-    "panel_mirror": panel_mirror,
-    "edge_split": edge_split,
-    "edge_extend": edge_extend,
-    "edge_sequence_transform": edge_sequence_transform,
-    "edge_chamfer": edge_chamfer,
-    "dart_insert": dart_insert,
-    "component_define": component_define,
-    "component_transform": component_transform,
-    "component_mirror": component_mirror,
-    "valentina_import_revision": valentina_import_revision,
-    "interface_define": interface_define,
-    "interface_update": interface_update,
-    "interface_delete": interface_delete,
-    "stitch_create": stitch_create,
-    "stitch_delete": stitch_delete,
-    "assembly_validate": assembly_validate,
 }
 
 
 def load_tools(names: set[str]) -> None:
-    for name in names:
-        mcp.tool(name=name)(LAZY_TOOLS[name])
+    for spec in GARMENTCODE_TOOLS:
+        if spec.name not in names or mcp._tool_manager.get_tool(spec.name) is not None:
+            continue
+        if implementation := SPECIAL.get(spec.name):
+            mcp.tool(name=spec.name, annotations=PREVIEW_WRITE)(implementation)
+            continue
+        domain = (
+            OperationDomain.SIMULATION
+            if spec.action.startswith("simulation.")
+            else OperationDomain.ASSEMBLY
+        )
+        register_atomic(mcp, spec, domain)
 
 
 add_core_tools(mcp, GARMENTCODE_TOOLS, load_tools)
+if os.environ.get("GARMENTCAD_MCP_TOOL_MODE", "lazy").lower() == "eager":
+    load_tools({spec.name for spec in GARMENTCODE_TOOLS})
 
 
 def main() -> None:

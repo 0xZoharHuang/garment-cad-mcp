@@ -1,0 +1,26 @@
+{
+  "components": {},
+  "engine": "GarmentCode",
+  "interfaces": {},
+  "native_pattern": {
+    "parameter_order": [],
+    "parameters": {},
+    "pattern": {
+      "panels": {},
+      "stitches": []
+    },
+    "properties": {
+      "curvature_coords": "relative",
+      "normalize_panel_translation": false,
+      "normalized_edge_loops": true,
+      "units_in_meter": 100
+    }
+  },
+  "panels": {},
+  "schema_version": "2.0",
+  "source_pattern_hash": null,
+  "source_project_id": null,
+  "source_revision": null,
+  "stitches": {},
+  "units": "mm"
+}

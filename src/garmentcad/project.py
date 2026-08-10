@@ -9,7 +9,6 @@ from typing import Any
 from uuid import uuid4
 
 from garmentcad.artifacts import ArtifactStore
-from garmentcad.assembly import preview_assembly, thumbnail_svg
 from garmentcad.backends import NativeCommandRouter, ProjectMetadataBackend, merge_summaries
 from garmentcad.errors import (
     ChangeSetIntegrityError,
@@ -101,7 +100,7 @@ class CommandNamespace:
         if self.domain == OperationDomain.LAYOUT:
             return f"layout.{parts[-1]}"
         if self.domain == OperationDomain.ASSEMBLY:
-            assembly_aliases = {"stitch": "stitch.create", "panel": "panel.create"}
+            assembly_aliases = {"stitch": "stitch.create"}
             return assembly_aliases.get(parts[-1], self.prefix)
         return f"{self.domain.value}.{self.prefix}"
 
@@ -126,22 +125,16 @@ class Project:
         root_path.mkdir(parents=True, exist_ok=False)
         for directory in DIRECTORIES:
             (root_path / directory).mkdir(parents=True, exist_ok=True)
-        template = Path(__file__).with_name("templates") / "empty.val"
-        shutil.copy2(template, root_path / "pattern/main.val")
+        templates = Path(__file__).with_name("templates")
+        shutil.copy2(templates / "empty.val", root_path / "pattern/main.val")
         manifest = ProjectManifest(name=name or root_path.name)
         atomic_write_json(root_path / "garment.json", manifest.model_dump(mode="json"))
+        # This seed is byte-for-byte output of pinned GarmentDocument.save(). It lets the
+        # Valentina MCP create a project before the optional GarmentCode environment is installed;
+        # every non-empty assembly is still authored by the native host.
+        shutil.copy2(templates / "empty.garmentcode.json", root_path / manifest.assembly_file)
         atomic_write_json(
-            root_path / "assembly/assembly.json",
-            {
-                "schema_version": "1.0",
-                "units": "mm",
-                "panels": {},
-                "interfaces": {},
-                "stitches": {},
-            },
-        )
-        atomic_write_json(
-            root_path / ".garmentcad/aliases.json", {"schema_version": "1.0", "objects": {}}
+            root_path / ".garmentcad/aliases.json", {"schema_version": "2.0", "objects": {}}
         )
         atomic_write_json(
             root_path / ".garmentcad/revisions/0.json",
@@ -162,6 +155,43 @@ class Project:
     @classmethod
     def open(cls, root: str | Path) -> Project:
         return cls(Path(root))
+
+    @classmethod
+    def import_valentina(
+        cls,
+        source_pattern: str | Path,
+        root: str | Path,
+        *,
+        name: str | None = None,
+        measurement_files: list[str | Path] | None = None,
+    ) -> Project:
+        """Initialize a project from an existing native .val without interpreting its XML."""
+        source = Path(source_pattern).resolve()
+        if source.suffix.lower() != ".val" or not source.is_file():
+            raise ValueError("source_pattern must be an existing Valentina .val file")
+        project = cls.create(root, name or source.stem)
+        shutil.copy2(source, project.root / project.manifest.pattern_file)
+        imported_measurements: list[str] = []
+        candidates = list(measurement_files or [])
+        if measurement_files is None:
+            candidates.extend((*source.parent.glob("*.vit"), *source.parent.glob("*.vst")))
+        for value in candidates:
+            measurement = Path(value).resolve()
+            if measurement.suffix.lower() not in {".vit", ".vst"} or not measurement.is_file():
+                raise ValueError(f"Invalid Tape measurement file: {measurement}")
+            relative = f"measurements/{measurement.name}"
+            shutil.copy2(measurement, project.root / relative)
+            imported_measurements.append(relative)
+        manifest = project.manifest
+        manifest.measurement_files = sorted(set(imported_measurements))
+        manifest.updated_at = utc_now()
+        atomic_write_json(project.manifest_path, manifest.model_dump(mode="json"))
+        revision_path = project.root / ".garmentcad/revisions/0.json"
+        revision = read_json(revision_path) or {}
+        revision["message"] = f"Imported native Valentina pattern {source.name}"
+        revision["content_hash"] = cls._content_hash_static(project.root)
+        atomic_write_json(revision_path, revision)
+        return project
 
     @staticmethod
     def _content_hash_static(root: Path) -> str:
@@ -218,10 +248,22 @@ class Project:
         preview_directory.mkdir(parents=True, exist_ok=False)
         for domain, domain_operations in by_domain.items():
             if domain == OperationDomain.ASSEMBLY:
-                assembly, summary = preview_assembly(self.root, domain_operations)
-                atomic_write_json(preview_directory / "assembly.json", assembly)
-                (preview_directory / "thumbnail.svg").write_text(
-                    thumbnail_svg(assembly), encoding="utf-8"
+                from garmentcad.garmentcode_facade import GarmentCodeFacade
+
+                source = self.root / self.manifest.assembly_file
+                candidate = preview_directory / "assembly/main.garmentcode.json"
+                summary, native_result = GarmentCodeFacade().preview_document(
+                    source,
+                    candidate,
+                    domain_operations,
+                )
+                atomic_write_json(
+                    preview_directory / "assembly/provenance.json",
+                    native_result["provenance"]
+                    | {
+                        "document_hash": native_result["document_hash"],
+                        "document_path": "assembly/main.garmentcode.json",
+                    },
                 )
                 change_set.preview_resources.append(
                     f"garment://project/{change_set.project_id}/changeset/{change_set.id}/assembly"
@@ -315,14 +357,22 @@ class Project:
                 domains = {operation.domain for operation in change_set.operations}
                 for domain in domains:
                     if domain == OperationDomain.ASSEMBLY:
-                        staged = self.root / f".garmentcad/changesets/{change_set.id}/assembly.json"
+                        staged = self.root / (
+                            f".garmentcad/changesets/{change_set.id}/"
+                            "assembly/main.garmentcode.json"
+                        )
                         if not staged.exists():
                             raise ChangeSetNotFoundError(
                                 f"Missing staged assembly for {change_set.id}"
                             )
-                        atomic_write_json(
-                            self.root / "assembly/assembly.json",
-                            read_json(staged),
+                        provenance = read_json(staged.parent / "provenance.json")
+                        if provenance is None or provenance.get("engine") != "GarmentCode":
+                            raise ChangeSetIntegrityError("Missing native GarmentCode provenance")
+                        if sha256_file(staged) != provenance.get("document_hash"):
+                            raise ChangeSetIntegrityError("GarmentCode candidate hash mismatch")
+                        atomic_write_bytes(
+                            self.root / manifest.assembly_file,
+                            staged.read_bytes(),
                         )
                     elif domain == OperationDomain.SIMULATION:
                         staged = self.root / f".garmentcad/changesets/{change_set.id}/garment.json"
@@ -613,6 +663,28 @@ class Project:
         shutil.copy2(source_path, destination)
         return destination
 
+    def assembly_binding_status(self) -> dict[str, Any]:
+        pattern = self.root / self.manifest.pattern_file
+        assembly = self.root / self.manifest.assembly_file
+        document = read_json(assembly) or {}
+        expected = sha256_file(pattern)
+        bound = document.get("source_pattern_hash")
+        return {
+            "current": bool(bound and bound == expected),
+            "pattern_hash": expected,
+            "source_pattern_hash": bound,
+            "source_revision": document.get("source_revision"),
+            "engine": document.get("engine"),
+        }
+
+    def assert_assembly_current(self) -> None:
+        binding = self.assembly_binding_status()
+        if not binding["current"]:
+            raise StaleRevisionError(
+                "GarmentCode assembly is not bound to the current native Valentina pattern; "
+                "preview and commit assembly.sync_from_pattern first"
+            )
+
     def status(self) -> dict[str, Any]:
         manifest = self.manifest
         current_hash = self._content_hash_static(self.root)
@@ -623,6 +695,7 @@ class Project:
             "pending_operations": len(self._pending),
             "content_hash": current_hash,
             "externally_modified": bool(revision and revision.get("content_hash") != current_hash),
+            "assembly_binding": self.assembly_binding_status(),
         }
 
     def __enter__(self) -> Project:

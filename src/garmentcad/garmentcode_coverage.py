@@ -6,47 +6,58 @@ from pathlib import Path
 # Public mutators in the pinned GarmentCode object model. Several upstream methods
 # intentionally share one more stable, parameterized garmentcad action.
 FACADE_TRANSFORM_MAP: dict[str, str] = {
-    "Component.mirror": "component.mirror",
     "Component.rotate_by": "component.transform",
     "Component.translate_by": "component.transform",
     "Component.translate_to": "component.transform",
-    "Edge.reflect_features": "edge_sequence.transform",
-    "Edge.reverse": "edge_sequence.transform",
-    "Edge.rotate": "edge_sequence.transform",
-    "Edge.snap_to": "edge_sequence.transform",
-    "Edge.subdivide_len": "edge.split",
-    "Edge.subdivide_param": "edge.split",
-    "EdgeSequence.close_loop": "panel.create",
-    "EdgeSequence.extend": "edge.extend",
-    "EdgeSequence.reflect": "edge_sequence.transform",
-    "EdgeSequence.reverse": "edge_sequence.transform",
-    "EdgeSequence.rotate": "edge_sequence.transform",
-    "EdgeSequence.snap_to": "edge_sequence.transform",
-    "EdgeSequence.substitute": "edge.split",
-    "EdgeSequence.translate_by": "edge_sequence.transform",
     "Interface.flip_edges": "interface.update",
     "Interface.reorder": "interface.update",
     "Interface.reverse": "interface.update",
     "Interface.set_right_wrong": "interface.update",
     "Interface.substitute": "interface.update",
-    "Panel.add_dart": "dart.insert",
-    "Panel.autonorm": "panel.transform",
     "Panel.center_x": "panel.transform",
-    "Panel.mirror": "panel.mirror",
-    "Panel.rotate_align": "panel.transform",
     "Panel.rotate_by": "panel.transform",
     "Panel.rotate_to": "panel.transform",
-    "Panel.set_pivot": "panel.pivot",
-    "Panel.top_center_pivot": "panel.pivot",
     "Panel.translate_by": "panel.transform",
     "Panel.translate_to": "panel.transform",
 }
 
+# These are real upstream methods, but exposing them here would recreate a second 2D drafting
+# surface beside Valentina. Keeping the disposition executable makes an upstream diff fail closed.
+VALENTINA_OWNED_2D_TRANSFORMS = {
+    "Component.mirror",
+    "Edge.reflect_features",
+    "Edge.reverse",
+    "Edge.rotate",
+    "Edge.snap_to",
+    "Edge.subdivide_len",
+    "Edge.subdivide_param",
+    "EdgeSequence.close_loop",
+    "EdgeSequence.extend",
+    "EdgeSequence.reflect",
+    "EdgeSequence.reverse",
+    "EdgeSequence.rotate",
+    "EdgeSequence.snap_to",
+    "EdgeSequence.substitute",
+    "EdgeSequence.translate_by",
+    "Panel.add_dart",
+    "Panel.mirror",
+    "Panel.set_pivot",
+    "Panel.top_center_pivot",
+}
+
+NATIVE_HELPERS_NOT_STABLE_COMMANDS = {"Panel.autonorm", "Panel.rotate_align"}
+
 # Upstream advertises this method but raises NotImplementedError unconditionally.
 UPSTREAM_UNAVAILABLE = {"Component.rotate_to"}
 
-MUTATOR_NAMES = {name.split(".", 1)[1] for name in FACADE_TRANSFORM_MAP} | {
-    name.split(".", 1)[1] for name in UPSTREAM_UNAVAILABLE
+MUTATOR_NAMES = {
+    name.split(".", 1)[1]
+    for name in (
+        set(FACADE_TRANSFORM_MAP)
+        | VALENTINA_OWNED_2D_TRANSFORMS
+        | NATIVE_HELPERS_NOT_STABLE_COMMANDS
+        | UPSTREAM_UNAVAILABLE
+    )
 }
 
 
@@ -73,10 +84,17 @@ def discover_public_transforms(source_root: Path) -> set[str]:
 
 def coverage_report(source_root: Path, facade_actions: set[str]) -> dict[str, list[str]]:
     discovered = discover_public_transforms(source_root)
-    declared = set(FACADE_TRANSFORM_MAP) | UPSTREAM_UNAVAILABLE
+    declared = (
+        set(FACADE_TRANSFORM_MAP)
+        | VALENTINA_OWNED_2D_TRANSFORMS
+        | NATIVE_HELPERS_NOT_STABLE_COMMANDS
+        | UPSTREAM_UNAVAILABLE
+    )
     return {
         "missing_declarations": sorted(discovered - declared),
         "stale_declarations": sorted(declared - discovered),
         "missing_actions": sorted(set(FACADE_TRANSFORM_MAP.values()) - facade_actions),
+        "valentina_owned_2d": sorted(VALENTINA_OWNED_2D_TRANSFORMS),
+        "native_helpers_not_stable_commands": sorted(NATIVE_HELPERS_NOT_STABLE_COMMANDS),
         "upstream_unavailable": sorted(UPSTREAM_UNAVAILABLE),
     }

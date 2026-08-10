@@ -80,6 +80,11 @@
           "title": "Edge Indices",
           "type": "array"
         },
+        "flip_edges": {
+          "default": false,
+          "title": "Flip Edges",
+          "type": "boolean"
+        },
         "id": {
           "title": "Id",
           "type": "string"
@@ -88,9 +93,9 @@
           "title": "Panel Id",
           "type": "string"
         },
-        "reverse": {
+        "reverse_order": {
           "default": false,
-          "title": "Reverse",
+          "title": "Reverse Order",
           "type": "boolean"
         },
         "right_wrong": {
@@ -108,8 +113,7 @@
       "required": [
         "id",
         "alias",
-        "panel_id",
-        "edge_indices"
+        "panel_id"
       ],
       "title": "AssemblyInterface",
       "type": "object"
@@ -290,12 +294,31 @@
       "title": "Components",
       "type": "object"
     },
+    "engine": {
+      "const": "GarmentCode",
+      "default": "GarmentCode",
+      "title": "Engine",
+      "type": "string"
+    },
     "interfaces": {
       "additionalProperties": {
         "$ref": "#/$defs/AssemblyInterface"
       },
       "title": "Interfaces",
       "type": "object"
+    },
+    "native_pattern": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Pattern"
     },
     "panels": {
       "additionalProperties": {
@@ -305,9 +328,34 @@
       "type": "object"
     },
     "schema_version": {
-      "default": "1.0",
+      "const": "2.0",
+      "default": "2.0",
       "title": "Schema Version",
       "type": "string"
+    },
+    "source_pattern_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Pattern Hash"
+    },
+    "source_project_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Project Id"
     },
     "source_revision": {
       "anyOf": [

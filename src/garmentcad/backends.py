@@ -28,8 +28,13 @@ class JsonLineCommandBackend:
     SDK, tests, and other agent runtimes without depending on MCP.
     """
 
-    def __init__(self, executable_env: str = "GARMENTCAD_VALENTINA_COMMAND") -> None:
+    def __init__(
+        self,
+        executable_env: str = "GARMENTCAD_VALENTINA_COMMAND",
+        timeout_sec: float | None = None,
+    ) -> None:
         self.executable_env = executable_env
+        self.timeout_sec = timeout_sec
 
     def _call(self, request: dict) -> dict:
         executable = os.environ.get(self.executable_env)
@@ -43,14 +48,21 @@ class JsonLineCommandBackend:
         environment = os.environ.copy()
         environment.setdefault("QT_QPA_PLATFORM", "offscreen")
         environment["GARMENTCAD_COMMAND_MODE"] = "1"
-        process = subprocess.run(
-            command,
-            input=json.dumps(request),
-            text=True,
-            capture_output=True,
-            check=False,
-            env=environment,
-        )
+        try:
+            process = subprocess.run(
+                command,
+                input=json.dumps(request),
+                text=True,
+                capture_output=True,
+                check=False,
+                env=environment,
+                timeout=self.timeout_sec
+                or float(os.environ.get("GARMENTCAD_COMMAND_TIMEOUT_SEC", "120")),
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise CommandBackendUnavailable(
+                f"Native CAD command timed out while handling {request.get('method', 'request')}"
+            ) from exc
         if process.returncode != 0:
             message = process.stderr.strip()
             if process.stdout.strip():

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from garmentcad.errors import CommandBackendUnavailable
+from garmentcad.models import ChangeSummary, Operation
 
 
 class GarmentCodeFacade:
@@ -59,13 +60,47 @@ class GarmentCodeFacade:
     def service_info(self) -> dict[str, Any]:
         return self._call({"method": "service.info"})
 
-    def convert(self, assembly: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-        response = self._call({"method": "assembly.convert", "assembly": assembly})
-        return response["garmentcode"], response["diagnostics"]
+    def create_document(self, output_path: Path, project_id: str) -> dict[str, Any]:
+        """Ask the native GarmentCode model to author a new truth document."""
+        return self._call(
+            {
+                "method": "document.create",
+                "output_path": str(output_path),
+                "project_id": project_id,
+            }
+        )
 
-    def validate(self, assembly: dict[str, Any]) -> dict[str, Any]:
-        return self._call({"method": "assembly.validate", "assembly": assembly})["diagnostics"]
+    def preview_document(
+        self,
+        source_path: Path,
+        output_path: Path,
+        operations: list[Operation],
+    ) -> tuple[ChangeSummary, dict[str, Any]]:
+        """Apply commands and save a candidate entirely inside the native host."""
+        response = self._call(
+            {
+                "method": "document.preview",
+                "source_path": str(source_path),
+                "output_path": str(output_path),
+                "operations": [operation.model_dump(mode="json") for operation in operations],
+            }
+        )
+        return ChangeSummary.model_validate(response["summary"]), response
 
-    def mesh(self, assembly: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-        response = self._call({"method": "assembly.mesh", "assembly": assembly})
-        return response["panels"], response["diagnostics"]
+    def validate_document(self, source_path: Path) -> dict[str, Any]:
+        return self._call(
+            {"method": "document.validate", "source_path": str(source_path)}
+        )["diagnostics"]
+
+    def export_document(
+        self, source_path: Path, output_directory: Path, formats: list[str]
+    ) -> dict[str, Any]:
+        """Export derivatives inside the pinned native GarmentCode environment."""
+        return self._call(
+            {
+                "method": "document.export",
+                "source_path": str(source_path),
+                "output_directory": str(output_directory),
+                "formats": formats,
+            }
+        )

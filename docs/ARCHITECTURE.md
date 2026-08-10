@@ -15,10 +15,10 @@ natural language + reference images + body measurements + constraints
                     |                       |
             candidate change-set       new revision
                     |                       |
-          .val (canonical 2D) + assembly.json (canonical sewing)
+        .val (native 2D) + main.garmentcode.json (native sewing/3D)
                               |
-                    GarmentCode conversion
-                        mm --------> cm
+                  GarmentCode reconstruction
+                       mm --------> cm
                               |
                   AutoDL Warp simulation worker
                               |
@@ -42,7 +42,8 @@ project/
 |-- pattern/main.val             canonical Valentina pattern
 |-- measurements/                Tape files
 |-- layout/                      Puzzle outputs
-|-- assembly/assembly.json       panel placement and stitch graph, in mm
+|-- assembly/main.garmentcode.json
+|                                native sewing, placement, and compiled pattern
 |-- simulation/{bodies,fabrics}/ explicit physical inputs
 |-- artifacts/                   exports and downloaded renders
 `-- .garmentcad/
@@ -54,8 +55,8 @@ project/
 
 A preview records its base revision. Commit rejects it if another writer has moved the project.
 UUIDs provide durable identity; aliases remain readable handles for agents and humans.
-New projects copy a minimal Valentina-authored seed pattern; subsequent `.val` changes only pass
-through the native command service.
+New projects copy a minimal Valentina-authored seed pattern; existing `.val/.vit/.vst` can be
+imported byte-for-byte. Subsequent `.val` changes only pass through the native command service.
 
 The checked-in `atomic-tools.schema.json` and generated `AtomicCommands` class are rebuilt from the
 pinned native handlers. GarmentCode assembly actions likewise generate `assembly-tools.schema.json`
@@ -65,10 +66,11 @@ DTO: it snapshots the current native revision rather than accepting caller-suppl
 
 ## Boundary with GarmentCode
 
-GarmentCode is still the parametric garment library and Warp simulation integration. This repository
-adds the missing product/system layer: Valentina-authored 2D truth, transactional multi-file project
-state, small agent-safe commands, revision concurrency, remote jobs, and uniform results. It does not
-replace GarmentCode's design grammar; it wraps and interoperates with its serialized pattern API.
+GarmentCode owns sewing interfaces, stitches, components, initial 3D placement, compiled native
+pattern JSON, and downstream mesh/simulation inputs. The control plane does not implement panel
+creation, edge splitting, darts, mirroring, triangulation, or sewing geometry in `src/garmentcad`.
+Valentina owns those 2D drafting operations; GarmentCode reconstructs its own objects from a
+hash-bound Valentina snapshot. A changed `.val` makes that projection stale until it is resynced.
 
 ## Valentina command boundary
 

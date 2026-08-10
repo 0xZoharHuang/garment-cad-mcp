@@ -17,6 +17,7 @@ dev = ["pytest>=8.4,<9", "pytest-asyncio>=1.1,<2", "ruff>=0.12,<1"]
 
 [project.scripts]
 garmentcad = "garmentcad.cli:app"
+garmentcad-corpus = "garmentcad.corpus:app"
 valentina-mcp = "garmentcad.mcp.valentina:main"
 garmentcode-mcp = "garmentcad.mcp.garmentcode:main"
 garment-sim-worker = "garmentcad.worker.app:main"

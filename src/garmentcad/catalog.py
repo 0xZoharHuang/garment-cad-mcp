@@ -87,6 +87,26 @@ VALENTINA_TOOLS = tuple(
     ToolSpec(
         "formula_evaluate", "pattern.formula_evaluate", "Evaluate a native Valentina formula."
     ),
+    ToolSpec(
+        "background_image_add",
+        "pattern.background_image_add",
+        "Embed or link a native Valentina drafting background image.",
+    ),
+    ToolSpec(
+        "background_image_get",
+        "pattern.background_image_get",
+        "Read native Valentina background-image properties.",
+    ),
+    ToolSpec(
+        "background_image_update",
+        "pattern.background_image_update",
+        "Transform or update a native Valentina background image.",
+    ),
+    ToolSpec(
+        "background_image_delete",
+        "pattern.background_image_delete",
+        "Delete a native Valentina background image.",
+    ),
     ToolSpec("increment_set", "measurement.increment_set", "Set a pattern increment formula."),
     ToolSpec("increment_remove", "measurement.increment_remove", "Remove a pattern increment."),
     ToolSpec(
@@ -175,9 +195,6 @@ VALENTINA_TOOLS = tuple(
 
 
 GARMENTCODE_TOOLS = (
-    ToolSpec("project_create", "project.create", "Create an empty Garment Project directory."),
-    ToolSpec("changeset_discard", "changeset.discard", "Discard one immutable preview."),
-    ToolSpec("revision_revert", "revision.revert", "Append a reverse revision."),
     ToolSpec("simulation_submit", "simulation.submit", "Submit a self-contained GPU job bundle."),
     ToolSpec(
         "simulation_configure",
@@ -194,32 +211,27 @@ GARMENTCODE_TOOLS = (
         "garmentcode.export",
         "Export native JSON and placed OBJ/USD as content-addressed artifacts.",
     ),
-    ToolSpec("panel_create", "panel.create", "Create one polygonal sewing panel in millimetres."),
-    ToolSpec("panel_delete", "panel.delete", "Delete one panel and dependent sewing objects."),
-    ToolSpec("panel_transform", "panel.transform", "Set a panel's 3D placement."),
-    ToolSpec("panel_pivot", "panel.pivot", "Move a panel's local two-dimensional pivot."),
-    ToolSpec("panel_mirror", "panel.mirror", "Create a reflected copy of one panel."),
-    ToolSpec("edge_split", "edge.split", "Split one panel edge at fractional positions."),
-    ToolSpec("edge_extend", "edge.extend", "Extend or shorten a straight panel edge."),
     ToolSpec(
-        "edge_sequence_transform",
-        "edge_sequence.transform",
-        "Translate, snap, rotate, or reflect an ordered edge sequence.",
+        "panel_place_3d",
+        "panel.transform",
+        "Set a Valentina-derived panel's native GarmentCode 3D placement.",
     ),
-    ToolSpec("edge_chamfer", "edge.chamfer", "Chamfer one panel corner by millimetres."),
-    ToolSpec("dart_insert", "dart.insert", "Insert a cut dart into one straight edge."),
     ToolSpec("component_define", "component.define", "Group panels as a named component."),
-    ToolSpec("component_transform", "component.transform", "Transform a component as one group."),
-    ToolSpec("component_mirror", "component.mirror", "Mirror every panel in a component."),
     ToolSpec(
-        "valentina_import_revision",
-        "valentina.import",
-        "Snapshot the current Valentina revision natively and apply a sewing sidecar.",
+        "component_place_3d",
+        "component.transform",
+        "Place a component in 3D through native GarmentCode transforms.",
+    ),
+    ToolSpec(
+        "assembly_sync_from_pattern",
+        "assembly.sync_from_pattern",
+        "Rebuild the read-only 2D projection from the current native Valentina revision.",
     ),
     ToolSpec("interface_define", "interface.define", "Name an ordered set of panel edges."),
     ToolSpec("interface_update", "interface.update", "Reorder or orient a sewing interface."),
     ToolSpec("interface_delete", "interface.delete", "Delete one sewing interface."),
     ToolSpec("stitch_create", "stitch.create", "Sew two named interfaces together."),
+    ToolSpec("stitch_update", "stitch.update", "Update native stitch interfaces or direction."),
     ToolSpec("stitch_delete", "stitch.delete", "Delete one stitch relation."),
     ToolSpec("assembly_validate", "validate", "Validate panels, interfaces, and stitches."),
 )

@@ -1,7 +1,7 @@
 {
   "$defs": {
     "export_layout": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "binary_dxf": {
           "type": "boolean"
@@ -55,7 +55,7 @@
       "type": "object"
     },
     "export_pattern": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "binary_dxf": {
           "type": "boolean"
@@ -82,7 +82,7 @@
       "type": "object"
     },
     "layout_flip_piece": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "axis": {
           "type": "string"
@@ -100,7 +100,7 @@
       "type": "object"
     },
     "layout_generate": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "allow_rotation": {
           "type": "boolean"
@@ -145,7 +145,7 @@
       "type": "object"
     },
     "layout_move_piece": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "copy_number": {
           "type": "integer"
@@ -166,7 +166,7 @@
       "type": "object"
     },
     "layout_piece_reset": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "copy_number": {
           "type": "integer"
@@ -181,7 +181,7 @@
       "type": "object"
     },
     "layout_piece_z_order": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "copy_number": {
           "type": "integer"
@@ -199,7 +199,7 @@
       "type": "object"
     },
     "layout_place": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "copy_number": {
           "type": "integer"
@@ -229,7 +229,7 @@
       "type": "object"
     },
     "layout_print": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "copy_number": {
           "type": "integer"
@@ -256,7 +256,7 @@
       "type": "object"
     },
     "layout_rotate_piece": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "angle_deg": {
           "type": "number"
@@ -274,7 +274,7 @@
       "type": "object"
     },
     "layout_rotate_to_grainline": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "copy_number": {
           "type": "integer"
@@ -289,7 +289,7 @@
       "type": "object"
     },
     "layout_settings_update": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "boundary_with_notches": {
           "type": "boolean"
@@ -373,7 +373,7 @@
       "type": "object"
     },
     "layout_sheet_add": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "height_mm": {
           "type": "number"
@@ -400,7 +400,7 @@
       "type": "object"
     },
     "layout_sheet_crop": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "sheet": {
           "type": "string"
@@ -415,7 +415,7 @@
       "type": "object"
     },
     "layout_sheet_remove": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "sheet": {
           "type": "string"
@@ -430,7 +430,7 @@
       "type": "object"
     },
     "layout_sheet_update": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "height_mm": {
           "type": "number"
@@ -469,7 +469,7 @@
       "type": "object"
     },
     "layout_trash_piece": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "copy_number": {
           "type": "integer"
@@ -484,12 +484,12 @@
       "type": "object"
     },
     "layout_validate": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
     "measurement_correction_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "base_a_mm": {
           "type": "number"
@@ -518,13 +518,28 @@
       "type": "object"
     },
     "measurement_dimension_labels_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "axis": {
           "type": "string"
         },
         "labels": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value_mm": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "value_mm",
+              "label"
+            ],
+            "type": "object"
+          },
           "type": "array"
         },
         "path": {
@@ -538,7 +553,7 @@
       "type": "object"
     },
     "measurement_dimension_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "axis": {
           "type": "string"
@@ -571,7 +586,7 @@
       "type": "object"
     },
     "measurement_export_csv": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "output_path": {
           "type": "string"
@@ -583,10 +598,54 @@
       "type": "object"
     },
     "measurement_file_create": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "dimensions": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "enum": [
+                  "X",
+                  "Y",
+                  "W",
+                  "Z",
+                  "x",
+                  "y",
+                  "w",
+                  "z"
+                ]
+              },
+              "base_mm": {
+                "type": "number"
+              },
+              "body_measurement": {
+                "type": "boolean"
+              },
+              "max_mm": {
+                "type": "number"
+              },
+              "min_mm": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "step_mm": {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "axis",
+              "min_mm",
+              "max_mm",
+              "step_mm"
+            ],
+            "type": "object"
+          },
+          "maxItems": 3,
+          "minItems": 1,
           "type": "array"
         },
         "full_circumference": {
@@ -602,7 +661,7 @@
       "type": "object"
     },
     "measurement_file_metadata_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "birth_date": {
           "type": "string"
@@ -635,7 +694,7 @@
       "type": "object"
     },
     "measurement_file_open": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "path": {
           "type": "string"
@@ -650,7 +709,7 @@
       "type": "object"
     },
     "measurement_file_save": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "path": {
           "type": "string"
@@ -659,7 +718,7 @@
       "type": "object"
     },
     "measurement_final_measurement_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "description": {
           "type": "string"
@@ -678,7 +737,7 @@
       "type": "object"
     },
     "measurement_image_remove": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string"
@@ -693,7 +752,7 @@
       "type": "object"
     },
     "measurement_image_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string"
@@ -712,7 +771,7 @@
       "type": "object"
     },
     "measurement_import_csv": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "path": {
           "type": "string"
@@ -733,7 +792,7 @@
       "type": "object"
     },
     "measurement_increment_remove": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string"
@@ -745,7 +804,7 @@
       "type": "object"
     },
     "measurement_increment_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "description": {
           "type": "string"
@@ -769,7 +828,7 @@
       "type": "object"
     },
     "measurement_remove": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string"
@@ -784,7 +843,7 @@
       "type": "object"
     },
     "measurement_rename": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string"
@@ -803,7 +862,7 @@
       "type": "object"
     },
     "measurement_restriction_remove": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "base_a_mm": {
           "type": "number"
@@ -821,7 +880,7 @@
       "type": "object"
     },
     "measurement_restriction_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "base_a_mm": {
           "type": "number"
@@ -851,7 +910,7 @@
       "type": "object"
     },
     "measurement_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "description": {
           "type": "string"
@@ -893,7 +952,7 @@
       "type": "object"
     },
     "measurement_value_alias_set": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -945,7 +1004,7 @@
       "type": "object"
     },
     "pattern_along_line": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -980,7 +1039,7 @@
       "type": "object"
     },
     "pattern_arc": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1023,7 +1082,7 @@
       "type": "object"
     },
     "pattern_arc_end": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1066,7 +1125,7 @@
       "type": "object"
     },
     "pattern_arc_intersect_axis": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1098,7 +1157,7 @@
       "type": "object"
     },
     "pattern_arc_start": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1141,7 +1200,7 @@
       "type": "object"
     },
     "pattern_arc_with_length": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1183,8 +1242,97 @@
       ],
       "type": "object"
     },
+    "pattern_background_image_add": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "built_in": {
+          "type": "boolean"
+        },
+        "hold": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "source_path": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "x_mm": {
+          "type": "number"
+        },
+        "y_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alias",
+        "source_path"
+      ],
+      "type": "object"
+    },
+    "pattern_background_image_delete": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "pattern_background_image_get": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "pattern_background_image_update": {
+      "additionalProperties": false,
+      "properties": {
+        "dx_mm": {
+          "type": "number"
+        },
+        "dy_mm": {
+          "type": "number"
+        },
+        "hold": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "rotation_delta_deg": {
+          "type": "number"
+        },
+        "scale_x": {
+          "type": "number"
+        },
+        "scale_y": {
+          "type": "number"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "x_mm": {
+          "type": "number"
+        },
+        "y_mm": {
+          "type": "number"
+        },
+        "z_value": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "pattern_base_point": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1202,7 +1350,7 @@
       "type": "object"
     },
     "pattern_bisector": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1238,7 +1386,7 @@
       "type": "object"
     },
     "pattern_cubic_bezier": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1275,7 +1423,7 @@
       "type": "object"
     },
     "pattern_cubic_bezier_path": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1290,7 +1438,10 @@
           "type": "string"
         },
         "points": {
-          "items": {},
+          "items": {
+            "$ref": "#/$defs/objectReference"
+          },
+          "minItems": 4,
           "type": "array"
         }
       },
@@ -1300,7 +1451,7 @@
       "type": "object"
     },
     "pattern_curve_intersect_axis": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1332,7 +1483,7 @@
       "type": "object"
     },
     "pattern_cut_arc": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1354,7 +1505,7 @@
       "type": "object"
     },
     "pattern_cut_spline": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1376,7 +1527,7 @@
       "type": "object"
     },
     "pattern_cut_spline_path": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1398,12 +1549,12 @@
       "type": "object"
     },
     "pattern_dependency_query": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
     "pattern_duplicate_detail": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1431,7 +1582,7 @@
       "type": "object"
     },
     "pattern_elliptical_arc": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1492,7 +1643,7 @@
       "type": "object"
     },
     "pattern_elliptical_arc_with_length": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1553,7 +1704,7 @@
       "type": "object"
     },
     "pattern_end_line": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1590,13 +1741,39 @@
       "type": "object"
     },
     "pattern_flipping_by_axis": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "axis": {
           "type": "string"
         },
         "objects": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "alias": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "line_color": {
+                "type": "string"
+              },
+              "line_type": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/objectReference"
+              }
+            },
+            "required": [
+              "source",
+              "alias"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
           "type": "array"
         },
         "origin": {
@@ -1610,7 +1787,7 @@
       "type": "object"
     },
     "pattern_flipping_by_line": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "line_p1": {
           "$ref": "#/$defs/objectReference"
@@ -1619,7 +1796,33 @@
           "$ref": "#/$defs/objectReference"
         },
         "objects": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "alias": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "line_color": {
+                "type": "string"
+              },
+              "line_type": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/objectReference"
+              }
+            },
+            "required": [
+              "source",
+              "alias"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
           "type": "array"
         }
       },
@@ -1631,7 +1834,7 @@
       "type": "object"
     },
     "pattern_formula_evaluate": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "formula": {
           "type": "string"
@@ -1646,7 +1849,7 @@
       "type": "object"
     },
     "pattern_graduated_curve": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1664,7 +1867,25 @@
           "type": "string"
         },
         "offsets": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "formula": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "width_mm": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "minItems": 2,
           "type": "array"
         }
       },
@@ -1675,7 +1896,7 @@
       "type": "object"
     },
     "pattern_group": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1684,11 +1905,35 @@
           "type": "string"
         },
         "objects": {
-          "items": {},
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/objectReference"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "object": {
+                    "$ref": "#/$defs/objectReference"
+                  },
+                  "tool": {
+                    "$ref": "#/$defs/objectReference"
+                  }
+                },
+                "required": [
+                  "object"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "minItems": 1,
           "type": "array"
         },
         "tags": {
-          "items": {},
+          "items": {
+            "type": "string"
+          },
           "type": "array"
         }
       },
@@ -1699,7 +1944,7 @@
       "type": "object"
     },
     "pattern_height": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1729,10 +1974,73 @@
       "type": "object"
     },
     "pattern_insert_node": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "nodes": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "excluded": {
+                "type": "boolean"
+              },
+              "object": {
+                "$ref": "#/$defs/objectReference"
+              },
+              "passmark": {
+                "type": "boolean"
+              },
+              "passmark_angle_formula": {
+                "type": "string"
+              },
+              "passmark_angle_type": {
+                "type": "string"
+              },
+              "passmark_clockwise_opening": {
+                "type": "boolean"
+              },
+              "passmark_length_formula": {
+                "type": "string"
+              },
+              "passmark_line_type": {
+                "type": "string"
+              },
+              "passmark_not_mirrored": {
+                "type": "boolean"
+              },
+              "passmark_visibility_formula": {
+                "type": "string"
+              },
+              "passmark_width_formula": {
+                "type": "string"
+              },
+              "reverse": {
+                "type": "boolean"
+              },
+              "seam_after_formula": {
+                "type": "string"
+              },
+              "seam_before_formula": {
+                "type": "string"
+              },
+              "show_second_passmark": {
+                "type": "boolean"
+              },
+              "type": {
+                "enum": [
+                  "point",
+                  "arc",
+                  "elliptical_arc",
+                  "spline",
+                  "spline_path"
+                ]
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
           "type": "array"
         },
         "piece": {
@@ -1745,7 +2053,7 @@
       "type": "object"
     },
     "pattern_line": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1774,7 +2082,7 @@
       "type": "object"
     },
     "pattern_line_intersect": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1802,7 +2110,7 @@
       "type": "object"
     },
     "pattern_line_intersect_axis": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1838,7 +2146,7 @@
       "type": "object"
     },
     "pattern_midpoint": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1861,7 +2169,7 @@
       "type": "object"
     },
     "pattern_move": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "angle_deg": {
           "type": "number"
@@ -1879,7 +2187,33 @@
           "type": "number"
         },
         "objects": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "alias": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "line_color": {
+                "type": "string"
+              },
+              "line_type": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/objectReference"
+              }
+            },
+            "required": [
+              "source",
+              "alias"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
           "type": "array"
         },
         "rotation_angle_deg": {
@@ -1896,7 +2230,7 @@
       "type": "object"
     },
     "pattern_normal": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1931,12 +2265,12 @@
       "type": "object"
     },
     "pattern_object_delete": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
     "pattern_object_duplicate": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -1969,12 +2303,12 @@
       "type": "object"
     },
     "pattern_object_get": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
     "pattern_object_update": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2001,7 +2335,7 @@
       "type": "object"
     },
     "pattern_parallel_curve": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2032,10 +2366,25 @@
       "type": "object"
     },
     "pattern_piece": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
+        },
+        "fold": {
+          "additionalProperties": false,
+          "properties": {
+            "center_formula": {
+              "type": "string"
+            },
+            "height_formula": {
+              "type": "string"
+            },
+            "width_formula": {
+              "type": "string"
+            }
+          },
+          "type": "object"
         },
         "follow_grainline": {
           "type": "boolean"
@@ -2043,12 +2392,209 @@
         "forbid_flipping": {
           "type": "boolean"
         },
+        "gradation_label": {
+          "type": "string"
+        },
+        "grainline": {
+          "additionalProperties": false,
+          "properties": {
+            "arrow_type": {
+              "maximum": 11,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "bottom_pin": {
+              "$ref": "#/$defs/objectReference"
+            },
+            "center_pin": {
+              "$ref": "#/$defs/objectReference"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "length_formula": {
+              "type": "string"
+            },
+            "rotation_formula": {
+              "type": "string"
+            },
+            "top_pin": {
+              "$ref": "#/$defs/objectReference"
+            },
+            "visible": {
+              "type": "boolean"
+            },
+            "x_mm": {
+              "type": "number"
+            },
+            "y_mm": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "in_layout": {
+          "type": "boolean"
+        },
+        "mirror_line_end": {
+          "$ref": "#/$defs/objectReference"
+        },
+        "mirror_line_start": {
+          "$ref": "#/$defs/objectReference"
+        },
         "name": {
           "type": "string"
         },
         "nodes": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "excluded": {
+                "type": "boolean"
+              },
+              "object": {
+                "$ref": "#/$defs/objectReference"
+              },
+              "passmark": {
+                "type": "boolean"
+              },
+              "passmark_angle_formula": {
+                "type": "string"
+              },
+              "passmark_angle_type": {
+                "type": "string"
+              },
+              "passmark_clockwise_opening": {
+                "type": "boolean"
+              },
+              "passmark_length_formula": {
+                "type": "string"
+              },
+              "passmark_line_type": {
+                "type": "string"
+              },
+              "passmark_not_mirrored": {
+                "type": "boolean"
+              },
+              "passmark_visibility_formula": {
+                "type": "string"
+              },
+              "passmark_width_formula": {
+                "type": "string"
+              },
+              "reverse": {
+                "type": "boolean"
+              },
+              "seam_after_formula": {
+                "type": "string"
+              },
+              "seam_before_formula": {
+                "type": "string"
+              },
+              "show_second_passmark": {
+                "type": "boolean"
+              },
+              "type": {
+                "enum": [
+                  "point",
+                  "arc",
+                  "elliptical_arc",
+                  "spline",
+                  "spline_path"
+                ]
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "type": "object"
+          },
+          "minItems": 3,
           "type": "array"
+        },
+        "pattern_label": {
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "font_size": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "height_formula": {
+              "type": "string"
+            },
+            "rotation_formula": {
+              "type": "string"
+            },
+            "width_formula": {
+              "type": "string"
+            },
+            "x_mm": {
+              "type": "number"
+            },
+            "y_mm": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "piece_label": {
+          "additionalProperties": false,
+          "properties": {
+            "annotation": {
+              "type": "string"
+            },
+            "area_short_name": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "fold_position": {
+              "type": "string"
+            },
+            "font_size": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "height_formula": {
+              "type": "string"
+            },
+            "letter": {
+              "type": "string"
+            },
+            "on_fold": {
+              "type": "boolean"
+            },
+            "orientation": {
+              "type": "string"
+            },
+            "quantity": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "rotation_formula": {
+              "type": "string"
+            },
+            "rotation_way": {
+              "type": "string"
+            },
+            "tilt": {
+              "type": "string"
+            },
+            "width_formula": {
+              "type": "string"
+            },
+            "x_mm": {
+              "type": "number"
+            },
+            "y_mm": {
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "seam_allowance": {
           "type": "boolean"
@@ -2068,12 +2614,14 @@
       },
       "required": [
         "alias",
+        "mirror_line_end",
+        "mirror_line_start",
         "nodes"
       ],
       "type": "object"
     },
     "pattern_piece_path": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2094,7 +2642,34 @@
           "type": "string"
         },
         "nodes": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "excluded": {
+                "type": "boolean"
+              },
+              "object": {
+                "$ref": "#/$defs/objectReference"
+              },
+              "reverse": {
+                "type": "boolean"
+              },
+              "type": {
+                "enum": [
+                  "point",
+                  "arc",
+                  "elliptical_arc",
+                  "spline",
+                  "spline_path"
+                ]
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "type": "object"
+          },
+          "minItems": 2,
           "type": "array"
         },
         "not_mirrored": {
@@ -2104,7 +2679,10 @@
           "$ref": "#/$defs/objectReference"
         },
         "type": {
-          "type": "string"
+          "enum": [
+            "internal",
+            "custom_seam_allowance"
+          ]
         },
         "visibility_formula": {
           "type": "string"
@@ -2118,7 +2696,7 @@
       "type": "object"
     },
     "pattern_pin": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2138,7 +2716,7 @@
       "type": "object"
     },
     "pattern_place_label": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2182,13 +2760,20 @@
       "type": "object"
     },
     "pattern_point_from_arc_and_tangent": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
         },
         "arc": {
           "$ref": "#/$defs/objectReference"
+        },
+        "solution": {
+          "enum": [
+            1,
+            2
+          ],
+          "type": "integer"
         },
         "tangent_point": {
           "$ref": "#/$defs/objectReference"
@@ -2202,7 +2787,7 @@
       "type": "object"
     },
     "pattern_point_from_circle_and_tangent": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2216,6 +2801,13 @@
         "radius_mm": {
           "type": "number"
         },
+        "solution": {
+          "enum": [
+            1,
+            2
+          ],
+          "type": "integer"
+        },
         "tangent_point": {
           "$ref": "#/$defs/objectReference"
         }
@@ -2228,7 +2820,7 @@
       "type": "object"
     },
     "pattern_point_of_contact": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2258,7 +2850,7 @@
       "type": "object"
     },
     "pattern_point_of_intersection": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2278,7 +2870,7 @@
       "type": "object"
     },
     "pattern_point_of_intersection_arcs": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2288,6 +2880,13 @@
         },
         "second_arc": {
           "$ref": "#/$defs/objectReference"
+        },
+        "solution": {
+          "enum": [
+            1,
+            2
+          ],
+          "type": "integer"
         }
       },
       "required": [
@@ -2298,7 +2897,7 @@
       "type": "object"
     },
     "pattern_point_of_intersection_circles": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2320,6 +2919,13 @@
         },
         "second_radius_mm": {
           "type": "number"
+        },
+        "solution": {
+          "enum": [
+            1,
+            2
+          ],
+          "type": "integer"
         }
       },
       "required": [
@@ -2330,7 +2936,7 @@
       "type": "object"
     },
     "pattern_point_of_intersection_curves": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2338,8 +2944,22 @@
         "first_curve": {
           "$ref": "#/$defs/objectReference"
         },
+        "horizontal_solution": {
+          "enum": [
+            1,
+            2
+          ],
+          "type": "integer"
+        },
         "second_curve": {
           "$ref": "#/$defs/objectReference"
+        },
+        "vertical_solution": {
+          "enum": [
+            1,
+            2
+          ],
+          "type": "integer"
         }
       },
       "required": [
@@ -2350,7 +2970,7 @@
       "type": "object"
     },
     "pattern_rotation": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "angle_deg": {
           "type": "number"
@@ -2359,7 +2979,33 @@
           "type": "string"
         },
         "objects": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "alias": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "line_color": {
+                "type": "string"
+              },
+              "line_type": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/objectReference"
+              }
+            },
+            "required": [
+              "source",
+              "alias"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
           "type": "array"
         },
         "origin": {
@@ -2373,7 +3019,7 @@
       "type": "object"
     },
     "pattern_shoulder_point": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2409,7 +3055,7 @@
       "type": "object"
     },
     "pattern_spline": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2462,7 +3108,7 @@
       "type": "object"
     },
     "pattern_spline_path": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2477,7 +3123,43 @@
           "type": "string"
         },
         "points": {
-          "items": {},
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "angle1_deg": {
+                "type": "number"
+              },
+              "angle2_deg": {
+                "type": "number"
+              },
+              "formula_angle1": {
+                "type": "string"
+              },
+              "formula_angle2": {
+                "type": "string"
+              },
+              "formula_length1": {
+                "type": "string"
+              },
+              "formula_length2": {
+                "type": "string"
+              },
+              "length1_mm": {
+                "type": "number"
+              },
+              "length2_mm": {
+                "type": "number"
+              },
+              "point": {
+                "$ref": "#/$defs/objectReference"
+              }
+            },
+            "required": [
+              "point"
+            ],
+            "type": "object"
+          },
+          "minItems": 2,
           "type": "array"
         }
       },
@@ -2487,7 +3169,7 @@
       "type": "object"
     },
     "pattern_triangle": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2515,7 +3197,7 @@
       "type": "object"
     },
     "pattern_true_darts": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "base_line_p1": {
           "$ref": "#/$defs/objectReference"
@@ -2549,7 +3231,7 @@
       "type": "object"
     },
     "pattern_union_details": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "alias": {
           "type": "string"
@@ -2633,6 +3315,10 @@
         "pattern.arc_intersect_axis",
         "pattern.arc_start",
         "pattern.arc_with_length",
+        "pattern.background_image_add",
+        "pattern.background_image_delete",
+        "pattern.background_image_get",
+        "pattern.background_image_update",
         "pattern.base_point",
         "pattern.bisector",
         "pattern.cubic_bezier",

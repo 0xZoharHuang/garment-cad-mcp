@@ -1,0 +1,7 @@
+[mcp_servers.valentina_cad]
+command = "bash"
+args = ["scripts/codex-valentina-mcp.sh"]
+
+[mcp_servers.garmentcode_cad]
+command = "bash"
+args = ["scripts/codex-garmentcode-mcp.sh"]

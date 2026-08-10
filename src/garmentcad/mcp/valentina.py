@@ -1,3 +1,5 @@
+import os
+
 from mcp.server.fastmcp import FastMCP
 
 from garmentcad.catalog import VALENTINA_TOOLS
@@ -22,6 +24,8 @@ def load_tools(names: set[str]) -> None:
 
 
 add_core_tools(mcp, VALENTINA_TOOLS, load_tools)
+if os.environ.get("GARMENTCAD_MCP_TOOL_MODE", "lazy").lower() == "eager":
+    load_tools({tool_spec.name for tool_spec in VALENTINA_TOOLS})
 
 
 def main() -> None:

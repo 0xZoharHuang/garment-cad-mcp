@@ -1,222 +1,182 @@
 #!/usr/bin/env python3
-"""JSON command host running inside the pinned GarmentCode compatibility environment."""
+"""JSON command host for the pinned, native GarmentCode compatibility environment."""
 
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-from pygarment.garmentcode.component import Component
-from pygarment.garmentcode.connector import StitchingRule
-from pygarment.garmentcode.edge import CircleEdge, CurveEdge, Edge, EdgeSequence
-from pygarment.garmentcode.edge_factory import CircleEdgeFactory
-from pygarment.garmentcode.interface import Interface
-from pygarment.garmentcode.panel import Panel
-from pygarment.pattern.core import BasicPattern
-from scipy.spatial.transform import Rotation
+from pygarment.garmentcode.document import GarmentDocument
 
 
-def _edge(panel: dict[str, Any], edge_data: dict[str, Any], vertices: list[list[float]]):
-    start = vertices[int(edge_data["start"])]
-    end = vertices[int(edge_data["end"])]
-    label = str(edge_data.get("alias") or edge_data.get("label") or "")
-    curvature = edge_data.get("curve") or edge_data.get("curvature")
-    if not curvature:
-        return Edge(start, end, label=label)
-    kind = curvature.get("type")
-    params = curvature.get("params", curvature.get("control_points", []))
-    if kind == "circle":
-        if "control_y" in curvature:
-            return CircleEdge(start, end, cy=float(curvature["control_y"]), label=label)
-        radius_mm, large_arc, right = params
-        native = CircleEdgeFactory.from_points_radius(
-            start,
-            end,
-            float(radius_mm) / 10.0,
-            bool(large_arc),
-            bool(right),
-        )
-        native.label = label
-        return native
-    if kind in {"quadratic", "cubic", "bezier"}:
-        return CurveEdge(start, end, control_points=params, relative=True, label=label)
-    raise ValueError(f"Unsupported edge curvature: {kind}")
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-def _build(assembly: dict[str, Any]):
-    panels: dict[str, Panel] = {}
-    panel_ids: dict[str, str] = {}
-    edge_ids: dict[str, dict[str, Any]] = {}
-    for panel_id, panel_data in assembly.get("panels", {}).items():
-        name = str(panel_data.get("alias") or panel_id)
-        if name in panels:
-            raise ValueError(f"Duplicate panel alias: {name}")
-        vertices = [[float(value) / 10.0 for value in point] for point in panel_data["vertices_mm"]]
-        native = Panel(name, label=str(panel_data.get("label") or ""))
-        native.edges = EdgeSequence(
-            *[_edge(panel_data, item, vertices) for item in panel_data.get("edges", [])]
-        )
-        native.translation = np.asarray(
-            [float(value) / 10.0 for value in panel_data.get("translation_mm", [0, 0, 0])]
-        )
-        native.rotation = Rotation.from_euler(
-            "XYZ", panel_data.get("rotation_deg", [0, 0, 0]), degrees=True
-        )
-        panels[name] = native
-        panel_ids[str(panel_id)] = name
-        edge_ids[str(panel_id)] = {
-            str(item["id"]): native.edges[index]
-            for index, item in enumerate(panel_data.get("edges", []))
-        }
-
-    interfaces: dict[str, Interface] = {}
-    interface_metrics: dict[str, Any] = {}
-    for interface_id, item in assembly.get("interfaces", {}).items():
-        panel_id = str(item["panel_id"])
-        panel = panels[panel_ids[panel_id]]
-        selected = []
-        if item.get("edge_ids"):
-            selected = [edge_ids[panel_id][str(edge_id)] for edge_id in item["edge_ids"]]
-        else:
-            selected = [panel.edges[int(index)] for index in item.get("edge_indices", [])]
-        if not selected:
-            raise ValueError(f"Interface {item.get('alias', interface_id)} has no edges")
-        native = Interface(
-            panel,
-            EdgeSequence(*selected),
-            ruffle=item.get("ruffle", 1.0),
-            right_wrong=bool(item.get("right_wrong", False)),
-        )
-        if item.get("reverse"):
-            native.reverse(with_edge_dir_reverse=True)
-        interfaces[str(interface_id)] = native
-        lengths_cm = native.projecting_lengths().tolist()
-        interface_metrics[str(item.get("alias") or interface_id)] = {
-            "edge_count": len(native),
-            "projected_edge_lengths_mm": [value * 10.0 for value in lengths_cm],
-            "projected_length_mm": sum(lengths_cm) * 10.0,
-        }
-
-    component = Component("garmentcad")
-    component.subs = list(panels.values())
-    stitch_metrics: dict[str, Any] = {}
-    for stitch_id, item in assembly.get("stitches", {}).items():
-        left = interfaces[str(item["interface_a"])]
-        right = interfaces[str(item["interface_b"])]
-        direction = item.get("direction", "auto")
-        if direction == "opposed":
-            right.flip_edges()
-        elif direction not in {"auto", "same"}:
-            raise ValueError(f"Unsupported stitch direction: {direction}")
-        probe = StitchingRule(left, right)
-        left_length_mm = sum(left.projecting_lengths().tolist()) * 10.0
-        right_length_mm = sum(right.projecting_lengths().tolist()) * 10.0
-        stitch_metrics[str(item.get("alias") or stitch_id)] = {
-            "native_matching": probe.isMatching(),
-            "edge_pairs": len(left),
-            "direction": direction,
-            "side_lengths_mm": [left_length_mm, right_length_mm],
-            "length_difference_mm": abs(left_length_mm - right_length_mm),
-        }
-        component.stitching_rules.rules.append(probe)
-
-    panel_metrics = {
-        name: {
-            "edge_count": len(panel.edges),
-            "closed": bool(panel.edges.isLoop()),
-            "chained": bool(panel.edges.isChained()),
-            "self_intersecting": bool(panel.is_self_intersecting()),
-        }
-        for name, panel in panels.items()
-    }
-    return component, {
-        "panels": panel_metrics,
-        "interfaces": interface_metrics,
-        "stitches": stitch_metrics,
-    }
-
-
-def _convert(assembly: dict[str, Any]) -> dict[str, Any]:
-    component, diagnostics = _build(assembly)
-    pattern = component.assembly().pattern
-    document = {
-        "pattern": pattern,
-        "parameters": {},
-        "parameter_order": [],
-        "properties": {
-            "units_in_meter": 100,
-            "curvature_coords": "relative",
-            "normalize_panel_translation": False,
-            "normalized_edge_loops": True,
+def _document_create(request: dict[str, Any]) -> dict[str, Any]:
+    output = Path(request["output_path"]).resolve()
+    document = GarmentDocument()
+    document.state["source_project_id"] = request.get("project_id")
+    document.save(output)
+    return {
+        "document_path": str(output),
+        "document_hash": _sha256(output),
+        "diagnostics": document.diagnostics(),
+        "provenance": {
+            "engine": "GarmentCode",
+            "protocol_version": "2.0",
+            "operation": "document.create",
         },
     }
-    with tempfile.TemporaryDirectory(prefix="garmentcode-roundtrip-") as temporary:
-        path = Path(temporary) / "pattern.json"
-        path.write_text(json.dumps(document), encoding="utf-8")
-        reloaded = BasicPattern(str(path))
-        roundtrip_panels = set(reloaded.pattern["panels"])
-    diagnostics["roundtrip_ok"] = roundtrip_panels == set(pattern["panels"])
-    diagnostics["native_classes"] = {
-        "Panel": f"{Panel.__module__}.{Panel.__name__}",
-        "Edge": f"{Edge.__module__}.{Edge.__name__}",
-        "EdgeSequence": f"{EdgeSequence.__module__}.{EdgeSequence.__name__}",
-        "Interface": f"{Interface.__module__}.{Interface.__name__}",
-        "Component": f"{Component.__module__}.{Component.__name__}",
-    }
-    return {"garmentcode": document, "diagnostics": diagnostics}
 
 
-def _mesh(assembly: dict[str, Any]) -> dict[str, Any]:
-    component, diagnostics = _build(assembly)
-    panels = []
-    for panel in component.subs:
-        boundary_cm: list[list[float]] = []
-        for edge in panel.edges:
-            segments = edge.linearize(n_verts_inside=0 if type(edge) is Edge else 9)
-            for segment in segments:
-                point = [float(value) for value in segment.start]
-                if not boundary_cm or not np.allclose(boundary_cm[-1], point, atol=1e-9):
-                    boundary_cm.append(point)
-        if len(boundary_cm) > 1 and np.allclose(boundary_cm[0], boundary_cm[-1], atol=1e-9):
-            boundary_cm.pop()
-        vertices_3d_mm = [
-            [float(value) * 10.0 for value in panel.point_to_3D(point)]
-            for point in boundary_cm
-        ]
-        panels.append(
-            {
-                "name": panel.name,
-                "boundary_2d_mm": [[value * 10.0 for value in point] for point in boundary_cm],
-                "vertices_3d_mm": vertices_3d_mm,
-            }
+def _append_validation(summary: dict[str, Any], diagnostics: dict[str, Any]) -> None:
+    for alias, panel in diagnostics.get("panels", {}).items():
+        if not panel.get("closed") or not panel.get("chained"):
+            summary["issues"].append(
+                {
+                    "severity": "error",
+                    "code": "garmentcode_open_panel",
+                    "message": f"Native GarmentCode panel {alias} is not a closed chain",
+                    "details": panel,
+                }
+            )
+        if panel.get("self_intersecting"):
+            summary["issues"].append(
+                {
+                    "severity": "error",
+                    "code": "garmentcode_self_intersection",
+                    "message": f"Native GarmentCode panel {alias} self-intersects",
+                    "details": panel,
+                }
+            )
+    for alias, stitch in diagnostics.get("stitches", {}).items():
+        summary["measurements"][f"stitch.{alias}.length_difference_mm"] = float(
+            stitch.get("length_difference_mm", 0.0)
         )
-    diagnostics["mesh_panels"] = len(panels)
-    return {"panels": panels, "diagnostics": diagnostics}
+        if not stitch.get("native_matching"):
+            summary["issues"].append(
+                {
+                    "severity": "error",
+                    "code": "garmentcode_incompatible_stitch",
+                    "message": f"Native GarmentCode cannot match stitch {alias}",
+                    "details": stitch,
+                }
+            )
+
+
+def _document_preview(request: dict[str, Any]) -> dict[str, Any]:
+    source = Path(request["source_path"]).resolve()
+    output = Path(request["output_path"]).resolve()
+    document = GarmentDocument.load(source)
+    summary: dict[str, Any] = {
+        "created": [],
+        "changed": [],
+        "deleted": [],
+        "measurements": {},
+        "issues": [],
+    }
+    for operation in request.get("operations", []):
+        try:
+            if operation.get("action") == "assembly.sync_from_pattern":
+                arguments = operation.get("arguments") or {}
+                document.sync_from_valentina(
+                    arguments["snapshot"],
+                    source_project_id=str(arguments["source_project_id"]),
+                    source_pattern_hash=str(arguments["source_pattern_hash"]),
+                    bindings=arguments.get("bindings") or {},
+                )
+                summary["changed"].append({"alias": "assembly"})
+            else:
+                change = document.apply(operation)
+                for key in ("created", "changed", "deleted"):
+                    summary[key].extend(change[key])
+        except (IndexError, KeyError, TypeError, ValueError) as error:
+            summary["issues"].append(
+                {
+                    "severity": "error",
+                    "code": "invalid_garmentcode_operation",
+                    "message": f"{operation.get('action')}: {error}",
+                    "objects": [operation["target"]] if operation.get("target") else [],
+                }
+            )
+    diagnostics = document.diagnostics()
+    _append_validation(summary, diagnostics)
+    document.save(output)
+    return {
+        "summary": summary,
+        "diagnostics": diagnostics,
+        "document_path": str(output),
+        "document_hash": _sha256(output),
+        "provenance": {
+            "engine": "GarmentCode",
+            "protocol_version": "2.0",
+            "operation": "document.preview",
+            "source_hash": _sha256(source),
+        },
+    }
+
+
+def _document_export(request: dict[str, Any]) -> dict[str, Any]:
+    source = Path(request["source_path"]).resolve()
+    output = Path(request["output_directory"]).resolve()
+    document = GarmentDocument.load(source)
+    paths = document.export(output, list(request.get("formats") or ["json", "obj", "usd"]))
+    return {
+        "files": {
+            name: {"path": str(path), "sha256": _sha256(path), "size": path.stat().st_size}
+            for name, path in paths.items()
+        },
+        "diagnostics": document.diagnostics(),
+        "provenance": {
+            "engine": "GarmentCode",
+            "protocol_version": "2.0",
+            "operation": "document.export",
+            "source_hash": _sha256(source),
+        },
+    }
 
 
 def dispatch(request: dict[str, Any]) -> dict[str, Any]:
     method = request.get("method")
     if method == "service.info":
         return {
-            "protocol_version": "1.0",
+            "protocol_version": "2.0",
             "application": "GarmentCode",
             "units": {"public": "mm", "native": "cm"},
-            "handlers": ["assembly.convert", "assembly.validate", "assembly.mesh"],
-            "native_classes": ["Panel", "Edge", "EdgeSequence", "Interface", "Component"],
+            "handlers": [
+                "document.create",
+                "document.preview",
+                "document.validate",
+                "document.export",
+            ],
+            "native_classes": [
+                "GarmentDocument",
+                "Panel",
+                "Edge",
+                "EdgeSequence",
+                "Interface",
+                "Component",
+            ],
         }
-    if method in {"assembly.convert", "assembly.validate"}:
-        converted = _convert(request["assembly"])
-        return (
-            converted if method == "assembly.convert" else {"diagnostics": converted["diagnostics"]}
-        )
-    if method == "assembly.mesh":
-        return _mesh(request["assembly"])
+    if method == "document.create":
+        return _document_create(request)
+    if method == "document.preview":
+        return _document_preview(request)
+    if method == "document.validate":
+        document = GarmentDocument.load(request["source_path"])
+        return {"diagnostics": document.diagnostics()}
+    if method == "document.export":
+        return _document_export(request)
     raise ValueError(f"Unknown method: {method}")
 
 

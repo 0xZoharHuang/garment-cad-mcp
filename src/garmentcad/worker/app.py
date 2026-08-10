@@ -228,7 +228,12 @@ def _read_bundle_task(payload: bytes) -> SimulationTask:
         if len(file_names) != len(set(file_names)):
             raise ValueError("Simulation bundle contains duplicate file names")
         names = set(file_names)
-        required = {"job.json", "garmentcode.json", "assembly.json", "pattern_snapshot.json"}
+        required = {
+            "job.json",
+            "garmentcode.json",
+            "assembly/main.garmentcode.json",
+            "pattern_snapshot.json",
+        }
         if missing := sorted(required - names):
             raise ValueError(f"Simulation bundle is missing: {missing}")
         member = archive.getmember("job.json")

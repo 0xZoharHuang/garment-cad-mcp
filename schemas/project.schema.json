@@ -75,7 +75,7 @@
       "title": "Active Simulation Config"
     },
     "assembly_file": {
-      "default": "assembly/assembly.json",
+      "default": "assembly/main.garmentcode.json",
       "title": "Assembly File",
       "type": "string"
     },
@@ -110,7 +110,8 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "1.0",
+      "const": "2.0",
+      "default": "2.0",
       "title": "Schema Version",
       "type": "string"
     },

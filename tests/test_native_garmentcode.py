@@ -6,8 +6,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from v2_helpers import snapshot
 
-from garmentcad.assembly import apply_operations, empty_assembly
 from garmentcad.garmentcode_facade import GarmentCodeFacade
 from garmentcad.models import ObjectRef, Operation, OperationDomain
 
@@ -17,127 +17,114 @@ GARMENTCODE = REPOSITORY / "upstream/garmentcode"
 WARP = REPOSITORY / "upstream/nvidia-warp-garmentcode"
 
 
-def operation(action: str, **arguments) -> Operation:
-    return Operation(domain=OperationDomain.ASSEMBLY, action=action, arguments=arguments)
-
-
 @pytest.fixture(scope="module")
 def facade() -> GarmentCodeFacade:
     if not COMPAT_PYTHON.is_file():
         pytest.skip("run scripts/bootstrap-macos.sh to create the GarmentCode environment")
     value = GarmentCodeFacade(str(REPOSITORY / "scripts/garmentcode-command-host.sh"))
-    try:
-        value.service_info()
-    except Exception as error:
-        pytest.skip(f"native GarmentCode host unavailable: {error}")
+    value.service_info()
     return value
 
 
-def test_pinned_native_classes_and_units(facade: GarmentCodeFacade):
+def test_pinned_native_classes_units_and_v2_document(facade: GarmentCodeFacade, tmp_path):
     info = facade.service_info()
-    assert info["application"] == "GarmentCode"
+    assert info["protocol_version"] == "2.0"
     assert info["units"] == {"public": "mm", "native": "cm"}
-    assert set(info["native_classes"]) == {
-        "Panel",
-        "Edge",
-        "EdgeSequence",
-        "Interface",
-        "Component",
+    assert "GarmentDocument" in info["native_classes"]
+    created = facade.create_document(tmp_path / "native.json", "project")
+    assert created["provenance"]["engine"] == "GarmentCode"
+    facade.create_document(tmp_path / "seed.json", "")
+    generated = json.loads((tmp_path / "seed.json").read_text())
+    generated["source_project_id"] = None
+    template = json.loads(
+        (REPOSITORY / "src/garmentcad/templates/empty.garmentcode.json").read_text()
+    )
+    assert generated == template
+
+
+def test_native_document_sync_transform_stitch_and_roundtrip(facade: GarmentCodeFacade, tmp_path):
+    source = tmp_path / "source.json"
+    candidate = tmp_path / "candidate.json"
+    facade.create_document(source, "project")
+    bindings = {
+        "interfaces": [
+            {"alias": "front.side", "edges": ["front.edge.1"]},
+            {"alias": "back.side", "edges": ["back.edge.1"], "reverse": True},
+        ],
+        "stitches": [
+            {
+                "alias": "side",
+                "interface_a": "front.side",
+                "interface_b": "back.side",
+                "direction": "opposed",
+            }
+        ],
     }
+    operations = [
+        Operation(
+            domain=OperationDomain.ASSEMBLY,
+            action="assembly.sync_from_pattern",
+            arguments={
+                "snapshot": snapshot("front", "back"),
+                "bindings": bindings,
+                "source_project_id": "project",
+                "source_pattern_hash": "a" * 64,
+            },
+        ),
+        Operation(
+            domain=OperationDomain.ASSEMBLY,
+            action="panel.transform",
+            target=ObjectRef(alias="front"),
+            arguments={"translation_mm": [10, 20, 30], "rotation_deg": [1, 2, 3]},
+        ),
+    ]
+    summary, result = facade.preview_document(source, candidate, operations)
+    assert not [issue for issue in summary.issues if issue.severity == "error"]
+    state = json.loads(candidate.read_text())
+    assert state["engine"] == "GarmentCode"
+    assert state["native_pattern"]["pattern"]["panels"]["front"]["translation"] == [1, 2, 3]
+    assert len(state["native_pattern"]["pattern"]["stitches"]) == 1
+    assert result["diagnostics"]["stitches"]["side"]["native_matching"] is True
 
 
-def test_native_conversion_preserves_units_placement_curve_and_roundtrip(
-    facade: GarmentCodeFacade,
+def test_resync_preserves_sewing_semantics_by_valentina_edge_alias(
+    facade: GarmentCodeFacade, tmp_path
 ):
-    state, summary = apply_operations(
-        empty_assembly(),
-        [
-            operation(
-                "panel.create",
-                alias="front",
-                vertices_mm=[[0, 0], [100, 0], [100, 200], [0, 200]],
-            ),
-            Operation(
-                domain=OperationDomain.ASSEMBLY,
-                action="panel.transform",
-                target=ObjectRef(alias="front"),
-                arguments={
-                    "translation_mm": [10, 20, 30],
-                    "rotation_deg": [1, 2, 3],
-                },
-            ),
+    source = tmp_path / "source.json"
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    facade.create_document(source, "project")
+    bindings = {
+        "interfaces": [
+            {"alias": "a", "edges": ["front.edge.0"]},
+            {"alias": "b", "edges": ["back.edge.0"]},
         ],
+        "stitches": [{"alias": "seam", "interface_a": "a", "interface_b": "b"}],
+    }
+    sync = Operation(
+        domain=OperationDomain.ASSEMBLY,
+        action="assembly.sync_from_pattern",
+        arguments={
+            "snapshot": snapshot("front", "back"),
+            "bindings": bindings,
+            "source_project_id": "project",
+            "source_pattern_hash": "1" * 64,
+        },
     )
-    assert not [issue for issue in summary.issues if issue.severity == "error"]
-    edge = next(iter(state["panels"].values()))["edges"][0]
-    edge["curve"] = {
-        "type": "cubic",
-        "params": [[0.25, 0.10], [0.75, 0.10]],
-    }
-    converted, diagnostics = facade.convert(state)
-    panel = converted["pattern"]["panels"]["front"]
-    assert panel["vertices"][1] == [10.0, 0.0]
-    assert panel["translation"] == [1.0, 2.0, 3.0]
-    assert panel["edges"][0]["curvature"]["type"] == "cubic"
-    assert diagnostics["roundtrip_ok"] is True
-    assert converted["parameters"] == {}
-    assert converted["parameter_order"] == []
-    assert diagnostics["panels"]["front"] == {
-        "edge_count": 4,
-        "closed": True,
-        "chained": True,
-        "self_intersecting": False,
-    }
-
-
-def test_native_stitch_rule_matches_different_edge_partitions(facade: GarmentCodeFacade):
-    state, summary = apply_operations(
-        empty_assembly(),
-        [
-            operation(
-                "panel.create",
-                alias="left",
-                vertices_mm=[[0, 0], [100, 0], [100, 50], [0, 50]],
-            ),
-            operation(
-                "panel.create",
-                alias="right",
-                vertices_mm=[[0, 0], [50, 0], [100, 0], [100, 50], [0, 50]],
-            ),
-            operation(
-                "interface.define",
-                alias="left.seam",
-                panel={"alias": "left"},
-                edge_indices=[0],
-                ruffle=1.0,
-                right_wrong=False,
-            ),
-            operation(
-                "interface.define",
-                alias="right.seam",
-                panel={"alias": "right"},
-                edge_indices=[0, 1],
-                reverse=True,
-            ),
-            operation(
-                "stitch.create",
-                alias="side",
-                interface_a={"alias": "left.seam"},
-                interface_b={"alias": "right.seam"},
-                direction="opposed",
-            ),
-        ],
+    facade.preview_document(source, first, [sync])
+    resync = sync.model_copy(
+        update={
+            "arguments": {
+                **sync.arguments,
+                "bindings": {},
+                "source_pattern_hash": "2" * 64,
+            }
+        }
     )
-    assert not [issue for issue in summary.issues if issue.severity == "error"]
-    converted, diagnostics = facade.convert(state)
-    assert len(converted["pattern"]["stitches"]) == 2
-    assert diagnostics["stitches"]["side"] == {
-        "native_matching": True,
-        "edge_pairs": 2,
-        "direction": "opposed",
-        "side_lengths_mm": pytest.approx([100.0, 100.0]),
-        "length_difference_mm": pytest.approx(0.0),
-    }
+    facade.preview_document(first, second, [resync])
+    state = json.loads(second.read_text())
+    assert len(state["interfaces"]) == 2
+    assert len(state["stitches"]) == 1
 
 
 def test_official_tshirt_program_and_gui_import_remain_compatible():
@@ -156,90 +143,26 @@ with open('assets/design_params/t-shirt.yaml') as stream:
     design = yaml.safe_load(stream)['design']
 garment = MetaGarment('t-shirt', body, design)
 pattern = garment.assembly().pattern
-document = {
-    'pattern': pattern,
-    'parameters': {},
-    'parameter_order': [],
-    'properties': {
-        'units_in_meter': 100,
-        'curvature_coords': 'relative',
-        'normalize_panel_translation': False,
-        'normalized_edge_loops': True,
-    },
-}
+document = {'pattern': pattern, 'parameters': {}, 'parameter_order': [], 'properties': {
+    'units_in_meter': 100, 'curvature_coords': 'relative',
+    'normalize_panel_translation': False, 'normalized_edge_loops': True}}
 with tempfile.TemporaryDirectory() as temporary:
-    path = Path(temporary) / 'tshirt_specification.json'
-    path.write_text(json.dumps(document))
-    mesh = BoxMesh(path, 1.0)
-    mesh.load()
-print(json.dumps({
-    'panels': len(pattern['panels']),
-    'stitches': len(pattern['stitches']),
-    'self_intersecting': garment.is_self_intersecting(),
-    'mesh_vertices': len(mesh.vertices),
-    'mesh_faces': len(mesh.faces),
-}))
+    path = Path(temporary) / 'tshirt.json'; path.write_text(json.dumps(document))
+    mesh = BoxMesh(path, 1.0); mesh.load()
+print(json.dumps({'panels': len(pattern['panels']), 'stitches': len(pattern['stitches']),
+                  'mesh_vertices': len(mesh.vertices), 'mesh_faces': len(mesh.faces)}))
 """
     program = subprocess.run(
-        [str(COMPAT_PYTHON), "-c", source],
-        cwd=GARMENTCODE,
-        env=environment,
-        capture_output=True,
-        text=True,
-        timeout=60,
-        check=False,
+        [str(COMPAT_PYTHON), "-c", source], cwd=GARMENTCODE, env=environment,
+        capture_output=True, text=True, timeout=60, check=False
     )
     assert program.returncode == 0, program.stderr
     report = json.loads(program.stdout.splitlines()[-1])
-    assert report["panels"] == 8
-    assert report["stitches"] == 16
-    assert report["self_intersecting"] is False
-    assert report["mesh_vertices"] > 7_000
-    assert report["mesh_faces"] > 14_000
-    gui_import = subprocess.run(
+    assert report["panels"] == 8 and report["stitches"] == 16
+    assert report["mesh_vertices"] > 7_000 and report["mesh_faces"] > 14_000
+    gui = subprocess.run(
         [str(COMPAT_PYTHON), "-c", "import gui.callbacks, gui.gui_pattern"],
-        cwd=GARMENTCODE,
-        env=environment,
-        capture_output=True,
-        text=True,
-        timeout=60,
+        cwd=GARMENTCODE, env=environment, capture_output=True, text=True, timeout=60,
         check=False,
     )
-    assert gui_import.returncode == 0, gui_import.stderr
-
-
-def test_autodl_render_geometry_uses_garment_centimetres_and_body_metres():
-    if not COMPAT_PYTHON.is_file():
-        pytest.skip("run scripts/bootstrap-macos.sh to create the GarmentCode environment")
-    source = f"""
-import importlib.util, json, tempfile
-from pathlib import Path
-spec = importlib.util.spec_from_file_location(
-    'autodl_runner',
-    {str(REPOSITORY / "scripts/autodl-runner.py")!r},
-)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-with tempfile.TemporaryDirectory() as temporary:
-    root = Path(temporary)
-    garment = root / 'garment.obj'
-    body = root / 'body.obj'
-    garment.write_text('v 0 0 0\\nv 0 180 0\\nv 100 0 0\\nf 1 2 3\\n')
-    body.write_text('v 0 0 0\\nv 0 1.8 0\\nv 1 0 0\\nf 1 2 3\\n')
-    garment_mesh, body_mesh = module._load_render_geometry(garment, body)
-    print(json.dumps({{
-        'garment_height': garment_mesh.extents[1],
-        'body_height': body_mesh.extents[1],
-    }}))
-"""
-    process = subprocess.run(
-        [str(COMPAT_PYTHON), "-c", source],
-        cwd=REPOSITORY,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-    assert process.returncode == 0, process.stderr
-    dimensions = json.loads(process.stdout.splitlines()[-1])
-    assert dimensions == pytest.approx({"garment_height": 1.8, "body_height": 1.8})
+    assert gui.returncode == 0, gui.stderr

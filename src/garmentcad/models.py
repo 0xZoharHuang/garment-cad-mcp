@@ -115,7 +115,7 @@ class Revision(BaseModel):
 
 
 class ProjectManifest(BaseModel):
-    schema_version: str = "1.0"
+    schema_version: Literal["2.0"] = "2.0"
     project_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     units: Literal["mm"] = "mm"
@@ -123,7 +123,7 @@ class ProjectManifest(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
     pattern_file: str = "pattern/main.val"
-    assembly_file: str = "assembly/assembly.json"
+    assembly_file: str = "assembly/main.garmentcode.json"
     measurement_files: list[str] = Field(default_factory=list)
     active_body: str | None = None
     active_body_measurements: str | None = None
@@ -301,9 +301,10 @@ class AssemblyInterface(BaseModel):
     id: str
     alias: str
     panel_id: str
-    edge_indices: list[int]
+    edge_indices: list[int] = Field(default_factory=list)
     edge_ids: list[str] = Field(default_factory=list)
-    reverse: bool = False
+    reverse_order: bool = False
+    flip_edges: bool = False
     ruffle: float = Field(default=1.0, gt=0)
     right_wrong: bool = False
 
@@ -317,10 +318,14 @@ class AssemblyStitch(BaseModel):
 
 
 class AssemblyDocument(BaseModel):
-    schema_version: str = "1.0"
+    schema_version: Literal["2.0"] = "2.0"
+    engine: Literal["GarmentCode"] = "GarmentCode"
     units: Literal["mm"] = "mm"
+    source_project_id: str | None = None
     source_revision: int | None = None
+    source_pattern_hash: str | None = None
     panels: dict[str, AssemblyPanel] = Field(default_factory=dict)
     interfaces: dict[str, AssemblyInterface] = Field(default_factory=dict)
     stitches: dict[str, AssemblyStitch] = Field(default_factory=dict)
     components: dict[str, list[str]] = Field(default_factory=dict)
+    native_pattern: dict[str, Any] | None = None

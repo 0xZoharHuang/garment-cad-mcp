@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP, Image
+from mcp.types import ToolAnnotations
 
 from garmentcad.artifacts import ArtifactStore
 from garmentcad.catalog import ToolSpec
@@ -15,6 +16,25 @@ from garmentcad.sdk import execute_atomic
 from garmentcad.storage import read_json
 
 ARGUMENT_SCHEMAS = VALENTINA_ARGUMENT_SCHEMAS | ASSEMBLY_ARGUMENT_SCHEMAS
+
+READ_ONLY = ToolAnnotations(
+    readOnlyHint=True,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=False,
+)
+PREVIEW_WRITE = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=False,
+    openWorldHint=False,
+)
+PROJECT_WRITE = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=False,
+    openWorldHint=False,
+)
 
 
 def result_payload(value: Any) -> dict[str, Any]:
@@ -28,17 +48,43 @@ def add_core_tools(
 ) -> None:
     loaded: set[str] = set()
 
-    @server.tool(name="project_open")
+    action_specs = {
+        spec.action: spec
+        for spec in specs
+        if spec.action in ARGUMENT_SCHEMAS and spec.action != "assembly.sync_from_pattern"
+    }
+
+    @server.tool(name="project_create", annotations=PROJECT_WRITE)
+    def project_create(path: str, name: str | None = None) -> dict[str, Any]:
+        """Create a minimal native-authored Garment Project for drafting from scratch."""
+        return Project.create(path, name).status()
+
+    @server.tool(name="project_import", annotations=PROJECT_WRITE)
+    def project_import(
+        source_pattern: str,
+        project_path: str,
+        name: str | None = None,
+        measurement_files: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Import native .val and optional Tape files without parsing or rewriting them."""
+        return Project.import_valentina(
+            source_pattern,
+            project_path,
+            name=name,
+            measurement_files=measurement_files,
+        ).status()
+
+    @server.tool(name="project_open", annotations=READ_ONLY)
     def project_open(path: str) -> dict[str, Any]:
         """Open an existing Garment Project and return compact current state."""
         return Project.open(path).status()
 
-    @server.tool(name="project_status")
+    @server.tool(name="project_status", annotations=READ_ONLY)
     def project_status(path: str) -> dict[str, Any]:
         """Refresh revision, content hash, GUI-dirty state, and project identity."""
         return Project.open(path).status()
 
-    @server.tool(name="catalog_search")
+    @server.tool(name="catalog_search", annotations=READ_ONLY)
     def catalog_search(query: str, limit: int = 20, load: bool = True) -> dict[str, Any]:
         """Search atomic tools by name/action/description and optionally load matches."""
         terms = [term.lower() for term in query.split() if term]
@@ -57,7 +103,17 @@ def add_core_tools(
             "matches": [
                 spec.__dict__
                 | (
-                    {"arguments_schema": ARGUMENT_SCHEMAS[spec.action]}
+                    {
+                        "arguments_schema": (
+                            {
+                                "type": "object",
+                                "properties": {"bindings": {"type": "object"}},
+                                "additionalProperties": False,
+                            }
+                            if spec.action == "assembly.sync_from_pattern"
+                            else ARGUMENT_SCHEMAS[spec.action]
+                        )
+                    }
                     if spec.action in ARGUMENT_SCHEMAS
                     else {}
                 )
@@ -67,7 +123,7 @@ def add_core_tools(
             "message": "Refresh the MCP tool list after loading before calling an atomic tool.",
         }
 
-    @server.tool(name="resource_read")
+    @server.tool(name="resource_read", annotations=READ_ONLY)
     def resource_read(project_path: str, uri: str) -> Any:
         """Read a project change-set, preview, thumbnail, or content-addressed artifact."""
         project = Project.open(project_path)
@@ -84,7 +140,7 @@ def add_core_tools(
                 return {"media_type": "application/json", "data": value}
             resource_name = parts[1]
             if resource_name == "assembly":
-                filename = "assembly.json"
+                filename = "assembly/main.garmentcode.json"
             elif resource_name == "thumbnail":
                 filename = next(
                     (
@@ -147,10 +203,57 @@ def add_core_tools(
             }
         raise ValueError("URI does not belong to this project")
 
-    @server.tool(name="changeset_commit")
+    @server.tool(name="command_preview", annotations=PREVIEW_WRITE)
+    def command_preview(
+        project_path: str,
+        action: str,
+        arguments: dict[str, Any] | None = None,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+    ) -> dict[str, Any]:
+        """Preview one catalog action without requiring a dynamically refreshed tool list."""
+        if action not in action_specs:
+            raise ValueError(f"Unknown action for this MCP server: {action}")
+        prefix = action.split(".", 1)[0]
+        domain = {
+            "pattern": OperationDomain.PATTERN,
+            "measurement": OperationDomain.MEASUREMENTS,
+            "layout": OperationDomain.LAYOUT,
+            "export": OperationDomain.EXPORT,
+            "simulation": OperationDomain.SIMULATION,
+        }.get(prefix, OperationDomain.ASSEMBLY)
+        return result_payload(
+            execute_atomic(
+                project_path,
+                domain=domain,
+                action=action,
+                arguments=arguments,
+                target=target,
+                message=message,
+                author=author,
+            )
+        )
+
+    preview_tool = server._tool_manager.get_tool("command_preview")
+    if preview_tool is not None:
+        preview_tool.parameters["properties"]["action"]["enum"] = sorted(action_specs)
+
+    @server.tool(name="changeset_commit", annotations=PROJECT_WRITE)
     def changeset_commit(path: str, preview_token: str) -> dict[str, Any]:
         """Atomically commit one valid preview at its recorded base revision/hash."""
         return result_payload(Project.open(path).commit(preview_token))
+
+    @server.tool(name="changeset_discard", annotations=PROJECT_WRITE)
+    def changeset_discard(path: str, preview_token: str) -> dict[str, Any]:
+        """Discard one immutable preview without changing native CAD truth."""
+        Project.open(path).discard(preview_token)
+        return {"ok": True, "preview_token": preview_token}
+
+    @server.tool(name="revision_revert", annotations=PROJECT_WRITE)
+    def revision_revert(path: str, revision: int, author: str = "agent") -> dict[str, Any]:
+        """Append a reverse revision from native CAD preimages."""
+        return result_payload(Project.open(path).revert(revision, author=author))
 
 
 def register_atomic(server: FastMCP, spec: ToolSpec, domain: OperationDomain) -> None:
@@ -160,7 +263,6 @@ def register_atomic(server: FastMCP, spec: ToolSpec, domain: OperationDomain) ->
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
     ) -> dict[str, Any]:
         return result_payload(
             execute_atomic(
@@ -171,15 +273,14 @@ def register_atomic(server: FastMCP, spec: ToolSpec, domain: OperationDomain) ->
                 target=target,
                 message=message,
                 author=author,
-                commit=commit,
             )
         )
 
     atomic_tool.__name__ = spec.name
     atomic_tool.__doc__ = (
-        spec.description + " Defaults to preview-only; commit requires explicit true."
+        spec.description + " Always returns an immutable preview; commit it separately."
     )
-    server.tool(name=spec.name)(atomic_tool)
+    server.tool(name=spec.name, annotations=PREVIEW_WRITE)(atomic_tool)
     tool = server._tool_manager.get_tool(spec.name)
     argument_schema = ARGUMENT_SCHEMAS.get(spec.action)
     if tool is not None and argument_schema is not None:

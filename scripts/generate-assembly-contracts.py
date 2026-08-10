@@ -38,17 +38,6 @@ def fields(**values: str | dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 CONTRACTS: dict[str, tuple[dict[str, dict[str, Any]], set[str]]] = {
-    "panel.create": (
-        fields(
-            alias="str",
-            vertices_mm="points",
-            translation_mm="numbers",
-            rotation_deg="numbers",
-            uuid="str",
-        ),
-        {"alias", "vertices_mm"},
-    ),
-    "panel.delete": ({}, set()),
     "panel.transform": (
         fields(
             translation_mm="numbers",
@@ -59,50 +48,28 @@ CONTRACTS: dict[str, tuple[dict[str, dict[str, Any]], set[str]]] = {
         ),
         set(),
     ),
-    "panel.pivot": (fields(point_mm="numbers", replicate_placement="bool"), {"point_mm"}),
-    "panel.mirror": (fields(alias="str", axis="str", origin_mm="float", uuid="str"), {"alias"}),
-    "edge.split": (
-        fields(panel="str", edge_index="int", fractions="numbers"),
-        {"panel", "edge_index", "fractions"},
-    ),
-    "edge.extend": (
-        fields(panel="str", edge_index="int", start_delta_mm="float", end_delta_mm="float"),
-        {"panel", "edge_index"},
-    ),
-    "edge_sequence.transform": (
-        fields(
-            panel="str",
-            edge_indices="integers",
-            translation_delta_mm="numbers",
-            snap_start_mm="numbers",
-            rotation_deg="float",
-            origin_mm="numbers",
-            reflect_line_mm="points",
-        ),
-        {"panel", "edge_indices"},
-    ),
-    "edge.chamfer": (
-        fields(
-            panel="str", vertex_index="int", distance_before_mm="float", distance_after_mm="float"
-        ),
-        {"panel", "vertex_index", "distance_before_mm"},
-    ),
-    "dart.insert": (
-        fields(
-            panel="str", edge_index="int", intake_mm="float", depth_mm="float", position="float"
-        ),
-        {"panel", "edge_index", "intake_mm", "depth_mm"},
-    ),
     "component.define": (
         fields(alias="str", panels={"type": "array", "items": {"type": "string"}}),
         {"alias", "panels"},
     ),
     "component.transform": (
-        fields(component="str", translation_delta_mm="numbers", rotation_delta_deg="numbers"),
+        fields(
+            component="str",
+            translation_mm="numbers",
+            translation_delta_mm="numbers",
+            rotation_delta_deg="numbers",
+        ),
         {"component"},
     ),
-    "component.mirror": (fields(component="str", axis="str", origin_mm="float"), {"component"}),
-    "valentina.import": (fields(snapshot="object", sidecar="object"), {"snapshot"}),
+    "assembly.sync_from_pattern": (
+        fields(
+            snapshot="object",
+            bindings="object",
+            source_project_id="str",
+            source_pattern_hash="str",
+        ),
+        {"snapshot", "source_project_id", "source_pattern_hash"},
+    ),
     "interface.define": (
         fields(
             alias="str",
@@ -130,19 +97,22 @@ CONTRACTS: dict[str, tuple[dict[str, dict[str, Any]], set[str]]] = {
         fields(alias="str", interface_a="ref", interface_b="ref", direction="str", uuid="str"),
         {"alias", "interface_a", "interface_b"},
     ),
+    "stitch.update": (
+        fields(interface_a="ref", interface_b="ref", direction="str"),
+        set(),
+    ),
     "stitch.delete": ({}, set()),
     "validate": ({}, set()),
 }
 
 TARGET_ACTIONS = {
-    "panel.delete",
     "panel.transform",
-    "panel.pivot",
-    "panel.mirror",
     "interface.update",
     "interface.delete",
+    "stitch.update",
     "stitch.delete",
 }
+INTERNAL_ACTIONS = {"assembly.sync_from_pattern"}
 
 
 def schemas() -> dict[str, dict[str, Any]]:
@@ -240,6 +210,8 @@ def python_module(values: dict[str, dict[str, Any]]) -> str:
         "",
     ]
     for action in values:
+        if action in INTERNAL_ACTIONS:
+            continue
         name = specs[action].name
         lines += [f"    def {name}(", "        self,", "        *,"]
         if action in TARGET_ACTIONS:
@@ -247,7 +219,6 @@ def python_module(values: dict[str, dict[str, Any]]) -> str:
         lines += [
             '        message: str = "",',
             '        author: str = "agent",',
-            "        commit: bool = False,",
             f"        **arguments: Unpack[{class_name(action)}],",
             "    ) -> ToolResult:",
             "        return execute_atomic(",
@@ -261,7 +232,6 @@ def python_module(values: dict[str, dict[str, Any]]) -> str:
         lines += [
             "            message=message,",
             "            author=author,",
-            "            commit=commit,",
             "        )",
             "",
         ]

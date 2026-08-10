@@ -67,8 +67,12 @@
 #include "../vgeometry/vcubicbezierpath.h"
 #include "../vformat/vmeasurements.h"
 #include "../ifc/xml/vpatternimage.h"
+#include "../ifc/xml/vbackgroundpatternimage.h"
 #include "../vpatterndb/vpiecenode.h"
 #include "../vpatterndb/vpiecepath.h"
+#include "../vpatterndb/floatItemData/vgrainlinedata.h"
+#include "../vpatterndb/floatItemData/vpatternlabeldata.h"
+#include "../vpatterndb/floatItemData/vpiecelabeldata.h"
 #include "../vpatterndb/variables/vmeasurement.h"
 #include "../vlayout/vlayoutpoint.h"
 
@@ -361,6 +365,10 @@ auto VCommandService::Dispatch(const QJsonObject &request) -> QJsonObject
                 {QStringLiteral("handlers"),
                  QJsonArray{QStringLiteral("pattern.object_get"), QStringLiteral("pattern.base_point"),
                             QStringLiteral("pattern.object_update"), QStringLiteral("pattern.object_delete"),
+                            QStringLiteral("pattern.background_image_add"),
+                            QStringLiteral("pattern.background_image_get"),
+                            QStringLiteral("pattern.background_image_update"),
+                            QStringLiteral("pattern.background_image_delete"),
                             QStringLiteral("pattern.end_line"), QStringLiteral("pattern.line"),
                             QStringLiteral("pattern.along_line"), QStringLiteral("pattern.midpoint"),
                             QStringLiteral("pattern.line_intersect"), QStringLiteral("pattern.arc"),
@@ -503,11 +511,22 @@ auto VCommandService::Snapshot(const QJsonObject &request) -> QJsonObject
         }
 
         QJsonArray contour;
+        qsizetype semanticEdge = 0;
         for (qsizetype index = 0; index < points.size(); ++index)
         {
-            const QString edgeAlias = QStringLiteral("%1.edge.%2").arg(pieceAlias).arg(index, 4, 10, QLatin1Char('0'));
+            if (index > 0 && points.at(index).TurnPoint())
+            {
+                ++semanticEdge;
+            }
+            // Sampled segments belonging to one native curve deliberately share an alias. The
+            // GarmentCode projection expands that semantic alias back to the full segment range,
+            // so a change in Valentina curve tessellation does not break sewing bindings.
+            const QString edgeAlias =
+                QStringLiteral("%1.edge.%2").arg(pieceAlias).arg(semanticEdge, 4, 10, QLatin1Char('0'));
             const QString edgeUuid =
-                QUuid::createUuidV5(edgeNamespace, QStringLiteral("%1:%2").arg(pieceUuid).arg(index))
+                QUuid::createUuidV5(
+                    edgeNamespace,
+                    QStringLiteral("%1:%2:%3").arg(pieceUuid).arg(semanticEdge).arg(index))
                     .toString(QUuid::WithoutBraces);
             contour.append(QJsonObject{{QStringLiteral("x_mm"), FromPixel(points.at(index).x(), Unit::Mm)},
                                        {QStringLiteral("y_mm"), FromPixel(points.at(index).y(), Unit::Mm)},
@@ -658,6 +677,40 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
             throw std::runtime_error("Valentina could not load the staged measurement file");
         }
         m_window->doc->LiteParseTree(Document::FullLiteParse);
+    };
+    const auto backgroundImageId = [&aliases](const QJsonObject &reference) -> QUuid {
+        const QJsonObject objects = aliases.value(QStringLiteral("objects")).toObject();
+        QList<QJsonObject> matches;
+        if (!reference.value(QStringLiteral("uuid")).toString().isEmpty())
+        {
+            const QJsonObject record = objects.value(reference.value(QStringLiteral("uuid")).toString()).toObject();
+            if (!record.isEmpty())
+            {
+                matches.append(record);
+            }
+        }
+        else
+        {
+            for (auto iterator = objects.constBegin(); iterator != objects.constEnd(); ++iterator)
+            {
+                const QJsonObject record = iterator.value().toObject();
+                if (!record.value(QStringLiteral("deleted")).toBool() &&
+                    record.value(QStringLiteral("alias")) == reference.value(QStringLiteral("alias")))
+                {
+                    matches.append(record);
+                }
+            }
+        }
+        if (matches.size() != 1 || matches.constFirst().value(QStringLiteral("kind")) != QStringLiteral("BackgroundImage"))
+        {
+            throw std::invalid_argument("Background-image reference must resolve to exactly one live image");
+        }
+        const QUuid id(matches.constFirst().value(QStringLiteral("native_id")).toString());
+        if (id.isNull())
+        {
+            throw std::invalid_argument("Background-image identity is invalid");
+        }
+        return id;
     };
     const auto operationSources = [this, &aliases](const QJsonArray &items) -> QVector<SourceItem> {
         if (items.isEmpty())
@@ -1560,6 +1613,161 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         return;
     }
 
+    if (action == QStringLiteral("pattern.background_image_add"))
+    {
+        const QString alias = RequiredString(arguments, QStringLiteral("alias"));
+        const QString sourcePath = RequiredString(arguments, QStringLiteral("source_path"));
+        if (!QFileInfo::exists(sourcePath))
+        {
+            throw std::invalid_argument("Background image source does not exist");
+        }
+        QJsonObject objects = aliases.value(QStringLiteral("objects")).toObject();
+        for (auto iterator = objects.constBegin(); iterator != objects.constEnd(); ++iterator)
+        {
+            const QJsonObject record = iterator.value().toObject();
+            if (!record.value(QStringLiteral("deleted")).toBool() &&
+                record.value(QStringLiteral("alias")) == alias)
+            {
+                throw std::invalid_argument(QStringLiteral("Alias already exists: %1").arg(alias).toStdString());
+            }
+        }
+        VBackgroundPatternImage image = VBackgroundPatternImage::FromFile(
+            sourcePath, arguments.value(QStringLiteral("built_in")).toBool(true));
+        image.SetName(arguments.value(QStringLiteral("name")).toString(alias));
+        image.SetOpacity(qBound(0.0, arguments.value(QStringLiteral("opacity")).toDouble(1.0), 1.0));
+        image.SetVisible(arguments.value(QStringLiteral("visible")).toBool(true));
+        image.SetHold(arguments.value(QStringLiteral("hold")).toBool(false));
+        QTransform matrix = image.Matrix();
+        matrix.translate(ToPixel(arguments.value(QStringLiteral("x_mm")).toDouble(), Unit::Mm),
+                         ToPixel(arguments.value(QStringLiteral("y_mm")).toDouble(), Unit::Mm));
+        image.SetMatrix(matrix);
+        if (!image.IsValid())
+        {
+            throw std::invalid_argument(
+                QStringLiteral("Invalid background image: %1").arg(image.ErrorString()).toStdString());
+        }
+        m_window->doc->SaveBackgroundImage(image);
+
+        const QString uuid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        objects.insert(uuid, QJsonObject{{QStringLiteral("uuid"), uuid},
+                                         {QStringLiteral("alias"), alias},
+                                         {QStringLiteral("domain"), QStringLiteral("pattern")},
+                                         {QStringLiteral("kind"), QStringLiteral("BackgroundImage")},
+                                         {QStringLiteral("native_id"), image.Id().toString(QUuid::WithoutBraces)},
+                                         {QStringLiteral("deleted"), false}});
+        aliases.insert(QStringLiteral("objects"), objects);
+        QJsonArray created = summary.value(QStringLiteral("created")).toArray();
+        created.append(QJsonObject{{QStringLiteral("uuid"), uuid}, {QStringLiteral("alias"), alias}});
+        summary.insert(QStringLiteral("created"), created);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.background_image_get"))
+    {
+        const QUuid id = backgroundImageId(operation.value(QStringLiteral("target")).toObject());
+        const VBackgroundPatternImage image = m_window->doc->GetBackgroundImage(id);
+        const QTransform matrix = image.Matrix();
+        QJsonArray issues = summary.value(QStringLiteral("issues")).toArray();
+        issues.append(QJsonObject{
+            {QStringLiteral("severity"), QStringLiteral("info")},
+            {QStringLiteral("code"), QStringLiteral("background_image")},
+            {QStringLiteral("message"), QStringLiteral("Native Valentina background-image properties")},
+            {QStringLiteral("objects"), QJsonArray{}},
+            {QStringLiteral("details"),
+             QJsonObject{{QStringLiteral("native_id"), id.toString(QUuid::WithoutBraces)},
+                         {QStringLiteral("name"), image.Name()},
+                         {QStringLiteral("source_path"), image.FilePath()},
+                         {QStringLiteral("built_in"), !image.ContentData().isEmpty()},
+                         {QStringLiteral("visible"), image.Visible()},
+                         {QStringLiteral("hold"), image.Hold()},
+                         {QStringLiteral("opacity"), image.Opacity()},
+                         {QStringLiteral("z_value"), image.ZValue()},
+                         {QStringLiteral("matrix"),
+                          QJsonArray{matrix.m11(), matrix.m12(), matrix.m13(), matrix.m21(), matrix.m22(),
+                                     matrix.m23(), matrix.m31(), matrix.m32(), matrix.m33()}}}}});
+        summary.insert(QStringLiteral("issues"), issues);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.background_image_update"))
+    {
+        const QUuid id = backgroundImageId(operation.value(QStringLiteral("target")).toObject());
+        VBackgroundPatternImage image = m_window->doc->GetBackgroundImage(id);
+        if (arguments.contains(QStringLiteral("name")))
+        {
+            image.SetName(RequiredString(arguments, QStringLiteral("name")));
+        }
+        if (arguments.contains(QStringLiteral("opacity")))
+        {
+            image.SetOpacity(qBound(0.0, arguments.value(QStringLiteral("opacity")).toDouble(), 1.0));
+        }
+        if (arguments.contains(QStringLiteral("visible")))
+        {
+            image.SetVisible(arguments.value(QStringLiteral("visible")).toBool());
+        }
+        if (arguments.contains(QStringLiteral("hold")))
+        {
+            image.SetHold(arguments.value(QStringLiteral("hold")).toBool());
+        }
+        if (arguments.contains(QStringLiteral("z_value")))
+        {
+            image.SetZValue(arguments.value(QStringLiteral("z_value")).toDouble());
+        }
+        QTransform matrix = image.Matrix();
+        if (arguments.contains(QStringLiteral("x_mm")) || arguments.contains(QStringLiteral("y_mm")))
+        {
+            matrix.setMatrix(matrix.m11(), matrix.m12(), matrix.m13(), matrix.m21(), matrix.m22(), matrix.m23(),
+                             arguments.contains(QStringLiteral("x_mm"))
+                                 ? ToPixel(arguments.value(QStringLiteral("x_mm")).toDouble(), Unit::Mm)
+                                 : matrix.m31(),
+                             arguments.contains(QStringLiteral("y_mm"))
+                                 ? ToPixel(arguments.value(QStringLiteral("y_mm")).toDouble(), Unit::Mm)
+                                 : matrix.m32(),
+                             matrix.m33());
+        }
+        matrix.translate(ToPixel(arguments.value(QStringLiteral("dx_mm")).toDouble(), Unit::Mm),
+                         ToPixel(arguments.value(QStringLiteral("dy_mm")).toDouble(), Unit::Mm));
+        if (arguments.contains(QStringLiteral("rotation_delta_deg")))
+        {
+            matrix.rotate(arguments.value(QStringLiteral("rotation_delta_deg")).toDouble());
+        }
+        if (arguments.contains(QStringLiteral("scale_x")) || arguments.contains(QStringLiteral("scale_y")))
+        {
+            matrix.scale(arguments.value(QStringLiteral("scale_x")).toDouble(1.0),
+                         arguments.value(QStringLiteral("scale_y")).toDouble(1.0));
+        }
+        image.SetMatrix(matrix);
+        m_window->doc->SaveBackgroundImage(image);
+        QJsonArray changed = summary.value(QStringLiteral("changed")).toArray();
+        changed.append(operation.value(QStringLiteral("target")));
+        summary.insert(QStringLiteral("changed"), changed);
+        return;
+    }
+
+    if (action == QStringLiteral("pattern.background_image_delete"))
+    {
+        const QUuid id = backgroundImageId(operation.value(QStringLiteral("target")).toObject());
+        m_window->doc->DeleteBackgroundImage(id);
+        QJsonObject objects = aliases.value(QStringLiteral("objects")).toObject();
+        QJsonArray deleted = summary.value(QStringLiteral("deleted")).toArray();
+        for (auto iterator = objects.begin(); iterator != objects.end(); ++iterator)
+        {
+            QJsonObject record = iterator.value().toObject();
+            if (!record.value(QStringLiteral("deleted")).toBool() &&
+                record.value(QStringLiteral("kind")) == QStringLiteral("BackgroundImage") &&
+                QUuid(record.value(QStringLiteral("native_id")).toString()) == id)
+            {
+                record.insert(QStringLiteral("deleted"), true);
+                iterator.value() = record;
+                deleted.append(QJsonObject{{QStringLiteral("uuid"), iterator.key()},
+                                           {QStringLiteral("alias"), record.value(QStringLiteral("alias"))}});
+            }
+        }
+        aliases.insert(QStringLiteral("objects"), objects);
+        summary.insert(QStringLiteral("deleted"), deleted);
+        return;
+    }
+
     if (action == QStringLiteral("pattern.object_get"))
     {
         const QJsonObject reference = operation.value(QStringLiteral("target")).toObject();
@@ -2226,6 +2434,44 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                             item.value(QStringLiteral("reverse")).toBool());
             node.SetExcluded(item.value(QStringLiteral("excluded")).toBool());
             node.SetPassmark(item.value(QStringLiteral("passmark")).toBool());
+            if (item.contains(QStringLiteral("passmark_line_type")))
+            {
+                node.SetPassmarkLineType(
+                    StringToPassmarkLineType(RequiredString(item, QStringLiteral("passmark_line_type"))));
+            }
+            if (item.contains(QStringLiteral("passmark_angle_type")))
+            {
+                node.SetPassmarkAngleType(
+                    StringToPassmarkAngleType(RequiredString(item, QStringLiteral("passmark_angle_type"))));
+            }
+            node.SetShowSecondPassmark(item.value(QStringLiteral("show_second_passmark")).toBool(false));
+            node.SetPassmarkClockwiseOpening(
+                item.value(QStringLiteral("passmark_clockwise_opening")).toBool(false));
+            node.SetPassmarkNotMirrored(
+                item.value(QStringLiteral("passmark_not_mirrored")).toBool(false));
+            if (item.contains(QStringLiteral("passmark_length_formula")))
+            {
+                node.SetManualPassmarkLength(true);
+                node.SetFormulaPassmarkLength(
+                    RequiredString(item, QStringLiteral("passmark_length_formula")));
+            }
+            if (item.contains(QStringLiteral("passmark_width_formula")))
+            {
+                node.SetManualPassmarkWidth(true);
+                node.SetFormulaPassmarkWidth(
+                    RequiredString(item, QStringLiteral("passmark_width_formula")));
+            }
+            if (item.contains(QStringLiteral("passmark_angle_formula")))
+            {
+                node.SetManualPassmarkAngle(true);
+                node.SetFormulaPassmarkAngle(
+                    RequiredString(item, QStringLiteral("passmark_angle_formula")));
+            }
+            if (item.contains(QStringLiteral("passmark_visibility_formula")))
+            {
+                node.SetFormulaPassmarkVisibility(
+                    RequiredString(item, QStringLiteral("passmark_visibility_formula")));
+            }
             if (item.contains(QStringLiteral("seam_before_formula")))
             {
                 node.SetFormulaSABefore(RequiredString(item, QStringLiteral("seam_before_formula")));
@@ -2256,6 +2502,89 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
         piece.SetFormulaSAWidth(checkedWidth, calculatedWidth);
         piece.SetForbidFlipping(arguments.value(QStringLiteral("forbid_flipping")).toBool(false));
         piece.SetFollowGrainline(arguments.value(QStringLiteral("follow_grainline")).toBool(false));
+        piece.SetInLayout(arguments.value(QStringLiteral("in_layout")).toBool(true));
+        piece.SetGradationLabel(arguments.value(QStringLiteral("gradation_label")).toString());
+        if (arguments.contains(QStringLiteral("mirror_line_start")))
+        {
+            piece.SetMirrorLineStartPoint(
+                ResolveObject(arguments.value(QStringLiteral("mirror_line_start")).toObject(), aliases));
+        }
+        if (arguments.contains(QStringLiteral("mirror_line_end")))
+        {
+            piece.SetMirrorLineEndPoint(
+                ResolveObject(arguments.value(QStringLiteral("mirror_line_end")).toObject(), aliases));
+        }
+        if (arguments.contains(QStringLiteral("fold")))
+        {
+            const QJsonObject fold = arguments.value(QStringLiteral("fold")).toObject();
+            piece.SetManualFoldHeight(fold.contains(QStringLiteral("height_formula")));
+            piece.SetManualFoldWidth(fold.contains(QStringLiteral("width_formula")));
+            piece.SetManualFoldCenter(fold.contains(QStringLiteral("center_formula")));
+            piece.SetFormulaFoldHeight(fold.value(QStringLiteral("height_formula")).toString());
+            piece.SetFormulaFoldWidth(fold.value(QStringLiteral("width_formula")).toString());
+            piece.SetFormulaFoldCenter(fold.value(QStringLiteral("center_formula")).toString());
+        }
+        if (arguments.contains(QStringLiteral("grainline")))
+        {
+            const QJsonObject raw = arguments.value(QStringLiteral("grainline")).toObject();
+            VGrainlineData grainline;
+            grainline.SetEnabled(raw.value(QStringLiteral("enabled")).toBool(true));
+            grainline.SetVisible(raw.value(QStringLiteral("visible")).toBool(true));
+            grainline.SetLength(raw.value(QStringLiteral("length_formula")).toString(QStringLiteral("1")));
+            grainline.SetRotation(raw.value(QStringLiteral("rotation_formula")).toString(QStringLiteral("90")));
+            grainline.SetArrowType(static_cast<GrainlineArrowDirection>(
+                raw.value(QStringLiteral("arrow_type")).toInt(0)));
+            grainline.SetPos(QPointF(ToPixel(raw.value(QStringLiteral("x_mm")).toDouble(), Unit::Mm),
+                                     ToPixel(raw.value(QStringLiteral("y_mm")).toDouble(), Unit::Mm)));
+            if (raw.contains(QStringLiteral("center_pin")))
+            {
+                grainline.SetCenterPin(ResolveObject(raw.value(QStringLiteral("center_pin")).toObject(), aliases));
+            }
+            if (raw.contains(QStringLiteral("top_pin")))
+            {
+                grainline.SetTopPin(ResolveObject(raw.value(QStringLiteral("top_pin")).toObject(), aliases));
+            }
+            if (raw.contains(QStringLiteral("bottom_pin")))
+            {
+                grainline.SetBottomPin(ResolveObject(raw.value(QStringLiteral("bottom_pin")).toObject(), aliases));
+            }
+            piece.SetGrainlineGeometry(grainline);
+        }
+        if (arguments.contains(QStringLiteral("piece_label")))
+        {
+            const QJsonObject raw = arguments.value(QStringLiteral("piece_label")).toObject();
+            VPieceLabelData label;
+            label.SetEnabled(raw.value(QStringLiteral("enabled")).toBool(true));
+            label.SetPos(QPointF(ToPixel(raw.value(QStringLiteral("x_mm")).toDouble(), Unit::Mm),
+                                 ToPixel(raw.value(QStringLiteral("y_mm")).toDouble(), Unit::Mm)));
+            label.SetLabelWidth(raw.value(QStringLiteral("width_formula")).toString(QStringLiteral("1")));
+            label.SetLabelHeight(raw.value(QStringLiteral("height_formula")).toString(QStringLiteral("1")));
+            label.SetRotation(raw.value(QStringLiteral("rotation_formula")).toString(QStringLiteral("0")));
+            label.SetFontSize(raw.value(QStringLiteral("font_size")).toInt(0));
+            label.SetLetter(raw.value(QStringLiteral("letter")).toString());
+            label.SetAnnotation(raw.value(QStringLiteral("annotation")).toString());
+            label.SetOrientation(raw.value(QStringLiteral("orientation")).toString());
+            label.SetRotationWay(raw.value(QStringLiteral("rotation_way")).toString());
+            label.SetTilt(raw.value(QStringLiteral("tilt")).toString());
+            label.SetFoldPosition(raw.value(QStringLiteral("fold_position")).toString());
+            label.SetQuantity(static_cast<quint16>(raw.value(QStringLiteral("quantity")).toInt(1)));
+            label.SetOnFold(raw.value(QStringLiteral("on_fold")).toBool(false));
+            label.SetAreaShortName(raw.value(QStringLiteral("area_short_name")).toString());
+            piece.SetPieceLabelData(label);
+        }
+        if (arguments.contains(QStringLiteral("pattern_label")))
+        {
+            const QJsonObject raw = arguments.value(QStringLiteral("pattern_label")).toObject();
+            VPatternLabelData label;
+            label.SetEnabled(raw.value(QStringLiteral("enabled")).toBool(true));
+            label.SetPos(QPointF(ToPixel(raw.value(QStringLiteral("x_mm")).toDouble(), Unit::Mm),
+                                 ToPixel(raw.value(QStringLiteral("y_mm")).toDouble(), Unit::Mm)));
+            label.SetLabelWidth(raw.value(QStringLiteral("width_formula")).toString(QStringLiteral("1")));
+            label.SetLabelHeight(raw.value(QStringLiteral("height_formula")).toString(QStringLiteral("1")));
+            label.SetRotation(raw.value(QStringLiteral("rotation_formula")).toString(QStringLiteral("0")));
+            label.SetFontSize(raw.value(QStringLiteral("font_size")).toInt(0));
+            piece.SetPatternLabelData(label);
+        }
         piece.GetPath().SetNodes(
             VToolSeamAllowance::PrepareNodesForCommand(piece.GetPath(), m_window->m_sceneDetails, m_window->doc,
                                                        m_window->pattern));
@@ -2393,6 +2722,49 @@ auto VCommandService::ApplyOperation(const QJsonObject &operation, QJsonObject &
                             item.value(QStringLiteral("reverse")).toBool());
             node.SetExcluded(item.value(QStringLiteral("excluded")).toBool());
             node.SetPassmark(item.value(QStringLiteral("passmark")).toBool());
+            if (item.contains(QStringLiteral("passmark_line_type")))
+            {
+                node.SetPassmarkLineType(
+                    StringToPassmarkLineType(RequiredString(item, QStringLiteral("passmark_line_type"))));
+            }
+            if (item.contains(QStringLiteral("passmark_angle_type")))
+            {
+                node.SetPassmarkAngleType(
+                    StringToPassmarkAngleType(RequiredString(item, QStringLiteral("passmark_angle_type"))));
+            }
+            node.SetShowSecondPassmark(item.value(QStringLiteral("show_second_passmark")).toBool(false));
+            node.SetPassmarkClockwiseOpening(
+                item.value(QStringLiteral("passmark_clockwise_opening")).toBool(false));
+            node.SetPassmarkNotMirrored(
+                item.value(QStringLiteral("passmark_not_mirrored")).toBool(false));
+            if (item.contains(QStringLiteral("passmark_length_formula")))
+            {
+                node.SetManualPassmarkLength(true);
+                node.SetFormulaPassmarkLength(RequiredString(item, QStringLiteral("passmark_length_formula")));
+            }
+            if (item.contains(QStringLiteral("passmark_width_formula")))
+            {
+                node.SetManualPassmarkWidth(true);
+                node.SetFormulaPassmarkWidth(RequiredString(item, QStringLiteral("passmark_width_formula")));
+            }
+            if (item.contains(QStringLiteral("passmark_angle_formula")))
+            {
+                node.SetManualPassmarkAngle(true);
+                node.SetFormulaPassmarkAngle(RequiredString(item, QStringLiteral("passmark_angle_formula")));
+            }
+            if (item.contains(QStringLiteral("passmark_visibility_formula")))
+            {
+                node.SetFormulaPassmarkVisibility(
+                    RequiredString(item, QStringLiteral("passmark_visibility_formula")));
+            }
+            if (item.contains(QStringLiteral("seam_before_formula")))
+            {
+                node.SetFormulaSABefore(RequiredString(item, QStringLiteral("seam_before_formula")));
+            }
+            if (item.contains(QStringLiteral("seam_after_formula")))
+            {
+                node.SetFormulaSAAfter(RequiredString(item, QStringLiteral("seam_after_formula")));
+            }
             nodes.append(node);
         }
         VToolSeamAllowance::InsertNodes(nodes, pieceId, m_window->m_sceneDetails, m_window->pattern, m_window->doc);

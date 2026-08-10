@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 import shutil
 import struct
@@ -9,13 +10,11 @@ from pathlib import Path
 import pytest
 
 from garmentcad.artifacts import ArtifactStore
-from garmentcad.assembly import to_garmentcode
 from garmentcad.backends import JsonLineCommandBackend
 from garmentcad.models import Operation, OperationDomain
 from garmentcad.project import Project
 from garmentcad.sdk import GarmentSDK
 from garmentcad.storage import read_json
-from garmentcad.valentina_bridge import snapshot_to_assembly
 
 NATIVE_COMMAND = os.environ.get("GARMENTCAD_VALENTINA_COMMAND")
 pytestmark = pytest.mark.skipif(not NATIVE_COMMAND, reason="native Valentina host is not built")
@@ -50,23 +49,86 @@ def test_native_snapshot_and_sidecar_roundtrip_into_garmentcode(tmp_path):
             }
         ],
     }
-    assembly = snapshot_to_assembly(first, sidecar)
-    native = to_garmentcode(assembly)
-    assert len(native["pattern"]["panels"]) == 17
-    assert len(native["pattern"]["stitches"]) >= 1
-    assert native["properties"]["units_in_meter"] == 100
-
-    preview = GarmentSDK(project.root).import_valentina_revision(sidecar=sidecar)
+    preview = GarmentSDK(project.root).sync_assembly_from_pattern(bindings=sidecar)
     assert preview.ok
     committed = project.commit(preview.token)
     assert committed.revision == 1
-    saved = read_json(project.root / "assembly/assembly.json")
+    saved = read_json(project.root / project.manifest.assembly_file)
     assert saved["source_revision"] == 0
     assert {panel["alias"] for panel in saved["panels"].values()} >= {
         "FrontPanel",
         "BackPanel",
     }
     assert next(iter(saved["stitches"].values()))["direction"] == "opposed"
+    assert len(saved["native_pattern"]["pattern"]["panels"]) == 17
+    assert len(saved["native_pattern"]["pattern"]["stitches"]) >= 1
+    assert saved["native_pattern"]["properties"]["units_in_meter"] == 100
+
+
+def test_native_background_image_crud_persists_in_valentina_truth(tmp_path):
+    project = Project.create(tmp_path / "background-image")
+    source = tmp_path / "reference.png"
+    source.write_bytes(
+        base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+    )
+    added = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.background_image_add",
+                arguments={
+                    "alias": "reference.front",
+                    "source_path": str(source),
+                    "built_in": True,
+                    "name": "Front reference",
+                    "x_mm": 10,
+                    "y_mm": 20,
+                    "opacity": 0.4,
+                },
+            )
+        ]
+    )
+    assert added.ok
+    project.commit(added.token)
+    pattern = (project.root / "pattern/main.val").read_text(encoding="utf-8")
+    assert "Front reference" in pattern
+
+    read = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.background_image_get",
+                target={"alias": "reference.front"},
+            )
+        ]
+    )
+    assert read.summary.issues[0].details["opacity"] == pytest.approx(0.4)
+    project.discard(read.token)
+
+    updated = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.background_image_update",
+                target={"alias": "reference.front"},
+                arguments={"opacity": 0.7, "rotation_delta_deg": 15, "visible": False},
+            )
+        ]
+    )
+    project.commit(updated.token)
+    deleted = project.preview(
+        operations=[
+            Operation(
+                domain=OperationDomain.PATTERN,
+                action="pattern.background_image_delete",
+                target={"alias": "reference.front"},
+            )
+        ]
+    )
+    project.commit(deleted.token)
+    assert "Front reference" not in (project.root / "pattern/main.val").read_text(encoding="utf-8")
 
 
 def _assert_preview_png(path: Path) -> None:

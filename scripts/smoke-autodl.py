@@ -60,11 +60,19 @@ def official_bundle() -> tuple[bytes, str]:
     files = {
         "garmentcode.json": garment,
         "pattern_snapshot.json": garment,
-        "assembly.json": canonical_json(
+        "assembly/main.garmentcode.json": canonical_json(
             {
-                "schema_version": "1.0",
+                "schema_version": "2.0",
+                "engine": "GarmentCode",
                 "units": "mm",
-                "source": "pinned GarmentCode official shirt",
+                "source_project_id": "garmentcode-official-shirt-smoke",
+                "source_revision": 0,
+                "source_pattern_hash": None,
+                "panels": {},
+                "interfaces": {},
+                "stitches": {},
+                "components": {},
+                "native_pattern": json.loads(garment),
             }
         ),
         "job.json": canonical_json(task),

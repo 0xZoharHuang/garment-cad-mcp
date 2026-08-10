@@ -370,6 +370,37 @@ class PatternArcWithLengthArguments(TypedDict, total=False):
     radius_mm: NotRequired[float]
     start_angle_deg: NotRequired[float]
 
+class PatternBackgroundImageAddArguments(TypedDict, total=False):
+    alias: Required[str]
+    built_in: NotRequired[bool]
+    hold: NotRequired[bool]
+    name: NotRequired[str]
+    opacity: NotRequired[float]
+    source_path: Required[str]
+    visible: NotRequired[bool]
+    x_mm: NotRequired[float]
+    y_mm: NotRequired[float]
+
+class PatternBackgroundImageDeleteArguments(TypedDict, total=False):
+    pass
+
+class PatternBackgroundImageGetArguments(TypedDict, total=False):
+    pass
+
+class PatternBackgroundImageUpdateArguments(TypedDict, total=False):
+    dx_mm: NotRequired[float]
+    dy_mm: NotRequired[float]
+    hold: NotRequired[bool]
+    name: NotRequired[str]
+    opacity: NotRequired[float]
+    rotation_delta_deg: NotRequired[float]
+    scale_x: NotRequired[float]
+    scale_y: NotRequired[float]
+    visible: NotRequired[bool]
+    x_mm: NotRequired[float]
+    y_mm: NotRequired[float]
+    z_value: NotRequired[float]
+
 class PatternBasePointArguments(TypedDict, total=False):
     alias: Required[str]
     x_mm: NotRequired[float]
@@ -615,10 +646,18 @@ class PatternParallelCurveArguments(TypedDict, total=False):
 
 class PatternPieceArguments(TypedDict, total=False):
     alias: Required[str]
+    fold: NotRequired[dict[str, Any]]
     follow_grainline: NotRequired[bool]
     forbid_flipping: NotRequired[bool]
+    gradation_label: NotRequired[str]
+    grainline: NotRequired[dict[str, Any]]
+    in_layout: NotRequired[bool]
+    mirror_line_end: Required[ObjectReference]
+    mirror_line_start: Required[ObjectReference]
     name: NotRequired[str]
     nodes: Required[list[Any]]
+    pattern_label: NotRequired[dict[str, Any]]
+    piece_label: NotRequired[dict[str, Any]]
     seam_allowance: NotRequired[bool]
     seam_allowance_built_in: NotRequired[bool]
     seam_allowance_formula: NotRequired[str]
@@ -635,7 +674,7 @@ class PatternPiecePathArguments(TypedDict, total=False):
     nodes: Required[list[Any]]
     not_mirrored: NotRequired[bool]
     piece: Required[ObjectReference]
-    type: NotRequired[str]
+    type: NotRequired[Any]
     visibility_formula: NotRequired[str]
 
 class PatternPinArguments(TypedDict, total=False):
@@ -659,6 +698,7 @@ class PatternPlaceLabelArguments(TypedDict, total=False):
 class PatternPointFromArcAndTangentArguments(TypedDict, total=False):
     alias: Required[str]
     arc: Required[ObjectReference]
+    solution: NotRequired[int]
     tangent_point: Required[ObjectReference]
 
 class PatternPointFromCircleAndTangentArguments(TypedDict, total=False):
@@ -666,6 +706,7 @@ class PatternPointFromCircleAndTangentArguments(TypedDict, total=False):
     center: Required[ObjectReference]
     radius_formula: NotRequired[str]
     radius_mm: NotRequired[float]
+    solution: NotRequired[int]
     tangent_point: Required[ObjectReference]
 
 class PatternPointOfContactArguments(TypedDict, total=False):
@@ -685,6 +726,7 @@ class PatternPointOfIntersectionArcsArguments(TypedDict, total=False):
     alias: Required[str]
     first_arc: Required[ObjectReference]
     second_arc: Required[ObjectReference]
+    solution: NotRequired[int]
 
 class PatternPointOfIntersectionCirclesArguments(TypedDict, total=False):
     alias: Required[str]
@@ -694,11 +736,14 @@ class PatternPointOfIntersectionCirclesArguments(TypedDict, total=False):
     second_center: Required[ObjectReference]
     second_radius_formula: NotRequired[str]
     second_radius_mm: NotRequired[float]
+    solution: NotRequired[int]
 
 class PatternPointOfIntersectionCurvesArguments(TypedDict, total=False):
     alias: Required[str]
     first_curve: Required[ObjectReference]
+    horizontal_solution: NotRequired[int]
     second_curve: Required[ObjectReference]
+    vertical_solution: NotRequired[int]
 
 class PatternRotationArguments(TypedDict, total=False):
     angle_deg: NotRequired[float]
@@ -777,7 +822,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternBasePointArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -788,7 +832,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_end_line(
@@ -797,7 +840,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternEndLineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -808,7 +850,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_line(
@@ -817,7 +858,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternLineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -828,7 +868,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_along_line(
@@ -837,7 +876,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternAlongLineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -848,7 +886,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_shoulder_point(
@@ -857,7 +894,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternShoulderPointArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -868,7 +904,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_normal(
@@ -877,7 +912,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternNormalArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -888,7 +922,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_bisector(
@@ -897,7 +930,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternBisectorArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -908,7 +940,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_line_intersect(
@@ -917,7 +948,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternLineIntersectArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -928,7 +958,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_spline(
@@ -937,7 +966,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternSplineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -948,7 +976,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_cubic_bezier(
@@ -957,7 +984,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternCubicBezierArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -968,7 +994,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_cut_spline(
@@ -977,7 +1002,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternCutSplineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -988,7 +1012,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_cut_arc(
@@ -997,7 +1020,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternCutArcArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1008,7 +1030,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_arc(
@@ -1017,7 +1038,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternArcArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1028,7 +1048,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_arc_with_length(
@@ -1037,7 +1056,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternArcWithLengthArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1048,7 +1066,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_spline_path(
@@ -1057,7 +1074,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternSplinePathArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1068,7 +1084,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_cubic_bezier_path(
@@ -1077,7 +1092,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternCubicBezierPathArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1088,7 +1102,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_cut_spline_path(
@@ -1097,7 +1110,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternCutSplinePathArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1108,7 +1120,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_point_of_contact(
@@ -1117,7 +1128,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPointOfContactArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1128,7 +1138,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_piece(
@@ -1137,7 +1146,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPieceArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1148,7 +1156,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_piece_path(
@@ -1157,7 +1164,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPiecePathArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1168,7 +1174,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_height(
@@ -1177,7 +1182,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternHeightArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1188,7 +1192,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_triangle(
@@ -1197,7 +1200,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternTriangleArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1208,7 +1210,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_line_intersect_axis(
@@ -1217,7 +1218,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternLineIntersectAxisArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1228,7 +1228,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_point_of_intersection_arcs(
@@ -1237,7 +1236,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPointOfIntersectionArcsArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1248,7 +1246,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_point_of_intersection_circles(
@@ -1257,7 +1254,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPointOfIntersectionCirclesArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1268,7 +1264,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_point_of_intersection_curves(
@@ -1277,7 +1272,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPointOfIntersectionCurvesArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1288,7 +1282,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_curve_intersect_axis(
@@ -1297,7 +1290,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternCurveIntersectAxisArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1308,7 +1300,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_arc_intersect_axis(
@@ -1317,7 +1308,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternArcIntersectAxisArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1328,7 +1318,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_point_of_intersection(
@@ -1337,7 +1326,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPointOfIntersectionArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1348,7 +1336,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_point_from_circle_and_tangent(
@@ -1357,7 +1344,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPointFromCircleAndTangentArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1368,7 +1354,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_point_from_arc_and_tangent(
@@ -1377,7 +1362,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPointFromArcAndTangentArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1388,7 +1372,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_true_darts(
@@ -1397,7 +1380,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternTrueDartsArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1408,7 +1390,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_union_details(
@@ -1417,7 +1398,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternUnionDetailsArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1428,7 +1408,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_group(
@@ -1437,7 +1416,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternGroupArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1448,7 +1426,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_rotation(
@@ -1457,7 +1434,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternRotationArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1468,7 +1444,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_flipping_by_line(
@@ -1477,7 +1452,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternFlippingByLineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1488,7 +1462,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_flipping_by_axis(
@@ -1497,7 +1470,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternFlippingByAxisArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1508,7 +1480,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_move(
@@ -1517,7 +1488,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternMoveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1528,7 +1498,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_midpoint(
@@ -1537,7 +1506,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternMidpointArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1548,7 +1516,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_elliptical_arc(
@@ -1557,7 +1524,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternEllipticalArcArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1568,7 +1534,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_pin(
@@ -1577,7 +1542,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPinArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1588,7 +1552,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_insert_node(
@@ -1597,7 +1560,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternInsertNodeArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1608,7 +1570,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_place_label(
@@ -1617,7 +1578,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternPlaceLabelArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1628,7 +1588,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_duplicate_detail(
@@ -1637,7 +1596,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternDuplicateDetailArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1648,7 +1606,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_arc_start(
@@ -1657,7 +1614,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternArcStartArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1668,7 +1624,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_arc_end(
@@ -1677,7 +1632,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternArcEndArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1688,7 +1642,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_elliptical_arc_with_length(
@@ -1697,7 +1650,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternEllipticalArcWithLengthArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1708,7 +1660,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_parallel_curve(
@@ -1717,7 +1668,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternParallelCurveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1728,7 +1678,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def pattern_graduated_curve(
@@ -1737,7 +1686,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternGraduatedCurveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1748,7 +1696,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def object_get(
@@ -1757,7 +1704,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternObjectGetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1768,7 +1714,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def object_update(
@@ -1777,7 +1722,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternObjectUpdateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1788,7 +1732,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def object_delete(
@@ -1797,7 +1740,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternObjectDeleteArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1808,7 +1750,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def object_duplicate(
@@ -1817,7 +1758,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternObjectDuplicateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1828,7 +1768,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def dependency_query(
@@ -1837,7 +1776,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternDependencyQueryArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1848,7 +1786,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def formula_evaluate(
@@ -1857,7 +1794,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PatternFormulaEvaluateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1868,7 +1804,78 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
+        )
+
+    def background_image_add(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        **arguments: Unpack[PatternBackgroundImageAddArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.PATTERN,
+            action='pattern.background_image_add',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+        )
+
+    def background_image_get(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        **arguments: Unpack[PatternBackgroundImageGetArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.PATTERN,
+            action='pattern.background_image_get',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+        )
+
+    def background_image_update(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        **arguments: Unpack[PatternBackgroundImageUpdateArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.PATTERN,
+            action='pattern.background_image_update',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
+        )
+
+    def background_image_delete(
+        self,
+        *,
+        target: str | None = None,
+        message: str = "",
+        author: str = "agent",
+        **arguments: Unpack[PatternBackgroundImageDeleteArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.PATTERN,
+            action='pattern.background_image_delete',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
         )
 
     def increment_set(
@@ -1877,7 +1884,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementIncrementSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1888,7 +1894,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def increment_remove(
@@ -1897,7 +1902,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementIncrementRemoveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1908,7 +1912,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def final_measurement_set(
@@ -1917,7 +1920,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementFinalMeasurementSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1928,7 +1930,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_file_create(
@@ -1937,7 +1938,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementFileCreateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1948,7 +1948,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_file_open(
@@ -1957,7 +1956,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementFileOpenArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1968,7 +1966,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_file_save(
@@ -1977,7 +1974,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementFileSaveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -1988,7 +1984,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_set(
@@ -1997,7 +1992,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2008,7 +2002,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_rename(
@@ -2017,7 +2010,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementRenameArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2028,7 +2020,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_remove(
@@ -2037,7 +2028,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementRemoveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2048,7 +2038,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_dimension_set(
@@ -2057,7 +2046,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementDimensionSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2068,7 +2056,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_file_metadata_set(
@@ -2077,7 +2064,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementFileMetadataSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2088,7 +2074,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_dimension_labels_set(
@@ -2097,7 +2082,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementDimensionLabelsSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2108,7 +2092,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_restriction_set(
@@ -2117,7 +2100,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementRestrictionSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2128,7 +2110,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_restriction_remove(
@@ -2137,7 +2118,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementRestrictionRemoveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2148,7 +2128,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_correction_set(
@@ -2157,7 +2136,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementCorrectionSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2168,7 +2146,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_value_alias_set(
@@ -2177,7 +2154,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementValueAliasSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2188,7 +2164,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_image_set(
@@ -2197,7 +2172,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementImageSetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2208,7 +2182,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_image_remove(
@@ -2217,7 +2190,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementImageRemoveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2228,7 +2200,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_import_csv(
@@ -2237,7 +2208,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementImportCsvArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2248,7 +2218,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def measurement_export_csv(
@@ -2257,7 +2226,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[MeasurementExportCsvArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2268,7 +2236,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_generate(
@@ -2277,7 +2244,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutGenerateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2288,7 +2254,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_sheet_add(
@@ -2297,7 +2262,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutSheetAddArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2308,7 +2272,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_sheet_update(
@@ -2317,7 +2280,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutSheetUpdateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2328,7 +2290,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_sheet_remove(
@@ -2337,7 +2298,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutSheetRemoveArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2348,7 +2308,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_sheet_crop(
@@ -2357,7 +2316,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutSheetCropArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2368,7 +2326,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_move_piece(
@@ -2377,7 +2334,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutMovePieceArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2388,7 +2344,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_place(
@@ -2397,7 +2352,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutPlaceArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2408,7 +2362,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_rotate_piece(
@@ -2417,7 +2370,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutRotatePieceArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2428,7 +2380,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_flip_piece(
@@ -2437,7 +2388,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutFlipPieceArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2448,7 +2398,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_piece_reset(
@@ -2457,7 +2406,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutPieceResetArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2468,7 +2416,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_piece_z_order(
@@ -2477,7 +2424,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutPieceZOrderArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2488,7 +2434,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_rotate_to_grainline(
@@ -2497,7 +2442,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutRotateToGrainlineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2508,7 +2452,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_trash_piece(
@@ -2517,7 +2460,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutTrashPieceArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2528,7 +2470,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_settings_update(
@@ -2537,7 +2478,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutSettingsUpdateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2548,7 +2488,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_validate(
@@ -2557,7 +2496,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutValidateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2568,7 +2506,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def layout_print(
@@ -2577,7 +2514,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[LayoutPrintArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2588,7 +2524,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def export_pattern(
@@ -2597,7 +2532,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[ExportPatternArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2608,7 +2542,6 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def export_layout(
@@ -2617,7 +2550,6 @@ class AtomicCommands:
         target: str | None = None,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[ExportLayoutArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -2628,10 +2560,9 @@ class AtomicCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
-ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProperties': True,
+ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProperties': False,
                    'properties': {'binary_dxf': {'type': 'boolean'},
                                   'copy_number': {'type': 'integer'},
                                   'format': {'type': 'string'},
@@ -2649,7 +2580,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                   'x_scale': {'type': 'number'},
                                   'y_scale': {'type': 'number'}},
                    'type': 'object'},
- 'export.pattern': {'additionalProperties': True,
+ 'export.pattern': {'additionalProperties': False,
                     'properties': {'binary_dxf': {'type': 'boolean'},
                                    'details_only': {'type': 'boolean'},
                                    'format': {'type': 'string'},
@@ -2658,13 +2589,13 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                    'text_as_paths': {'type': 'boolean'},
                                    'timeout_ms': {'type': 'integer'}},
                     'type': 'object'},
- 'layout.flip_piece': {'additionalProperties': True,
+ 'layout.flip_piece': {'additionalProperties': False,
                        'properties': {'axis': {'type': 'string'},
                                       'copy_number': {'type': 'integer'},
                                       'piece': {'type': 'string'},
                                       'piece_id': {'type': 'string'}},
                        'type': 'object'},
- 'layout.generate': {'additionalProperties': True,
+ 'layout.generate': {'additionalProperties': False,
                      'properties': {'allow_rotation': {'type': 'boolean'},
                                     'auto_arrange': {'type': 'boolean'},
                                     'auto_crop_length': {'type': 'boolean'},
@@ -2679,25 +2610,25 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                     'timeout_ms': {'type': 'integer'}},
                      'required': ['raw_layout_path'],
                      'type': 'object'},
- 'layout.move_piece': {'additionalProperties': True,
+ 'layout.move_piece': {'additionalProperties': False,
                        'properties': {'copy_number': {'type': 'integer'},
                                       'dx_mm': {'type': 'number'},
                                       'dy_mm': {'type': 'number'},
                                       'piece': {'type': 'string'},
                                       'piece_id': {'type': 'string'}},
                        'type': 'object'},
- 'layout.piece_reset': {'additionalProperties': True,
+ 'layout.piece_reset': {'additionalProperties': False,
                         'properties': {'copy_number': {'type': 'integer'},
                                        'piece': {'type': 'string'},
                                        'piece_id': {'type': 'string'}},
                         'type': 'object'},
- 'layout.piece_z_order': {'additionalProperties': True,
+ 'layout.piece_z_order': {'additionalProperties': False,
                           'properties': {'copy_number': {'type': 'integer'},
                                          'move': {'type': 'string'},
                                          'piece': {'type': 'string'},
                                          'piece_id': {'type': 'string'}},
                           'type': 'object'},
- 'layout.place': {'additionalProperties': True,
+ 'layout.place': {'additionalProperties': False,
                   'properties': {'copy_number': {'type': 'integer'},
                                  'piece': {'type': 'string'},
                                  'piece_id': {'type': 'string'},
@@ -2707,7 +2638,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                  'x_mm': {'type': 'number'},
                                  'y_mm': {'type': 'number'}},
                   'type': 'object'},
- 'layout.print': {'additionalProperties': True,
+ 'layout.print': {'additionalProperties': False,
                   'properties': {'copy_number': {'type': 'integer'},
                                  'output_path': {'type': 'string'},
                                  'piece': {'type': 'string'},
@@ -2716,18 +2647,18 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                  'sheet_index': {'type': 'integer'},
                                  'sheet_uuid': {'type': 'string'}},
                   'type': 'object'},
- 'layout.rotate_piece': {'additionalProperties': True,
+ 'layout.rotate_piece': {'additionalProperties': False,
                          'properties': {'angle_deg': {'type': 'number'},
                                         'copy_number': {'type': 'integer'},
                                         'piece': {'type': 'string'},
                                         'piece_id': {'type': 'string'}},
                          'type': 'object'},
- 'layout.rotate_to_grainline': {'additionalProperties': True,
+ 'layout.rotate_to_grainline': {'additionalProperties': False,
                                 'properties': {'copy_number': {'type': 'integer'},
                                                'piece': {'type': 'string'},
                                                'piece_id': {'type': 'string'}},
                                 'type': 'object'},
- 'layout.settings_update': {'additionalProperties': True,
+ 'layout.settings_update': {'additionalProperties': False,
                             'properties': {'boundary_with_notches': {'type': 'boolean'},
                                            'cut_on_fold': {'type': 'boolean'},
                                            'description': {'type': 'string'},
@@ -2755,7 +2686,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                            'warning_superposition': {'type': 'boolean'},
                                            'watermark_path': {'type': 'string'}},
                             'type': 'object'},
- 'layout.sheet_add': {'additionalProperties': True,
+ 'layout.sheet_add': {'additionalProperties': False,
                       'properties': {'height_mm': {'type': 'number'},
                                      'margin_bottom_mm': {'type': 'number'},
                                      'margin_left_mm': {'type': 'number'},
@@ -2764,17 +2695,17 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                      'name': {'type': 'string'},
                                      'width_mm': {'type': 'number'}},
                       'type': 'object'},
- 'layout.sheet_crop': {'additionalProperties': True,
+ 'layout.sheet_crop': {'additionalProperties': False,
                        'properties': {'sheet': {'type': 'string'},
                                       'sheet_index': {'type': 'integer'},
                                       'sheet_uuid': {'type': 'string'}},
                        'type': 'object'},
- 'layout.sheet_remove': {'additionalProperties': True,
+ 'layout.sheet_remove': {'additionalProperties': False,
                          'properties': {'sheet': {'type': 'string'},
                                         'sheet_index': {'type': 'integer'},
                                         'sheet_uuid': {'type': 'string'}},
                          'type': 'object'},
- 'layout.sheet_update': {'additionalProperties': True,
+ 'layout.sheet_update': {'additionalProperties': False,
                          'properties': {'height_mm': {'type': 'number'},
                                         'ignore_margins': {'type': 'boolean'},
                                         'margin_bottom_mm': {'type': 'number'},
@@ -2787,13 +2718,13 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                         'sheet_uuid': {'type': 'string'},
                                         'width_mm': {'type': 'number'}},
                          'type': 'object'},
- 'layout.trash_piece': {'additionalProperties': True,
+ 'layout.trash_piece': {'additionalProperties': False,
                         'properties': {'copy_number': {'type': 'integer'},
                                        'piece': {'type': 'string'},
                                        'piece_id': {'type': 'string'}},
                         'type': 'object'},
- 'layout.validate': {'additionalProperties': True, 'properties': {}, 'type': 'object'},
- 'measurement.correction_set': {'additionalProperties': True,
+ 'layout.validate': {'additionalProperties': False, 'properties': {}, 'type': 'object'},
+ 'measurement.correction_set': {'additionalProperties': False,
                                 'properties': {'base_a_mm': {'type': 'number'},
                                                'base_b_mm': {'type': 'number'},
                                                'base_c_mm': {'type': 'number'},
@@ -2802,13 +2733,19 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                'value_mm': {'type': 'number'}},
                                 'required': ['base_a_mm', 'name', 'value_mm'],
                                 'type': 'object'},
- 'measurement.dimension_labels_set': {'additionalProperties': True,
+ 'measurement.dimension_labels_set': {'additionalProperties': False,
                                       'properties': {'axis': {'type': 'string'},
-                                                     'labels': {'items': {}, 'type': 'array'},
+                                                     'labels': {'items': {'additionalProperties': False,
+                                                                          'properties': {'label': {'type': 'string'},
+                                                                                         'value_mm': {'type': 'number'}},
+                                                                          'required': ['value_mm',
+                                                                                       'label'],
+                                                                          'type': 'object'},
+                                                                'type': 'array'},
                                                      'path': {'type': 'string'}},
                                       'required': ['axis', 'labels'],
                                       'type': 'object'},
- 'measurement.dimension_set': {'additionalProperties': True,
+ 'measurement.dimension_set': {'additionalProperties': False,
                                'properties': {'axis': {'type': 'string'},
                                               'base_mm': {'type': 'number'},
                                               'body_measurement': {'type': 'boolean'},
@@ -2819,17 +2756,40 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                               'step_mm': {'type': 'number'}},
                                'required': ['axis'],
                                'type': 'object'},
- 'measurement.export_csv': {'additionalProperties': True,
+ 'measurement.export_csv': {'additionalProperties': False,
                             'properties': {'output_path': {'type': 'string'},
                                            'separator': {'type': 'string'}},
                             'type': 'object'},
- 'measurement.file_create': {'additionalProperties': True,
-                             'properties': {'dimensions': {'items': {}, 'type': 'array'},
+ 'measurement.file_create': {'additionalProperties': False,
+                             'properties': {'dimensions': {'items': {'additionalProperties': False,
+                                                                     'properties': {'axis': {'enum': ['X',
+                                                                                                      'Y',
+                                                                                                      'W',
+                                                                                                      'Z',
+                                                                                                      'x',
+                                                                                                      'y',
+                                                                                                      'w',
+                                                                                                      'z']},
+                                                                                    'base_mm': {'type': 'number'},
+                                                                                    'body_measurement': {'type': 'boolean'},
+                                                                                    'max_mm': {'type': 'number'},
+                                                                                    'min_mm': {'type': 'number'},
+                                                                                    'name': {'type': 'string'},
+                                                                                    'step_mm': {'exclusiveMinimum': 0,
+                                                                                                'type': 'number'}},
+                                                                     'required': ['axis',
+                                                                                  'min_mm',
+                                                                                  'max_mm',
+                                                                                  'step_mm'],
+                                                                     'type': 'object'},
+                                                           'maxItems': 3,
+                                                           'minItems': 1,
+                                                           'type': 'array'},
                                             'full_circumference': {'type': 'boolean'},
                                             'path': {'type': 'string'},
                                             'type': {'type': 'string'}},
                              'type': 'object'},
- 'measurement.file_metadata_set': {'additionalProperties': True,
+ 'measurement.file_metadata_set': {'additionalProperties': False,
                                    'properties': {'birth_date': {'type': 'string'},
                                                   'customer': {'type': 'string'},
                                                   'email': {'type': 'string'},
@@ -2840,43 +2800,43 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                   'path': {'type': 'string'},
                                                   'read_only': {'type': 'boolean'}},
                                    'type': 'object'},
- 'measurement.file_open': {'additionalProperties': True,
+ 'measurement.file_open': {'additionalProperties': False,
                            'properties': {'path': {'type': 'string'},
                                           'source_path': {'type': 'string'}},
                            'required': ['source_path'],
                            'type': 'object'},
- 'measurement.file_save': {'additionalProperties': True,
+ 'measurement.file_save': {'additionalProperties': False,
                            'properties': {'path': {'type': 'string'}},
                            'type': 'object'},
- 'measurement.final_measurement_set': {'additionalProperties': True,
+ 'measurement.final_measurement_set': {'additionalProperties': False,
                                        'properties': {'description': {'type': 'string'},
                                                       'formula': {'type': 'string'},
                                                       'name': {'type': 'string'}},
                                        'required': ['formula', 'name'],
                                        'type': 'object'},
- 'measurement.image_remove': {'additionalProperties': True,
+ 'measurement.image_remove': {'additionalProperties': False,
                               'properties': {'name': {'type': 'string'},
                                              'path': {'type': 'string'}},
                               'required': ['name'],
                               'type': 'object'},
- 'measurement.image_set': {'additionalProperties': True,
+ 'measurement.image_set': {'additionalProperties': False,
                            'properties': {'name': {'type': 'string'},
                                           'path': {'type': 'string'},
                                           'source_path': {'type': 'string'}},
                            'required': ['name', 'source_path'],
                            'type': 'object'},
- 'measurement.import_csv': {'additionalProperties': True,
+ 'measurement.import_csv': {'additionalProperties': False,
                             'properties': {'path': {'type': 'string'},
                                            'separator': {'type': 'string'},
                                            'source_path': {'type': 'string'},
                                            'with_header': {'type': 'boolean'}},
                             'required': ['source_path'],
                             'type': 'object'},
- 'measurement.increment_remove': {'additionalProperties': True,
+ 'measurement.increment_remove': {'additionalProperties': False,
                                   'properties': {'name': {'type': 'string'}},
                                   'required': ['name'],
                                   'type': 'object'},
- 'measurement.increment_set': {'additionalProperties': True,
+ 'measurement.increment_set': {'additionalProperties': False,
                                'properties': {'description': {'type': 'string'},
                                               'formula': {'type': 'string'},
                                               'name': {'type': 'string'},
@@ -2884,23 +2844,23 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                               'value_mm': {'type': 'number'}},
                                'required': ['name'],
                                'type': 'object'},
- 'measurement.remove': {'additionalProperties': True,
+ 'measurement.remove': {'additionalProperties': False,
                         'properties': {'name': {'type': 'string'}, 'path': {'type': 'string'}},
                         'required': ['name'],
                         'type': 'object'},
- 'measurement.rename': {'additionalProperties': True,
+ 'measurement.rename': {'additionalProperties': False,
                         'properties': {'name': {'type': 'string'},
                                        'new_name': {'type': 'string'},
                                        'path': {'type': 'string'}},
                         'required': ['name', 'new_name'],
                         'type': 'object'},
- 'measurement.restriction_remove': {'additionalProperties': True,
+ 'measurement.restriction_remove': {'additionalProperties': False,
                                     'properties': {'base_a_mm': {'type': 'number'},
                                                    'base_b_mm': {'type': 'number'},
                                                    'path': {'type': 'string'}},
                                     'required': ['base_a_mm'],
                                     'type': 'object'},
- 'measurement.restriction_set': {'additionalProperties': True,
+ 'measurement.restriction_set': {'additionalProperties': False,
                                  'properties': {'base_a_mm': {'type': 'number'},
                                                 'base_b_mm': {'type': 'number'},
                                                 'exclude_mm': {'items': {}, 'type': 'array'},
@@ -2909,7 +2869,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                 'path': {'type': 'string'}},
                                  'required': ['base_a_mm', 'max_mm', 'min_mm'],
                                  'type': 'object'},
- 'measurement.set': {'additionalProperties': True,
+ 'measurement.set': {'additionalProperties': False,
                      'properties': {'description': {'type': 'string'},
                                     'dimension': {'type': 'string'},
                                     'formula': {'type': 'string'},
@@ -2923,7 +2883,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                     'value_mm': {'type': 'number'}},
                      'required': ['name'],
                      'type': 'object'},
- 'measurement.value_alias_set': {'additionalProperties': True,
+ 'measurement.value_alias_set': {'additionalProperties': False,
                                  'properties': {'alias': {'type': 'string'},
                                                 'base_a_mm': {'type': 'number'},
                                                 'base_b_mm': {'type': 'number'},
@@ -2932,7 +2892,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                 'path': {'type': 'string'}},
                                  'required': ['alias', 'name'],
                                  'type': 'object'},
- 'pattern.along_line': {'additionalProperties': True,
+ 'pattern.along_line': {'additionalProperties': False,
                         'properties': {'alias': {'type': 'string'},
                                        'first_point': {'$ref': '#/$defs/objectReference'},
                                        'formula': {'type': 'string'},
@@ -2943,7 +2903,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                        'second_point': {'$ref': '#/$defs/objectReference'}},
                         'required': ['alias', 'first_point', 'second_point'],
                         'type': 'object'},
- 'pattern.arc': {'additionalProperties': True,
+ 'pattern.arc': {'additionalProperties': False,
                  'properties': {'alias': {'type': 'string'},
                                 'center': {'$ref': '#/$defs/objectReference'},
                                 'end_angle_deg': {'type': 'number'},
@@ -2957,7 +2917,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                 'start_angle_deg': {'type': 'number'}},
                  'required': ['alias', 'center'],
                  'type': 'object'},
- 'pattern.arc_end': {'additionalProperties': True,
+ 'pattern.arc_end': {'additionalProperties': False,
                      'properties': {'alias': {'type': 'string'},
                                     'center': {'$ref': '#/$defs/objectReference'},
                                     'end_angle_deg': {'type': 'number'},
@@ -2971,7 +2931,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                     'start_angle_deg': {'type': 'number'}},
                      'required': ['alias', 'center'],
                      'type': 'object'},
- 'pattern.arc_intersect_axis': {'additionalProperties': True,
+ 'pattern.arc_intersect_axis': {'additionalProperties': False,
                                 'properties': {'alias': {'type': 'string'},
                                                'angle_deg': {'type': 'number'},
                                                'base_point': {'$ref': '#/$defs/objectReference'},
@@ -2981,7 +2941,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                'line_type': {'type': 'string'}},
                                 'required': ['alias', 'base_point', 'curve'],
                                 'type': 'object'},
- 'pattern.arc_start': {'additionalProperties': True,
+ 'pattern.arc_start': {'additionalProperties': False,
                        'properties': {'alias': {'type': 'string'},
                                       'center': {'$ref': '#/$defs/objectReference'},
                                       'end_angle_deg': {'type': 'number'},
@@ -2995,7 +2955,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                       'start_angle_deg': {'type': 'number'}},
                        'required': ['alias', 'center'],
                        'type': 'object'},
- 'pattern.arc_with_length': {'additionalProperties': True,
+ 'pattern.arc_with_length': {'additionalProperties': False,
                              'properties': {'alias': {'type': 'string'},
                                             'center': {'$ref': '#/$defs/objectReference'},
                                             'formula_length': {'type': 'string'},
@@ -3009,13 +2969,45 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                             'start_angle_deg': {'type': 'number'}},
                              'required': ['alias', 'center'],
                              'type': 'object'},
- 'pattern.base_point': {'additionalProperties': True,
+ 'pattern.background_image_add': {'additionalProperties': False,
+                                  'properties': {'alias': {'type': 'string'},
+                                                 'built_in': {'type': 'boolean'},
+                                                 'hold': {'type': 'boolean'},
+                                                 'name': {'type': 'string'},
+                                                 'opacity': {'type': 'number'},
+                                                 'source_path': {'type': 'string'},
+                                                 'visible': {'type': 'boolean'},
+                                                 'x_mm': {'type': 'number'},
+                                                 'y_mm': {'type': 'number'}},
+                                  'required': ['alias', 'source_path'],
+                                  'type': 'object'},
+ 'pattern.background_image_delete': {'additionalProperties': False,
+                                     'properties': {},
+                                     'type': 'object'},
+ 'pattern.background_image_get': {'additionalProperties': False,
+                                  'properties': {},
+                                  'type': 'object'},
+ 'pattern.background_image_update': {'additionalProperties': False,
+                                     'properties': {'dx_mm': {'type': 'number'},
+                                                    'dy_mm': {'type': 'number'},
+                                                    'hold': {'type': 'boolean'},
+                                                    'name': {'type': 'string'},
+                                                    'opacity': {'type': 'number'},
+                                                    'rotation_delta_deg': {'type': 'number'},
+                                                    'scale_x': {'type': 'number'},
+                                                    'scale_y': {'type': 'number'},
+                                                    'visible': {'type': 'boolean'},
+                                                    'x_mm': {'type': 'number'},
+                                                    'y_mm': {'type': 'number'},
+                                                    'z_value': {'type': 'number'}},
+                                     'type': 'object'},
+ 'pattern.base_point': {'additionalProperties': False,
                         'properties': {'alias': {'type': 'string'},
                                        'x_mm': {'type': 'number'},
                                        'y_mm': {'type': 'number'}},
                         'required': ['alias'],
                         'type': 'object'},
- 'pattern.bisector': {'additionalProperties': True,
+ 'pattern.bisector': {'additionalProperties': False,
                       'properties': {'alias': {'type': 'string'},
                                      'first_point': {'$ref': '#/$defs/objectReference'},
                                      'formula': {'type': 'string'},
@@ -3026,7 +3018,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                      'vertex': {'$ref': '#/$defs/objectReference'}},
                       'required': ['alias', 'first_point', 'third_point', 'vertex'],
                       'type': 'object'},
- 'pattern.cubic_bezier': {'additionalProperties': True,
+ 'pattern.cubic_bezier': {'additionalProperties': False,
                           'properties': {'alias': {'type': 'string'},
                                          'line_color': {'type': 'string'},
                                          'line_type': {'type': 'string'},
@@ -3037,15 +3029,17 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                          'point4': {'$ref': '#/$defs/objectReference'}},
                           'required': ['alias', 'point1', 'point2', 'point3', 'point4'],
                           'type': 'object'},
- 'pattern.cubic_bezier_path': {'additionalProperties': True,
+ 'pattern.cubic_bezier_path': {'additionalProperties': False,
                                'properties': {'alias': {'type': 'string'},
                                               'line_color': {'type': 'string'},
                                               'line_type': {'type': 'string'},
                                               'native_alias_suffix': {'type': 'string'},
-                                              'points': {'items': {}, 'type': 'array'}},
+                                              'points': {'items': {'$ref': '#/$defs/objectReference'},
+                                                         'minItems': 4,
+                                                         'type': 'array'}},
                                'required': ['alias'],
                                'type': 'object'},
- 'pattern.curve_intersect_axis': {'additionalProperties': True,
+ 'pattern.curve_intersect_axis': {'additionalProperties': False,
                                   'properties': {'alias': {'type': 'string'},
                                                  'angle_deg': {'type': 'number'},
                                                  'base_point': {'$ref': '#/$defs/objectReference'},
@@ -3055,29 +3049,31 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                  'line_type': {'type': 'string'}},
                                   'required': ['alias', 'base_point', 'curve'],
                                   'type': 'object'},
- 'pattern.cut_arc': {'additionalProperties': True,
+ 'pattern.cut_arc': {'additionalProperties': False,
                      'properties': {'alias': {'type': 'string'},
                                     'curve': {'$ref': '#/$defs/objectReference'},
                                     'formula_length': {'type': 'string'},
                                     'length_mm': {'type': 'number'}},
                      'required': ['alias', 'curve'],
                      'type': 'object'},
- 'pattern.cut_spline': {'additionalProperties': True,
+ 'pattern.cut_spline': {'additionalProperties': False,
                         'properties': {'alias': {'type': 'string'},
                                        'curve': {'$ref': '#/$defs/objectReference'},
                                        'formula_length': {'type': 'string'},
                                        'length_mm': {'type': 'number'}},
                         'required': ['alias', 'curve'],
                         'type': 'object'},
- 'pattern.cut_spline_path': {'additionalProperties': True,
+ 'pattern.cut_spline_path': {'additionalProperties': False,
                              'properties': {'alias': {'type': 'string'},
                                             'curve': {'$ref': '#/$defs/objectReference'},
                                             'formula_length': {'type': 'string'},
                                             'length_mm': {'type': 'number'}},
                              'required': ['alias', 'curve'],
                              'type': 'object'},
- 'pattern.dependency_query': {'additionalProperties': True, 'properties': {}, 'type': 'object'},
- 'pattern.duplicate_detail': {'additionalProperties': True,
+ 'pattern.dependency_query': {'additionalProperties': False,
+                              'properties': {},
+                              'type': 'object'},
+ 'pattern.duplicate_detail': {'additionalProperties': False,
                               'properties': {'alias': {'type': 'string'},
                                              'name': {'type': 'string'},
                                              'offset_x_mm': {'type': 'number'},
@@ -3086,7 +3082,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                              'short_name': {'type': 'string'}},
                               'required': ['alias', 'piece'],
                               'type': 'object'},
- 'pattern.elliptical_arc': {'additionalProperties': True,
+ 'pattern.elliptical_arc': {'additionalProperties': False,
                             'properties': {'alias': {'type': 'string'},
                                            'center': {'$ref': '#/$defs/objectReference'},
                                            'end_angle_deg': {'type': 'number'},
@@ -3106,7 +3102,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                            'start_angle_deg': {'type': 'number'}},
                             'required': ['alias', 'center'],
                             'type': 'object'},
- 'pattern.elliptical_arc_with_length': {'additionalProperties': True,
+ 'pattern.elliptical_arc_with_length': {'additionalProperties': False,
                                         'properties': {'alias': {'type': 'string'},
                                                        'center': {'$ref': '#/$defs/objectReference'},
                                                        'end_angle_deg': {'type': 'number'},
@@ -3126,7 +3122,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                        'start_angle_deg': {'type': 'number'}},
                                         'required': ['alias', 'center'],
                                         'type': 'object'},
- 'pattern.end_line': {'additionalProperties': True,
+ 'pattern.end_line': {'additionalProperties': False,
                       'properties': {'alias': {'type': 'string'},
                                      'angle_deg': {'type': 'number'},
                                      'base_point': {'$ref': '#/$defs/objectReference'},
@@ -3138,40 +3134,76 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                      'notes': {'type': 'string'}},
                       'required': ['alias', 'base_point'],
                       'type': 'object'},
- 'pattern.flipping_by_axis': {'additionalProperties': True,
+ 'pattern.flipping_by_axis': {'additionalProperties': False,
                               'properties': {'axis': {'type': 'string'},
-                                             'objects': {'items': {}, 'type': 'array'},
+                                             'objects': {'items': {'additionalProperties': False,
+                                                                   'properties': {'alias': {'minLength': 1,
+                                                                                            'type': 'string'},
+                                                                                  'line_color': {'type': 'string'},
+                                                                                  'line_type': {'type': 'string'},
+                                                                                  'name': {'type': 'string'},
+                                                                                  'source': {'$ref': '#/$defs/objectReference'}},
+                                                                   'required': ['source',
+                                                                                'alias'],
+                                                                   'type': 'object'},
+                                                         'minItems': 1,
+                                                         'type': 'array'},
                                              'origin': {'$ref': '#/$defs/objectReference'}},
                               'required': ['objects', 'origin'],
                               'type': 'object'},
- 'pattern.flipping_by_line': {'additionalProperties': True,
+ 'pattern.flipping_by_line': {'additionalProperties': False,
                               'properties': {'line_p1': {'$ref': '#/$defs/objectReference'},
                                              'line_p2': {'$ref': '#/$defs/objectReference'},
-                                             'objects': {'items': {}, 'type': 'array'}},
+                                             'objects': {'items': {'additionalProperties': False,
+                                                                   'properties': {'alias': {'minLength': 1,
+                                                                                            'type': 'string'},
+                                                                                  'line_color': {'type': 'string'},
+                                                                                  'line_type': {'type': 'string'},
+                                                                                  'name': {'type': 'string'},
+                                                                                  'source': {'$ref': '#/$defs/objectReference'}},
+                                                                   'required': ['source',
+                                                                                'alias'],
+                                                                   'type': 'object'},
+                                                         'minItems': 1,
+                                                         'type': 'array'}},
                               'required': ['line_p1', 'line_p2', 'objects'],
                               'type': 'object'},
- 'pattern.formula_evaluate': {'additionalProperties': True,
+ 'pattern.formula_evaluate': {'additionalProperties': False,
                               'properties': {'formula': {'type': 'string'},
                                              'quantity': {'type': 'string'}},
                               'required': ['formula'],
                               'type': 'object'},
- 'pattern.graduated_curve': {'additionalProperties': True,
+ 'pattern.graduated_curve': {'additionalProperties': False,
                              'properties': {'alias': {'type': 'string'},
                                             'curve': {'$ref': '#/$defs/objectReference'},
                                             'line_color': {'type': 'string'},
                                             'line_type': {'type': 'string'},
                                             'native_alias_suffix': {'type': 'string'},
-                                            'offsets': {'items': {}, 'type': 'array'}},
+                                            'offsets': {'items': {'additionalProperties': False,
+                                                                  'properties': {'description': {'type': 'string'},
+                                                                                 'formula': {'type': 'string'},
+                                                                                 'name': {'type': 'string'},
+                                                                                 'width_mm': {'type': 'number'}},
+                                                                  'type': 'object'},
+                                                        'minItems': 2,
+                                                        'type': 'array'}},
                              'required': ['alias', 'curve'],
                              'type': 'object'},
- 'pattern.group': {'additionalProperties': True,
+ 'pattern.group': {'additionalProperties': False,
                    'properties': {'alias': {'type': 'string'},
                                   'name': {'type': 'string'},
-                                  'objects': {'items': {}, 'type': 'array'},
-                                  'tags': {'items': {}, 'type': 'array'}},
+                                  'objects': {'items': {'oneOf': [{'$ref': '#/$defs/objectReference'},
+                                                                  {'additionalProperties': False,
+                                                                   'properties': {'object': {'$ref': '#/$defs/objectReference'},
+                                                                                  'tool': {'$ref': '#/$defs/objectReference'}},
+                                                                   'required': ['object'],
+                                                                   'type': 'object'}]},
+                                              'minItems': 1,
+                                              'type': 'array'},
+                                  'tags': {'items': {'type': 'string'}, 'type': 'array'}},
                    'required': ['alias', 'objects'],
                    'type': 'object'},
- 'pattern.height': {'additionalProperties': True,
+ 'pattern.height': {'additionalProperties': False,
                     'properties': {'alias': {'type': 'string'},
                                    'base_point': {'$ref': '#/$defs/objectReference'},
                                    'line_color': {'type': 'string'},
@@ -3180,12 +3212,36 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                    'line_type': {'type': 'string'}},
                     'required': ['alias', 'base_point', 'line_p1', 'line_p2'],
                     'type': 'object'},
- 'pattern.insert_node': {'additionalProperties': True,
-                         'properties': {'nodes': {'items': {}, 'type': 'array'},
+ 'pattern.insert_node': {'additionalProperties': False,
+                         'properties': {'nodes': {'items': {'additionalProperties': False,
+                                                            'properties': {'excluded': {'type': 'boolean'},
+                                                                           'object': {'$ref': '#/$defs/objectReference'},
+                                                                           'passmark': {'type': 'boolean'},
+                                                                           'passmark_angle_formula': {'type': 'string'},
+                                                                           'passmark_angle_type': {'type': 'string'},
+                                                                           'passmark_clockwise_opening': {'type': 'boolean'},
+                                                                           'passmark_length_formula': {'type': 'string'},
+                                                                           'passmark_line_type': {'type': 'string'},
+                                                                           'passmark_not_mirrored': {'type': 'boolean'},
+                                                                           'passmark_visibility_formula': {'type': 'string'},
+                                                                           'passmark_width_formula': {'type': 'string'},
+                                                                           'reverse': {'type': 'boolean'},
+                                                                           'seam_after_formula': {'type': 'string'},
+                                                                           'seam_before_formula': {'type': 'string'},
+                                                                           'show_second_passmark': {'type': 'boolean'},
+                                                                           'type': {'enum': ['point',
+                                                                                             'arc',
+                                                                                             'elliptical_arc',
+                                                                                             'spline',
+                                                                                             'spline_path']}},
+                                                            'required': ['object'],
+                                                            'type': 'object'},
+                                                  'minItems': 1,
+                                                  'type': 'array'},
                                         'piece': {'$ref': '#/$defs/objectReference'}},
                          'required': ['piece'],
                          'type': 'object'},
- 'pattern.line': {'additionalProperties': True,
+ 'pattern.line': {'additionalProperties': False,
                   'properties': {'alias': {'type': 'string'},
                                  'first_point': {'$ref': '#/$defs/objectReference'},
                                  'line_color': {'type': 'string'},
@@ -3194,7 +3250,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                  'second_point': {'$ref': '#/$defs/objectReference'}},
                   'required': ['alias', 'first_point', 'second_point'],
                   'type': 'object'},
- 'pattern.line_intersect': {'additionalProperties': True,
+ 'pattern.line_intersect': {'additionalProperties': False,
                             'properties': {'alias': {'type': 'string'},
                                            'line1_p1': {'$ref': '#/$defs/objectReference'},
                                            'line1_p2': {'$ref': '#/$defs/objectReference'},
@@ -3206,7 +3262,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                          'line2_p1',
                                          'line2_p2'],
                             'type': 'object'},
- 'pattern.line_intersect_axis': {'additionalProperties': True,
+ 'pattern.line_intersect_axis': {'additionalProperties': False,
                                  'properties': {'alias': {'type': 'string'},
                                                 'angle_deg': {'type': 'number'},
                                                 'base_point': {'$ref': '#/$defs/objectReference'},
@@ -3217,25 +3273,35 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                                 'line_type': {'type': 'string'}},
                                  'required': ['alias', 'base_point', 'line_p1', 'line_p2'],
                                  'type': 'object'},
- 'pattern.midpoint': {'additionalProperties': True,
+ 'pattern.midpoint': {'additionalProperties': False,
                       'properties': {'alias': {'type': 'string'},
                                      'first_point': {'$ref': '#/$defs/objectReference'},
                                      'notes': {'type': 'string'},
                                      'second_point': {'$ref': '#/$defs/objectReference'}},
                       'required': ['alias', 'first_point', 'second_point'],
                       'type': 'object'},
- 'pattern.move': {'additionalProperties': True,
+ 'pattern.move': {'additionalProperties': False,
                   'properties': {'angle_deg': {'type': 'number'},
                                  'formula_angle': {'type': 'string'},
                                  'formula_length': {'type': 'string'},
                                  'formula_rotation_angle': {'type': 'string'},
                                  'length_mm': {'type': 'number'},
-                                 'objects': {'items': {}, 'type': 'array'},
+                                 'objects': {'items': {'additionalProperties': False,
+                                                       'properties': {'alias': {'minLength': 1,
+                                                                                'type': 'string'},
+                                                                      'line_color': {'type': 'string'},
+                                                                      'line_type': {'type': 'string'},
+                                                                      'name': {'type': 'string'},
+                                                                      'source': {'$ref': '#/$defs/objectReference'}},
+                                                       'required': ['source', 'alias'],
+                                                       'type': 'object'},
+                                             'minItems': 1,
+                                             'type': 'array'},
                                  'rotation_angle_deg': {'type': 'number'},
                                  'rotation_origin': {'$ref': '#/$defs/objectReference'}},
                   'required': ['objects', 'rotation_origin'],
                   'type': 'object'},
- 'pattern.normal': {'additionalProperties': True,
+ 'pattern.normal': {'additionalProperties': False,
                     'properties': {'alias': {'type': 'string'},
                                    'angle_deg': {'type': 'number'},
                                    'first_point': {'$ref': '#/$defs/objectReference'},
@@ -3246,8 +3312,8 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                    'second_point': {'$ref': '#/$defs/objectReference'}},
                     'required': ['alias', 'first_point', 'second_point'],
                     'type': 'object'},
- 'pattern.object_delete': {'additionalProperties': True, 'properties': {}, 'type': 'object'},
- 'pattern.object_duplicate': {'additionalProperties': True,
+ 'pattern.object_delete': {'additionalProperties': False, 'properties': {}, 'type': 'object'},
+ 'pattern.object_duplicate': {'additionalProperties': False,
                               'properties': {'alias': {'type': 'string'},
                                              'angle_deg': {'type': 'number'},
                                              'formula_angle': {'type': 'string'},
@@ -3258,8 +3324,8 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                              'source': {'$ref': '#/$defs/objectReference'}},
                               'required': ['alias'],
                               'type': 'object'},
- 'pattern.object_get': {'additionalProperties': True, 'properties': {}, 'type': 'object'},
- 'pattern.object_update': {'additionalProperties': True,
+ 'pattern.object_get': {'additionalProperties': False, 'properties': {}, 'type': 'object'},
+ 'pattern.object_update': {'additionalProperties': False,
                            'properties': {'alias': {'type': 'string'},
                                           'line_color': {'type': 'string'},
                                           'line_type': {'type': 'string'},
@@ -3268,7 +3334,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                           'y_mm': {'type': 'number'}},
                            'required': ['alias'],
                            'type': 'object'},
- 'pattern.parallel_curve': {'additionalProperties': True,
+ 'pattern.parallel_curve': {'additionalProperties': False,
                             'properties': {'alias': {'type': 'string'},
                                            'curve': {'$ref': '#/$defs/objectReference'},
                                            'formula_width': {'type': 'string'},
@@ -3278,40 +3344,129 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                            'width_mm': {'type': 'number'}},
                             'required': ['alias', 'curve'],
                             'type': 'object'},
- 'pattern.piece': {'additionalProperties': True,
+ 'pattern.piece': {'additionalProperties': False,
                    'properties': {'alias': {'type': 'string'},
+                                  'fold': {'additionalProperties': False,
+                                           'properties': {'center_formula': {'type': 'string'},
+                                                          'height_formula': {'type': 'string'},
+                                                          'width_formula': {'type': 'string'}},
+                                           'type': 'object'},
                                   'follow_grainline': {'type': 'boolean'},
                                   'forbid_flipping': {'type': 'boolean'},
+                                  'gradation_label': {'type': 'string'},
+                                  'grainline': {'additionalProperties': False,
+                                                'properties': {'arrow_type': {'maximum': 11,
+                                                                              'minimum': 0,
+                                                                              'type': 'integer'},
+                                                               'bottom_pin': {'$ref': '#/$defs/objectReference'},
+                                                               'center_pin': {'$ref': '#/$defs/objectReference'},
+                                                               'enabled': {'type': 'boolean'},
+                                                               'length_formula': {'type': 'string'},
+                                                               'rotation_formula': {'type': 'string'},
+                                                               'top_pin': {'$ref': '#/$defs/objectReference'},
+                                                               'visible': {'type': 'boolean'},
+                                                               'x_mm': {'type': 'number'},
+                                                               'y_mm': {'type': 'number'}},
+                                                'type': 'object'},
+                                  'in_layout': {'type': 'boolean'},
+                                  'mirror_line_end': {'$ref': '#/$defs/objectReference'},
+                                  'mirror_line_start': {'$ref': '#/$defs/objectReference'},
                                   'name': {'type': 'string'},
-                                  'nodes': {'items': {}, 'type': 'array'},
+                                  'nodes': {'items': {'additionalProperties': False,
+                                                      'properties': {'excluded': {'type': 'boolean'},
+                                                                     'object': {'$ref': '#/$defs/objectReference'},
+                                                                     'passmark': {'type': 'boolean'},
+                                                                     'passmark_angle_formula': {'type': 'string'},
+                                                                     'passmark_angle_type': {'type': 'string'},
+                                                                     'passmark_clockwise_opening': {'type': 'boolean'},
+                                                                     'passmark_length_formula': {'type': 'string'},
+                                                                     'passmark_line_type': {'type': 'string'},
+                                                                     'passmark_not_mirrored': {'type': 'boolean'},
+                                                                     'passmark_visibility_formula': {'type': 'string'},
+                                                                     'passmark_width_formula': {'type': 'string'},
+                                                                     'reverse': {'type': 'boolean'},
+                                                                     'seam_after_formula': {'type': 'string'},
+                                                                     'seam_before_formula': {'type': 'string'},
+                                                                     'show_second_passmark': {'type': 'boolean'},
+                                                                     'type': {'enum': ['point',
+                                                                                       'arc',
+                                                                                       'elliptical_arc',
+                                                                                       'spline',
+                                                                                       'spline_path']}},
+                                                      'required': ['object'],
+                                                      'type': 'object'},
+                                            'minItems': 3,
+                                            'type': 'array'},
+                                  'pattern_label': {'additionalProperties': False,
+                                                    'properties': {'enabled': {'type': 'boolean'},
+                                                                   'font_size': {'minimum': 0,
+                                                                                 'type': 'integer'},
+                                                                   'height_formula': {'type': 'string'},
+                                                                   'rotation_formula': {'type': 'string'},
+                                                                   'width_formula': {'type': 'string'},
+                                                                   'x_mm': {'type': 'number'},
+                                                                   'y_mm': {'type': 'number'}},
+                                                    'type': 'object'},
+                                  'piece_label': {'additionalProperties': False,
+                                                  'properties': {'annotation': {'type': 'string'},
+                                                                 'area_short_name': {'type': 'string'},
+                                                                 'enabled': {'type': 'boolean'},
+                                                                 'fold_position': {'type': 'string'},
+                                                                 'font_size': {'minimum': 0,
+                                                                               'type': 'integer'},
+                                                                 'height_formula': {'type': 'string'},
+                                                                 'letter': {'type': 'string'},
+                                                                 'on_fold': {'type': 'boolean'},
+                                                                 'orientation': {'type': 'string'},
+                                                                 'quantity': {'minimum': 1,
+                                                                              'type': 'integer'},
+                                                                 'rotation_formula': {'type': 'string'},
+                                                                 'rotation_way': {'type': 'string'},
+                                                                 'tilt': {'type': 'string'},
+                                                                 'width_formula': {'type': 'string'},
+                                                                 'x_mm': {'type': 'number'},
+                                                                 'y_mm': {'type': 'number'}},
+                                                  'type': 'object'},
                                   'seam_allowance': {'type': 'boolean'},
                                   'seam_allowance_built_in': {'type': 'boolean'},
                                   'seam_allowance_formula': {'type': 'string'},
                                   'seam_allowance_mm': {'type': 'number'},
                                   'short_name': {'type': 'string'}},
-                   'required': ['alias', 'nodes'],
+                   'required': ['alias', 'mirror_line_end', 'mirror_line_start', 'nodes'],
                    'type': 'object'},
- 'pattern.piece_path': {'additionalProperties': True,
+ 'pattern.piece_path': {'additionalProperties': False,
                         'properties': {'alias': {'type': 'string'},
                                        'cut': {'type': 'boolean'},
                                        'first_to_contour': {'type': 'boolean'},
                                        'last_to_contour': {'type': 'boolean'},
                                        'line_type': {'type': 'string'},
                                        'name': {'type': 'string'},
-                                       'nodes': {'items': {}, 'type': 'array'},
+                                       'nodes': {'items': {'additionalProperties': False,
+                                                           'properties': {'excluded': {'type': 'boolean'},
+                                                                          'object': {'$ref': '#/$defs/objectReference'},
+                                                                          'reverse': {'type': 'boolean'},
+                                                                          'type': {'enum': ['point',
+                                                                                            'arc',
+                                                                                            'elliptical_arc',
+                                                                                            'spline',
+                                                                                            'spline_path']}},
+                                                           'required': ['object'],
+                                                           'type': 'object'},
+                                                 'minItems': 2,
+                                                 'type': 'array'},
                                        'not_mirrored': {'type': 'boolean'},
                                        'piece': {'$ref': '#/$defs/objectReference'},
-                                       'type': {'type': 'string'},
+                                       'type': {'enum': ['internal', 'custom_seam_allowance']},
                                        'visibility_formula': {'type': 'string'}},
                         'required': ['alias', 'nodes', 'piece'],
                         'type': 'object'},
- 'pattern.pin': {'additionalProperties': True,
+ 'pattern.pin': {'additionalProperties': False,
                  'properties': {'alias': {'type': 'string'},
                                 'piece': {'$ref': '#/$defs/objectReference'},
                                 'point': {'$ref': '#/$defs/objectReference'}},
                  'required': ['alias', 'piece', 'point'],
                  'type': 'object'},
- 'pattern.place_label': {'additionalProperties': True,
+ 'pattern.place_label': {'additionalProperties': False,
                          'properties': {'alias': {'type': 'string'},
                                         'angle_deg': {'type': 'number'},
                                         'center_point': {'$ref': '#/$defs/objectReference'},
@@ -3325,21 +3480,25 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                         'width_mm': {'type': 'number'}},
                          'required': ['alias', 'center_point', 'piece'],
                          'type': 'object'},
- 'pattern.point_from_arc_and_tangent': {'additionalProperties': True,
+ 'pattern.point_from_arc_and_tangent': {'additionalProperties': False,
                                         'properties': {'alias': {'type': 'string'},
                                                        'arc': {'$ref': '#/$defs/objectReference'},
+                                                       'solution': {'enum': [1, 2],
+                                                                    'type': 'integer'},
                                                        'tangent_point': {'$ref': '#/$defs/objectReference'}},
                                         'required': ['alias', 'arc', 'tangent_point'],
                                         'type': 'object'},
- 'pattern.point_from_circle_and_tangent': {'additionalProperties': True,
+ 'pattern.point_from_circle_and_tangent': {'additionalProperties': False,
                                            'properties': {'alias': {'type': 'string'},
                                                           'center': {'$ref': '#/$defs/objectReference'},
                                                           'radius_formula': {'type': 'string'},
                                                           'radius_mm': {'type': 'number'},
+                                                          'solution': {'enum': [1, 2],
+                                                                       'type': 'integer'},
                                                           'tangent_point': {'$ref': '#/$defs/objectReference'}},
                                            'required': ['alias', 'center', 'tangent_point'],
                                            'type': 'object'},
- 'pattern.point_of_contact': {'additionalProperties': True,
+ 'pattern.point_of_contact': {'additionalProperties': False,
                               'properties': {'alias': {'type': 'string'},
                                              'center': {'$ref': '#/$defs/objectReference'},
                                              'formula_radius': {'type': 'string'},
@@ -3348,44 +3507,62 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                              'radius_mm': {'type': 'number'}},
                               'required': ['alias', 'center', 'line_p1', 'line_p2'],
                               'type': 'object'},
- 'pattern.point_of_intersection': {'additionalProperties': True,
+ 'pattern.point_of_intersection': {'additionalProperties': False,
                                    'properties': {'alias': {'type': 'string'},
                                                   'first_point': {'$ref': '#/$defs/objectReference'},
                                                   'second_point': {'$ref': '#/$defs/objectReference'}},
                                    'required': ['alias', 'first_point', 'second_point'],
                                    'type': 'object'},
- 'pattern.point_of_intersection_arcs': {'additionalProperties': True,
+ 'pattern.point_of_intersection_arcs': {'additionalProperties': False,
                                         'properties': {'alias': {'type': 'string'},
                                                        'first_arc': {'$ref': '#/$defs/objectReference'},
-                                                       'second_arc': {'$ref': '#/$defs/objectReference'}},
+                                                       'second_arc': {'$ref': '#/$defs/objectReference'},
+                                                       'solution': {'enum': [1, 2],
+                                                                    'type': 'integer'}},
                                         'required': ['alias', 'first_arc', 'second_arc'],
                                         'type': 'object'},
- 'pattern.point_of_intersection_circles': {'additionalProperties': True,
+ 'pattern.point_of_intersection_circles': {'additionalProperties': False,
                                            'properties': {'alias': {'type': 'string'},
                                                           'first_center': {'$ref': '#/$defs/objectReference'},
                                                           'first_radius_formula': {'type': 'string'},
                                                           'first_radius_mm': {'type': 'number'},
                                                           'second_center': {'$ref': '#/$defs/objectReference'},
                                                           'second_radius_formula': {'type': 'string'},
-                                                          'second_radius_mm': {'type': 'number'}},
+                                                          'second_radius_mm': {'type': 'number'},
+                                                          'solution': {'enum': [1, 2],
+                                                                       'type': 'integer'}},
                                            'required': ['alias',
                                                         'first_center',
                                                         'second_center'],
                                            'type': 'object'},
- 'pattern.point_of_intersection_curves': {'additionalProperties': True,
+ 'pattern.point_of_intersection_curves': {'additionalProperties': False,
                                           'properties': {'alias': {'type': 'string'},
                                                          'first_curve': {'$ref': '#/$defs/objectReference'},
-                                                         'second_curve': {'$ref': '#/$defs/objectReference'}},
+                                                         'horizontal_solution': {'enum': [1, 2],
+                                                                                 'type': 'integer'},
+                                                         'second_curve': {'$ref': '#/$defs/objectReference'},
+                                                         'vertical_solution': {'enum': [1, 2],
+                                                                               'type': 'integer'}},
                                           'required': ['alias', 'first_curve', 'second_curve'],
                                           'type': 'object'},
- 'pattern.rotation': {'additionalProperties': True,
+ 'pattern.rotation': {'additionalProperties': False,
                       'properties': {'angle_deg': {'type': 'number'},
                                      'formula_angle': {'type': 'string'},
-                                     'objects': {'items': {}, 'type': 'array'},
+                                     'objects': {'items': {'additionalProperties': False,
+                                                           'properties': {'alias': {'minLength': 1,
+                                                                                    'type': 'string'},
+                                                                          'line_color': {'type': 'string'},
+                                                                          'line_type': {'type': 'string'},
+                                                                          'name': {'type': 'string'},
+                                                                          'source': {'$ref': '#/$defs/objectReference'}},
+                                                           'required': ['source', 'alias'],
+                                                           'type': 'object'},
+                                                 'minItems': 1,
+                                                 'type': 'array'},
                                      'origin': {'$ref': '#/$defs/objectReference'}},
                       'required': ['objects', 'origin'],
                       'type': 'object'},
- 'pattern.shoulder_point': {'additionalProperties': True,
+ 'pattern.shoulder_point': {'additionalProperties': False,
                             'properties': {'alias': {'type': 'string'},
                                            'formula': {'type': 'string'},
                                            'length_mm': {'type': 'number'},
@@ -3396,7 +3573,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                            'shoulder_point': {'$ref': '#/$defs/objectReference'}},
                             'required': ['alias', 'line_p1', 'line_p2', 'shoulder_point'],
                             'type': 'object'},
- 'pattern.spline': {'additionalProperties': True,
+ 'pattern.spline': {'additionalProperties': False,
                     'properties': {'alias': {'type': 'string'},
                                    'angle1_deg': {'type': 'number'},
                                    'angle2_deg': {'type': 'number'},
@@ -3413,15 +3590,28 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                    'point4': {'$ref': '#/$defs/objectReference'}},
                     'required': ['alias', 'point1', 'point4'],
                     'type': 'object'},
- 'pattern.spline_path': {'additionalProperties': True,
+ 'pattern.spline_path': {'additionalProperties': False,
                          'properties': {'alias': {'type': 'string'},
                                         'line_color': {'type': 'string'},
                                         'line_type': {'type': 'string'},
                                         'native_alias_suffix': {'type': 'string'},
-                                        'points': {'items': {}, 'type': 'array'}},
+                                        'points': {'items': {'additionalProperties': False,
+                                                             'properties': {'angle1_deg': {'type': 'number'},
+                                                                            'angle2_deg': {'type': 'number'},
+                                                                            'formula_angle1': {'type': 'string'},
+                                                                            'formula_angle2': {'type': 'string'},
+                                                                            'formula_length1': {'type': 'string'},
+                                                                            'formula_length2': {'type': 'string'},
+                                                                            'length1_mm': {'type': 'number'},
+                                                                            'length2_mm': {'type': 'number'},
+                                                                            'point': {'$ref': '#/$defs/objectReference'}},
+                                                             'required': ['point'],
+                                                             'type': 'object'},
+                                                   'minItems': 2,
+                                                   'type': 'array'}},
                          'required': ['alias'],
                          'type': 'object'},
- 'pattern.triangle': {'additionalProperties': True,
+ 'pattern.triangle': {'additionalProperties': False,
                       'properties': {'alias': {'type': 'string'},
                                      'axis_p1': {'$ref': '#/$defs/objectReference'},
                                      'axis_p2': {'$ref': '#/$defs/objectReference'},
@@ -3433,7 +3623,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                    'first_point',
                                    'second_point'],
                       'type': 'object'},
- 'pattern.true_darts': {'additionalProperties': True,
+ 'pattern.true_darts': {'additionalProperties': False,
                         'properties': {'base_line_p1': {'$ref': '#/$defs/objectReference'},
                                        'base_line_p2': {'$ref': '#/$defs/objectReference'},
                                        'dart_p1': {'$ref': '#/$defs/objectReference'},
@@ -3447,7 +3637,7 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'export.layout': {'additionalProp
                                      'dart_p2',
                                      'dart_p3'],
                         'type': 'object'},
- 'pattern.union_details': {'additionalProperties': True,
+ 'pattern.union_details': {'additionalProperties': False,
                            'properties': {'alias': {'type': 'string'},
                                           'edge_index1': {'type': 'integer'},
                                           'edge_index2': {'type': 'integer'},

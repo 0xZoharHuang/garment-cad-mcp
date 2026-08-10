@@ -37,6 +37,239 @@ TYPE_SCHEMAS: dict[str, dict[str, Any]] = {
     "toObject": {"$ref": "#/$defs/objectReference"},
 }
 
+OBJECT_REFERENCE = {"$ref": "#/$defs/objectReference"}
+
+
+def strict_object(
+    properties: dict[str, Any], *, required: tuple[str, ...] = ()
+) -> dict[str, Any]:
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": properties,
+        "additionalProperties": False,
+    }
+    if required:
+        schema["required"] = list(required)
+    return schema
+
+
+PIECE_NODE_SCHEMA = strict_object(
+    {
+        "object": OBJECT_REFERENCE,
+        "type": {
+            "enum": ["point", "arc", "elliptical_arc", "spline", "spline_path"]
+        },
+        "reverse": {"type": "boolean"},
+        "excluded": {"type": "boolean"},
+        "passmark": {"type": "boolean"},
+        "passmark_line_type": {"type": "string"},
+        "passmark_angle_type": {"type": "string"},
+        "show_second_passmark": {"type": "boolean"},
+        "passmark_clockwise_opening": {"type": "boolean"},
+        "passmark_not_mirrored": {"type": "boolean"},
+        "passmark_length_formula": {"type": "string"},
+        "passmark_width_formula": {"type": "string"},
+        "passmark_angle_formula": {"type": "string"},
+        "passmark_visibility_formula": {"type": "string"},
+        "seam_before_formula": {"type": "string"},
+        "seam_after_formula": {"type": "string"},
+    },
+    required=("object",),
+)
+SIMPLE_PIECE_NODE_SCHEMA = strict_object(
+    {
+        "object": OBJECT_REFERENCE,
+        "type": PIECE_NODE_SCHEMA["properties"]["type"],
+        "reverse": {"type": "boolean"},
+        "excluded": {"type": "boolean"},
+    },
+    required=("object",),
+)
+TRANSFORM_SOURCE_SCHEMA = strict_object(
+    {
+        "source": OBJECT_REFERENCE,
+        "alias": {"type": "string", "minLength": 1},
+        "name": {"type": "string"},
+        "line_type": {"type": "string"},
+        "line_color": {"type": "string"},
+    },
+    required=("source", "alias"),
+)
+
+ACTION_PROPERTY_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
+    "measurement.file_create": {
+        "dimensions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": strict_object(
+                {
+                    "axis": {"enum": ["X", "Y", "W", "Z", "x", "y", "w", "z"]},
+                    "min_mm": {"type": "number"},
+                    "max_mm": {"type": "number"},
+                    "step_mm": {"type": "number", "exclusiveMinimum": 0},
+                    "base_mm": {"type": "number"},
+                    "body_measurement": {"type": "boolean"},
+                    "name": {"type": "string"},
+                },
+                required=("axis", "min_mm", "max_mm", "step_mm"),
+            ),
+        }
+    },
+    "measurement.dimension_labels_set": {
+        "labels": {
+            "type": "array",
+            "items": strict_object(
+                {"value_mm": {"type": "number"}, "label": {"type": "string"}},
+                required=("value_mm", "label"),
+            ),
+        }
+    },
+    "pattern.spline_path": {
+        "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": strict_object(
+                {
+                    "point": OBJECT_REFERENCE,
+                    "formula_angle1": {"type": "string"},
+                    "formula_angle2": {"type": "string"},
+                    "formula_length1": {"type": "string"},
+                    "formula_length2": {"type": "string"},
+                    "angle1_deg": {"type": "number"},
+                    "angle2_deg": {"type": "number"},
+                    "length1_mm": {"type": "number"},
+                    "length2_mm": {"type": "number"},
+                },
+                required=("point",),
+            ),
+        }
+    },
+    "pattern.cubic_bezier_path": {
+        "points": {"type": "array", "minItems": 4, "items": OBJECT_REFERENCE}
+    },
+    "pattern.graduated_curve": {
+        "offsets": {
+            "type": "array",
+            "minItems": 2,
+            "items": strict_object(
+                {
+                    "name": {"type": "string"},
+                    "formula": {"type": "string"},
+                    "width_mm": {"type": "number"},
+                    "description": {"type": "string"},
+                }
+            ),
+        }
+    },
+    "pattern.piece": {
+        "nodes": {"type": "array", "minItems": 3, "items": PIECE_NODE_SCHEMA},
+        "mirror_line_start": OBJECT_REFERENCE,
+        "mirror_line_end": OBJECT_REFERENCE,
+        "fold": strict_object(
+            {
+                "height_formula": {"type": "string"},
+                "width_formula": {"type": "string"},
+                "center_formula": {"type": "string"},
+            }
+        ),
+        "grainline": strict_object(
+            {
+                "enabled": {"type": "boolean"},
+                "visible": {"type": "boolean"},
+                "length_formula": {"type": "string"},
+                "rotation_formula": {"type": "string"},
+                "arrow_type": {"type": "integer", "minimum": 0, "maximum": 11},
+                "x_mm": {"type": "number"},
+                "y_mm": {"type": "number"},
+                "center_pin": OBJECT_REFERENCE,
+                "top_pin": OBJECT_REFERENCE,
+                "bottom_pin": OBJECT_REFERENCE,
+            }
+        ),
+        "piece_label": strict_object(
+            {
+                "enabled": {"type": "boolean"},
+                "x_mm": {"type": "number"},
+                "y_mm": {"type": "number"},
+                "width_formula": {"type": "string"},
+                "height_formula": {"type": "string"},
+                "rotation_formula": {"type": "string"},
+                "font_size": {"type": "integer", "minimum": 0},
+                "letter": {"type": "string"},
+                "annotation": {"type": "string"},
+                "orientation": {"type": "string"},
+                "rotation_way": {"type": "string"},
+                "tilt": {"type": "string"},
+                "fold_position": {"type": "string"},
+                "quantity": {"type": "integer", "minimum": 1},
+                "on_fold": {"type": "boolean"},
+                "area_short_name": {"type": "string"},
+            }
+        ),
+        "pattern_label": strict_object(
+            {
+                "enabled": {"type": "boolean"},
+                "x_mm": {"type": "number"},
+                "y_mm": {"type": "number"},
+                "width_formula": {"type": "string"},
+                "height_formula": {"type": "string"},
+                "rotation_formula": {"type": "string"},
+                "font_size": {"type": "integer", "minimum": 0},
+            }
+        ),
+    },
+    "pattern.piece_path": {
+        "nodes": {"type": "array", "minItems": 2, "items": SIMPLE_PIECE_NODE_SCHEMA},
+        "type": {"enum": ["internal", "custom_seam_allowance"]},
+    },
+    "pattern.insert_node": {
+        "nodes": {"type": "array", "minItems": 1, "items": PIECE_NODE_SCHEMA}
+    },
+    "pattern.group": {
+        "objects": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "oneOf": [
+                    OBJECT_REFERENCE,
+                    strict_object(
+                        {"object": OBJECT_REFERENCE, "tool": OBJECT_REFERENCE},
+                        required=("object",),
+                    ),
+                ]
+            },
+        },
+        "tags": {"type": "array", "items": {"type": "string"}},
+    },
+    **{
+        action: {"objects": {"type": "array", "minItems": 1, "items": TRANSFORM_SOURCE_SCHEMA}}
+        for action in (
+            "pattern.rotation",
+            "pattern.move",
+            "pattern.flipping_by_line",
+            "pattern.flipping_by_axis",
+        )
+    },
+}
+
+for _action in (
+    "pattern.point_of_intersection_circles",
+    "pattern.point_of_intersection_arcs",
+    "pattern.point_from_circle_and_tangent",
+    "pattern.point_from_arc_and_tangent",
+):
+    ACTION_PROPERTY_OVERRIDES.setdefault(_action, {})["solution"] = {
+        "type": "integer",
+        "enum": [1, 2],
+    }
+ACTION_PROPERTY_OVERRIDES.setdefault("pattern.point_of_intersection_curves", {}).update(
+    {
+        "vertical_solution": {"type": "integer", "enum": [1, 2]},
+        "horizontal_solution": {"type": "integer", "enum": [1, 2]},
+    }
+)
+
 # These selectors are resolved by helper functions outside individual action branches.
 SHEET_SELECTOR_PROPERTIES = {
     "sheet_uuid": {"type": "string"},
@@ -280,6 +513,7 @@ PROPERTY_ALLOWLISTS = {
 
 REQUIRED_FIELDS = {
     "pattern.formula_evaluate": {"formula"},
+    "pattern.background_image_add": {"alias", "source_path"},
     "measurement.file_open": {"source_path"},
     "measurement.set": {"name"},
     "measurement.rename": {"name", "new_name"},
@@ -367,6 +601,7 @@ def discover() -> dict[str, dict[str, Any]]:
         if "alias" in discovered[action]:
             required_by_action.setdefault(action, set()).add("alias")
         required_by_action.setdefault(action, set()).update(REQUIRED_FIELDS.get(action, set()))
+        discovered[action].update(ACTION_PROPERTY_OVERRIDES.get(action, {}))
 
     expected = {spec.action for spec in VALENTINA_TOOLS}
     if set(discovered) != expected:
@@ -382,9 +617,7 @@ def discover() -> dict[str, dict[str, Any]]:
         schema: dict[str, Any] = {
             "type": "object",
             "properties": dict(sorted(properties.items())),
-            # Native handlers remain the final validator. Keeping extensions legal is
-            # necessary for formula alternatives and upstream-compatible attributes.
-            "additionalProperties": True,
+            "additionalProperties": False,
         }
         if required:
             schema["required"] = required
@@ -487,7 +720,6 @@ def python_module(schemas: dict[str, dict[str, Any]]) -> str:
                 "        target: str | None = None,",
                 '        message: str = "",',
                 '        author: str = "agent",',
-                "        commit: bool = False,",
                 f"        **arguments: Unpack[{class_name}],",
                 "    ) -> ToolResult:",
                 "        return execute_atomic(",
@@ -498,7 +730,6 @@ def python_module(schemas: dict[str, dict[str, Any]]) -> str:
                 "            target=target,",
                 "            message=message,",
                 "            author=author,",
-                "            commit=commit,",
                 "        )",
                 "",
             ]

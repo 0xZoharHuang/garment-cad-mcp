@@ -12,16 +12,6 @@ class ObjectReference(TypedDict, total=False):
     uuid: NotRequired[str]
     alias: NotRequired[str]
 
-class PanelCreateArguments(TypedDict, total=False):
-    alias: Required[str]
-    vertices_mm: Required[list[list[float]]]
-    translation_mm: NotRequired[list[float]]
-    rotation_deg: NotRequired[list[float]]
-    uuid: NotRequired[str]
-
-class PanelDeleteArguments(TypedDict, total=False):
-    pass
-
 class PanelTransformArguments(TypedDict, total=False):
     translation_mm: NotRequired[list[float]]
     rotation_deg: NotRequired[list[float]]
@@ -29,66 +19,21 @@ class PanelTransformArguments(TypedDict, total=False):
     rotation_delta_deg: NotRequired[list[float]]
     center_x: NotRequired[bool]
 
-class PanelPivotArguments(TypedDict, total=False):
-    point_mm: Required[list[float]]
-    replicate_placement: NotRequired[bool]
-
-class PanelMirrorArguments(TypedDict, total=False):
-    alias: Required[str]
-    axis: NotRequired[str]
-    origin_mm: NotRequired[float]
-    uuid: NotRequired[str]
-
-class EdgeSplitArguments(TypedDict, total=False):
-    panel: Required[str]
-    edge_index: Required[int]
-    fractions: Required[list[float]]
-
-class EdgeExtendArguments(TypedDict, total=False):
-    panel: Required[str]
-    edge_index: Required[int]
-    start_delta_mm: NotRequired[float]
-    end_delta_mm: NotRequired[float]
-
-class EdgeSequenceTransformArguments(TypedDict, total=False):
-    panel: Required[str]
-    edge_indices: Required[list[int]]
-    translation_delta_mm: NotRequired[list[float]]
-    snap_start_mm: NotRequired[list[float]]
-    rotation_deg: NotRequired[float]
-    origin_mm: NotRequired[list[float]]
-    reflect_line_mm: NotRequired[list[list[float]]]
-
-class EdgeChamferArguments(TypedDict, total=False):
-    panel: Required[str]
-    vertex_index: Required[int]
-    distance_before_mm: Required[float]
-    distance_after_mm: NotRequired[float]
-
-class DartInsertArguments(TypedDict, total=False):
-    panel: Required[str]
-    edge_index: Required[int]
-    intake_mm: Required[float]
-    depth_mm: Required[float]
-    position: NotRequired[float]
-
 class ComponentDefineArguments(TypedDict, total=False):
     alias: Required[str]
     panels: Required[list[str]]
 
 class ComponentTransformArguments(TypedDict, total=False):
     component: Required[str]
+    translation_mm: NotRequired[list[float]]
     translation_delta_mm: NotRequired[list[float]]
     rotation_delta_deg: NotRequired[list[float]]
 
-class ComponentMirrorArguments(TypedDict, total=False):
-    component: Required[str]
-    axis: NotRequired[str]
-    origin_mm: NotRequired[float]
-
-class ValentinaImportArguments(TypedDict, total=False):
+class AssemblySyncFromPatternArguments(TypedDict, total=False):
     snapshot: Required[dict[str, Any]]
-    sidecar: NotRequired[dict[str, Any]]
+    bindings: NotRequired[dict[str, Any]]
+    source_project_id: Required[str]
+    source_pattern_hash: Required[str]
 
 class InterfaceDefineArguments(TypedDict, total=False):
     alias: Required[str]
@@ -116,6 +61,11 @@ class StitchCreateArguments(TypedDict, total=False):
     direction: NotRequired[str]
     uuid: NotRequired[str]
 
+class StitchUpdateArguments(TypedDict, total=False):
+    interface_a: NotRequired[ObjectReference]
+    interface_b: NotRequired[ObjectReference]
+    direction: NotRequired[str]
+
 class StitchDeleteArguments(TypedDict, total=False):
     pass
 
@@ -128,51 +78,12 @@ class AssemblyCommands:
     def __init__(self, project_path: str | Path) -> None:
         self.project_path = Path(project_path)
 
-    def panel_create(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[PanelCreateArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='panel.create',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def panel_delete(
+    def panel_place_3d(
         self,
         *,
         target: str,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[PanelDeleteArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='panel.delete',
-            arguments=dict(arguments),
-            target=target,
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def panel_transform(
-        self,
-        *,
-        target: str,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[PanelTransformArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -183,137 +94,6 @@ class AssemblyCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
-        )
-
-    def panel_pivot(
-        self,
-        *,
-        target: str,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[PanelPivotArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='panel.pivot',
-            arguments=dict(arguments),
-            target=target,
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def panel_mirror(
-        self,
-        *,
-        target: str,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[PanelMirrorArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='panel.mirror',
-            arguments=dict(arguments),
-            target=target,
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def edge_split(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[EdgeSplitArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='edge.split',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def edge_extend(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[EdgeExtendArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='edge.extend',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def edge_sequence_transform(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[EdgeSequenceTransformArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='edge_sequence.transform',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def edge_chamfer(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[EdgeChamferArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='edge.chamfer',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def dart_insert(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[DartInsertArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='dart.insert',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
         )
 
     def component_define(
@@ -321,7 +101,6 @@ class AssemblyCommands:
         *,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[ComponentDefineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -331,15 +110,13 @@ class AssemblyCommands:
             arguments=dict(arguments),
             message=message,
             author=author,
-            commit=commit,
         )
 
-    def component_transform(
+    def component_place_3d(
         self,
         *,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[ComponentTransformArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -349,43 +126,6 @@ class AssemblyCommands:
             arguments=dict(arguments),
             message=message,
             author=author,
-            commit=commit,
-        )
-
-    def component_mirror(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[ComponentMirrorArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='component.mirror',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
-        )
-
-    def valentina_import_revision(
-        self,
-        *,
-        message: str = "",
-        author: str = "agent",
-        commit: bool = False,
-        **arguments: Unpack[ValentinaImportArguments],
-    ) -> ToolResult:
-        return execute_atomic(
-            self.project_path,
-            domain=OperationDomain.ASSEMBLY,
-            action='valentina.import',
-            arguments=dict(arguments),
-            message=message,
-            author=author,
-            commit=commit,
         )
 
     def interface_define(
@@ -393,7 +133,6 @@ class AssemblyCommands:
         *,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[InterfaceDefineArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -403,7 +142,6 @@ class AssemblyCommands:
             arguments=dict(arguments),
             message=message,
             author=author,
-            commit=commit,
         )
 
     def interface_update(
@@ -412,7 +150,6 @@ class AssemblyCommands:
         target: str,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[InterfaceUpdateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -423,7 +160,6 @@ class AssemblyCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def interface_delete(
@@ -432,7 +168,6 @@ class AssemblyCommands:
         target: str,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[InterfaceDeleteArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -443,7 +178,6 @@ class AssemblyCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def stitch_create(
@@ -451,7 +185,6 @@ class AssemblyCommands:
         *,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[StitchCreateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -461,7 +194,24 @@ class AssemblyCommands:
             arguments=dict(arguments),
             message=message,
             author=author,
-            commit=commit,
+        )
+
+    def stitch_update(
+        self,
+        *,
+        target: str,
+        message: str = "",
+        author: str = "agent",
+        **arguments: Unpack[StitchUpdateArguments],
+    ) -> ToolResult:
+        return execute_atomic(
+            self.project_path,
+            domain=OperationDomain.ASSEMBLY,
+            action='stitch.update',
+            arguments=dict(arguments),
+            target=target,
+            message=message,
+            author=author,
         )
 
     def stitch_delete(
@@ -470,7 +220,6 @@ class AssemblyCommands:
         target: str,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[StitchDeleteArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -481,7 +230,6 @@ class AssemblyCommands:
             target=target,
             message=message,
             author=author,
-            commit=commit,
         )
 
     def assembly_validate(
@@ -489,7 +237,6 @@ class AssemblyCommands:
         *,
         message: str = "",
         author: str = "agent",
-        commit: bool = False,
         **arguments: Unpack[ValidateArguments],
     ) -> ToolResult:
         return execute_atomic(
@@ -499,72 +246,32 @@ class AssemblyCommands:
             arguments=dict(arguments),
             message=message,
             author=author,
-            commit=commit,
         )
 
-ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'component.define': {'additionalProperties': False,
+ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'assembly.sync_from_pattern': {'additionalProperties': False,
+                                'properties': {'bindings': {'type': 'object'},
+                                               'snapshot': {'type': 'object'},
+                                               'source_pattern_hash': {'type': 'string'},
+                                               'source_project_id': {'type': 'string'}},
+                                'required': ['snapshot',
+                                             'source_pattern_hash',
+                                             'source_project_id'],
+                                'type': 'object'},
+ 'component.define': {'additionalProperties': False,
                       'properties': {'alias': {'type': 'string'},
                                      'panels': {'items': {'type': 'string'}, 'type': 'array'}},
                       'required': ['alias', 'panels'],
-                      'type': 'object'},
- 'component.mirror': {'additionalProperties': False,
-                      'properties': {'axis': {'type': 'string'},
-                                     'component': {'type': 'string'},
-                                     'origin_mm': {'type': 'number'}},
-                      'required': ['component'],
                       'type': 'object'},
  'component.transform': {'additionalProperties': False,
                          'properties': {'component': {'type': 'string'},
                                         'rotation_delta_deg': {'items': {'type': 'number'},
                                                                'type': 'array'},
                                         'translation_delta_mm': {'items': {'type': 'number'},
-                                                                 'type': 'array'}},
+                                                                 'type': 'array'},
+                                        'translation_mm': {'items': {'type': 'number'},
+                                                           'type': 'array'}},
                          'required': ['component'],
                          'type': 'object'},
- 'dart.insert': {'additionalProperties': False,
-                 'properties': {'depth_mm': {'type': 'number'},
-                                'edge_index': {'type': 'integer'},
-                                'intake_mm': {'type': 'number'},
-                                'panel': {'type': 'string'},
-                                'position': {'type': 'number'}},
-                 'required': ['depth_mm', 'edge_index', 'intake_mm', 'panel'],
-                 'type': 'object'},
- 'edge.chamfer': {'additionalProperties': False,
-                  'properties': {'distance_after_mm': {'type': 'number'},
-                                 'distance_before_mm': {'type': 'number'},
-                                 'panel': {'type': 'string'},
-                                 'vertex_index': {'type': 'integer'}},
-                  'required': ['distance_before_mm', 'panel', 'vertex_index'],
-                  'type': 'object'},
- 'edge.extend': {'additionalProperties': False,
-                 'properties': {'edge_index': {'type': 'integer'},
-                                'end_delta_mm': {'type': 'number'},
-                                'panel': {'type': 'string'},
-                                'start_delta_mm': {'type': 'number'}},
-                 'required': ['edge_index', 'panel'],
-                 'type': 'object'},
- 'edge.split': {'additionalProperties': False,
-                'properties': {'edge_index': {'type': 'integer'},
-                               'fractions': {'items': {'type': 'number'}, 'type': 'array'},
-                               'panel': {'type': 'string'}},
-                'required': ['edge_index', 'fractions', 'panel'],
-                'type': 'object'},
- 'edge_sequence.transform': {'additionalProperties': False,
-                             'properties': {'edge_indices': {'items': {'type': 'integer'},
-                                                             'type': 'array'},
-                                            'origin_mm': {'items': {'type': 'number'},
-                                                          'type': 'array'},
-                                            'panel': {'type': 'string'},
-                                            'reflect_line_mm': {'items': {'items': {'type': 'number'},
-                                                                          'type': 'array'},
-                                                                'type': 'array'},
-                                            'rotation_deg': {'type': 'number'},
-                                            'snap_start_mm': {'items': {'type': 'number'},
-                                                              'type': 'array'},
-                                            'translation_delta_mm': {'items': {'type': 'number'},
-                                                                     'type': 'array'}},
-                             'required': ['edge_indices', 'panel'],
-                             'type': 'object'},
  'interface.define': {'additionalProperties': False,
                       'properties': {'alias': {'type': 'string'},
                                      'edge_indices': {'items': {'type': 'integer'},
@@ -585,30 +292,6 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'component.define': {'additionalP
                                      'right_wrong': {'type': 'boolean'},
                                      'ruffle': {'type': 'number'}},
                       'type': 'object'},
- 'panel.create': {'additionalProperties': False,
-                  'properties': {'alias': {'type': 'string'},
-                                 'rotation_deg': {'items': {'type': 'number'}, 'type': 'array'},
-                                 'translation_mm': {'items': {'type': 'number'},
-                                                    'type': 'array'},
-                                 'uuid': {'type': 'string'},
-                                 'vertices_mm': {'items': {'items': {'type': 'number'},
-                                                           'type': 'array'},
-                                                 'type': 'array'}},
-                  'required': ['alias', 'vertices_mm'],
-                  'type': 'object'},
- 'panel.delete': {'additionalProperties': False, 'properties': {}, 'type': 'object'},
- 'panel.mirror': {'additionalProperties': False,
-                  'properties': {'alias': {'type': 'string'},
-                                 'axis': {'type': 'string'},
-                                 'origin_mm': {'type': 'number'},
-                                 'uuid': {'type': 'string'}},
-                  'required': ['alias'],
-                  'type': 'object'},
- 'panel.pivot': {'additionalProperties': False,
-                 'properties': {'point_mm': {'items': {'type': 'number'}, 'type': 'array'},
-                                'replicate_placement': {'type': 'boolean'}},
-                 'required': ['point_mm'],
-                 'type': 'object'},
  'panel.transform': {'additionalProperties': False,
                      'properties': {'center_x': {'type': 'boolean'},
                                     'rotation_deg': {'items': {'type': 'number'},
@@ -629,9 +312,9 @@ ARGUMENT_SCHEMAS: dict[str, dict[str, Any]] = {'component.define': {'additionalP
                    'required': ['alias', 'interface_a', 'interface_b'],
                    'type': 'object'},
  'stitch.delete': {'additionalProperties': False, 'properties': {}, 'type': 'object'},
- 'valentina.import': {'additionalProperties': False,
-                      'properties': {'sidecar': {'type': 'object'},
-                                     'snapshot': {'type': 'object'}},
-                      'required': ['snapshot'],
-                      'type': 'object'},
+ 'stitch.update': {'additionalProperties': False,
+                   'properties': {'direction': {'type': 'string'},
+                                  'interface_a': {'$ref': '#/$defs/objectReference'},
+                                  'interface_b': {'$ref': '#/$defs/objectReference'}},
+                   'type': 'object'},
  'validate': {'additionalProperties': False, 'properties': {}, 'type': 'object'}}
